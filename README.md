@@ -1,21 +1,7 @@
-Auto
-======
+Compile Testing
+===============
 
-A collection of source code generators for [Java][java].
-
-Auto‽
------
-
-[Java][java] is full of code that is mechanical, repetitive, typically untested and sometimes the source of subtle bugs. _Sounds like a job for robots!_
-
-The Auto subprojects are a collection of code generators that automate those types of tasks. They create you would have written, but without the bugs.
-
-Save time.  Save code.  Save sanity.
-
-Subprojects
------------
-
-  * [Auto-Factory](https://github.com/google/auto/tree/master/factory) - JSR-330-compatible factories
+A library for testing javac compilation with or without annotation processors.
 
 License
 -------
@@ -34,5 +20,4 @@ License
     See the License for the specific language governing permissions and
     limitations under the License.
 
-[java]: https://en.wikipedia.org/wiki/Java_(programming_language)
 

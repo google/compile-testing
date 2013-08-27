@@ -79,7 +79,7 @@ public class JavaSourcesSubjectFactoryTest {
     try {
       VERIFY.about(javaSource())
           .that(fileObject)
-          .hasError("some error").in(fileObject);
+          .hasErrorContaining("some error").in(fileObject);
       fail();
     } catch (VerificationException expected) {
       // TODO(gak): verify the message
@@ -91,10 +91,10 @@ public class JavaSourcesSubjectFactoryTest {
     JavaFileObject fileObject = JavaFileObjects.forResource("HelloWorld-broken.java");
     ASSERT.about(javaSource())
         .that(fileObject)
-        .hasError("not a statement")
-        .and().hasError("not a statement").in(fileObject)
-        .and().hasError("not a statement").in(fileObject).onLine(23)
-        .and().hasError("not a statement").in(fileObject).onLine(23).atColumn(5);
+        .hasErrorContaining("not a statement")
+        .and().hasErrorContaining("not a statement").in(fileObject)
+        .and().hasErrorContaining("not a statement").in(fileObject).onLine(23)
+        .and().hasErrorContaining("not a statement").in(fileObject).onLine(23).atColumn(5);
   }
 
   @Test

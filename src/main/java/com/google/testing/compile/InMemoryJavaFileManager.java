@@ -43,7 +43,6 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
-import com.google.common.io.ByteStreams;
 
 /**
  * A file manager implementation that stores all output in memory.
@@ -163,7 +162,7 @@ final class InMemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileMa
         @Override
         public void close() throws IOException {
           super.close();
-          data = Optional.of(ByteStreams.asByteSource(toByteArray()));
+          data = Optional.of(ByteSource.wrap(toByteArray()));
           lastModified = System.currentTimeMillis();
         }
       };
@@ -195,7 +194,7 @@ final class InMemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileMa
         public void close() throws IOException {
           super.close();
           data =
-              Optional.of(ByteStreams.asByteSource(toString().getBytes(Charset.defaultCharset())));
+              Optional.of(ByteSource.wrap(toString().getBytes(Charset.defaultCharset())));
           lastModified = System.currentTimeMillis();
         }
       };

@@ -19,6 +19,7 @@ import static javax.tools.JavaFileObject.Kind.CLASS;
 import static org.truth0.Truth.ASSERT;
 
 import java.io.IOException;
+import java.net.URI;
 import java.net.URISyntaxException;
 
 import javax.tools.JavaFileObject;
@@ -36,8 +37,7 @@ public class JavaFileObjectsTest {
   @Test public void forResource_inJarFile() throws URISyntaxException, IOException {
     JavaFileObject resourceInJar = JavaFileObjects.forResource("java/lang/Object.class");
     ASSERT.that(resourceInJar.getKind()).isEqualTo(CLASS);
-    ASSERT.that(resourceInJar.toUri())
-        .isEqualTo(Resources.getResource("java/lang/Object.class").toURI());
+    ASSERT.that(resourceInJar.toUri()).isEqualTo(URI.create("/java/lang/Object.class"));
     ASSERT.that(resourceInJar.getName())
         .isEqualTo(Resources.getResource("java/lang/Object.class").toURI().getSchemeSpecificPart());
     ASSERT.that(resourceInJar.isNameCompatible("Object", CLASS));

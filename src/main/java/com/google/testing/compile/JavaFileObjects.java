@@ -146,11 +146,6 @@ public final class JavaFileObjects {
     }
 
     @Override
-    public URI toUri() {
-      return jarFileUri;
-    }
-
-    @Override
     public String getName() {
       return jarFileUri.getSchemeSpecificPart();
     }

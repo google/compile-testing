@@ -19,15 +19,6 @@ import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
 import static org.junit.Assert.fail;
 import static org.truth0.Truth.ASSERT;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.common.io.Resources;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-import org.truth0.FailureStrategy;
-import org.truth0.TestVerb;
-
 import java.io.IOException;
 import java.io.Writer;
 import java.util.Arrays;
@@ -39,6 +30,15 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.TypeElement;
 import javax.tools.JavaFileObject;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.truth0.FailureStrategy;
+import org.truth0.TestVerb;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.common.io.Resources;
 
 /**
  * Tests {@link JavaSourcesSubjectFactory} (and {@link JavaSourceSubjectFactory}).

@@ -25,6 +25,8 @@ import java.net.URISyntaxException;
 import javax.tools.JavaFileObject;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import com.google.common.io.Resources;
 
@@ -33,6 +35,7 @@ import com.google.common.io.Resources;
  *
  *  @author Gregory Kick
  */
+@RunWith(JUnit4.class)
 public class JavaFileObjectsTest {
   @Test public void forResource_inJarFile() throws URISyntaxException, IOException {
     JavaFileObject resourceInJar = JavaFileObjects.forResource("java/lang/Object.class");

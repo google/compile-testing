@@ -40,5 +40,6 @@ public class JavaFileObjectsTest {
         .isEqualTo(Resources.getResource("java/lang/Object.class").toURI());
     ASSERT.that(resourceInJar.getName())
         .isEqualTo(Resources.getResource("java/lang/Object.class").toURI().getSchemeSpecificPart());
+    ASSERT.that(resourceInJar.isNameCompatible("Object", CLASS));
   }
 }

@@ -15,6 +15,7 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.io.Files.getNameWithoutExtension;
 import static javax.tools.JavaFileObject.Kind.SOURCE;
 
 import java.io.ByteArrayInputStream;
@@ -24,6 +25,7 @@ import java.io.OutputStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.Writer;
+import java.net.JarURLConnection;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -33,7 +35,10 @@ import javax.tools.JavaFileObject.Kind;
 import javax.tools.SimpleJavaFileObject;
 
 import com.google.common.base.CharMatcher;
+import com.google.common.base.Charsets;
 import com.google.common.io.ByteSource;
+import com.google.common.io.CharStreams;
+import com.google.common.io.InputSupplier;
 import com.google.common.io.Resources;
 
 /**
@@ -97,7 +102,27 @@ public final class JavaFileObjects {
   }
 
   public static JavaFileObject forResource(URL resourceUrl) {
+    if (resourceUrl.getProtocol().equals("jar")) {
+      try {
+        return forJarEntry((JarURLConnection)resourceUrl.openConnection());
+      } catch (IOException e) {
+        throw new RuntimeException("Failed to create JavaFileObject for " + resourceUrl, e);
+      }
+    }
     return new ResourceSourceJavaFileObject(resourceUrl);
+  }
+
+  private static JavaFileObject forJarEntry(JarURLConnection connection) throws IOException {
+      final InputStream stream = connection.getURL().openStream();
+      InputSupplier<InputStream> supplier  =
+          new InputSupplier<InputStream>() {
+            @Override public InputStream getInput() {
+              return stream;
+            }
+          };
+      String text = CharStreams.toString(CharStreams.newReaderSupplier(supplier, Charsets.UTF_8));
+      String className = getNameWithoutExtension(connection.getEntryName()).replaceAll("/", ".");
+      return new StringSourceJavaFileObject(className, text);
   }
 
   public static JavaFileObject forResource(String resourceName) {

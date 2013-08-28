@@ -19,8 +19,18 @@ import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
 import static org.junit.Assert.fail;
 import static org.truth0.Truth.ASSERT;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.io.Resources;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.truth0.FailureStrategy;
+import org.truth0.TestVerb;
+
 import java.io.IOException;
 import java.io.Writer;
+import java.util.Arrays;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -29,15 +39,6 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.TypeElement;
 import javax.tools.JavaFileObject;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-import org.truth0.FailureStrategy;
-import org.truth0.TestVerb;
-
-import com.google.common.collect.ImmutableSet;
-import com.google.common.io.Resources;
 
 /**
  * Tests {@link JavaSourcesSubjectFactory} (and {@link JavaSourceSubjectFactory}).
@@ -98,7 +99,7 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
-  public void generates() throws IOException {
+  public void generates() {
     ASSERT.about(javaSource())
         .that(JavaFileObjects.forResource("HelloWorld.java"))
         .processedWith(new GeneratingProcessor())
@@ -107,6 +108,35 @@ public class JavaSourcesSubjectFactoryTest {
             GeneratingProcessor.GENERATED_CLASS_NAME,
             GeneratingProcessor.GENERATED_SOURCE));
   }
+
+  @Test
+  public void invokesMultipleProcesors() {
+    NoOpProcessor noopProcessor1 = new NoOpProcessor();
+    NoOpProcessor noopProcessor2 = new NoOpProcessor();
+    ASSERT.that(noopProcessor1.invoked).isFalse();
+    ASSERT.that(noopProcessor2.invoked).isFalse();
+    ASSERT.about(javaSource())
+        .that(JavaFileObjects.forResource("HelloWorld.java"))
+        .processedWith(noopProcessor1, noopProcessor2)
+        .hasNoErrors();
+    ASSERT.that(noopProcessor1.invoked).isTrue();
+    ASSERT.that(noopProcessor2.invoked).isTrue();
+  }
+
+  @Test
+  public void invokesMultipleProcesors_asIterable() {
+    NoOpProcessor noopProcessor1 = new NoOpProcessor();
+    NoOpProcessor noopProcessor2 = new NoOpProcessor();
+    ASSERT.that(noopProcessor1.invoked).isFalse();
+    ASSERT.that(noopProcessor2.invoked).isFalse();
+    ASSERT.about(javaSource())
+        .that(JavaFileObjects.forResource("HelloWorld.java"))
+        .processedWith(Arrays.asList(noopProcessor1, noopProcessor2))
+        .hasNoErrors();
+    ASSERT.that(noopProcessor1.invoked).isTrue();
+    ASSERT.that(noopProcessor2.invoked).isTrue();
+  }
+
 
   private static final class GeneratingProcessor extends AbstractProcessor {
     static final String GENERATED_CLASS_NAME = "Blah";
@@ -138,6 +168,28 @@ public class JavaSourcesSubjectFactoryTest {
     public SourceVersion getSupportedSourceVersion() {
       return SourceVersion.latestSupported();
     }
+  }
+
+  private static final class NoOpProcessor extends AbstractProcessor {
+
+    boolean invoked = false;
+
+    @Override
+    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+      invoked = true;
+      return false;
+    }
+
+    @Override
+    public Set<String> getSupportedAnnotationTypes() {
+      return ImmutableSet.of("*");
+    }
+
+    @Override
+    public SourceVersion getSupportedSourceVersion() {
+      return SourceVersion.latestSupported();
+    }
+
   }
 
   private static final class VerificationException extends RuntimeException {

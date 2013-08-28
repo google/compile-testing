@@ -15,19 +15,6 @@
  */
 package com.google.testing.compile;
 
-import java.io.IOException;
-import java.util.Arrays;
-
-import javax.annotation.CheckReturnValue;
-import javax.annotation.processing.Processor;
-import javax.tools.Diagnostic;
-import javax.tools.Diagnostic.Kind;
-import javax.tools.FileObject;
-import javax.tools.JavaFileObject;
-
-import org.truth0.FailureStrategy;
-import org.truth0.subjects.Subject;
-
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Optional;
@@ -38,7 +25,21 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
+
 import com.sun.source.tree.CompilationUnitTree;
+
+import org.truth0.FailureStrategy;
+import org.truth0.subjects.Subject;
+
+import java.io.IOException;
+import java.util.Arrays;
+
+import javax.annotation.CheckReturnValue;
+import javax.annotation.processing.Processor;
+import javax.tools.Diagnostic;
+import javax.tools.Diagnostic.Kind;
+import javax.tools.FileObject;
+import javax.tools.JavaFileObject;
 
 /**
  * A <a href="https://github.com/truth0/truth">Truth</a> {@link Subject} that evaluates the result
@@ -81,7 +82,12 @@ public final class JavaSourcesSubject
 
   @CheckReturnValue
   public CompilationClause processedWith(Processor first, Processor... rest) {
-    return new CompilationClause(Lists.asList(first, rest));
+    return processedWith(Lists.asList(first, rest));
+  }
+
+  @CheckReturnValue
+  public CompilationClause processedWith(Iterable<? extends Processor> processors) {
+    return new CompilationClause(processors);
   }
 
   private CompilationClause newCompilationClause(Iterable<? extends Processor> processors) {
@@ -319,6 +325,11 @@ public final class JavaSourcesSubject
     @CheckReturnValue
     public CompilationClause processedWith(Processor first, Processor... rest) {
       return delegate.newCompilationClause(Lists.asList(first, rest));
+    }
+
+    @CheckReturnValue
+    public CompilationClause processedWith(Iterable<? extends Processor> processors) {
+      return delegate.newCompilationClause(processors);
     }
 
     public SuccessfulCompilationClause hasNoErrors() {

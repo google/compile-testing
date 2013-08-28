@@ -18,6 +18,7 @@ package com.google.testing.compile;
 import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
 import static org.junit.Assert.fail;
 import static org.truth0.Truth.ASSERT;
+import static org.truth0.Truth.ASSUME;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Resources;
@@ -137,6 +138,12 @@ public class JavaSourcesSubjectFactoryTest {
     ASSERT.that(noopProcessor2.invoked).isTrue();
   }
 
+  public void compilesResourcesInJarFiles() {
+    ASSUME.that(getClass().getResource("javax/inject/Inject.java").getProtocol()).is("jar");
+    ASSERT.about(javaSource())
+        .that(JavaFileObjects.forResource("javax/inject/Inject.java"))
+        .hasNoErrors();
+  }
 
   private static final class GeneratingProcessor extends AbstractProcessor {
     static final String GENERATED_CLASS_NAME = "Blah";

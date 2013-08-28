@@ -133,10 +133,10 @@ public final class JavaFileObjects {
       this.name = jarUrl.toString();
     }
 
-    static final Splitter jarUrlSplitter = Splitter.on('!');
+    static final Splitter JAR_URL_SPLITTER = Splitter.on('!');
 
     static final URI getPathUri(URL jarUrl) {
-      ImmutableList<String> parts = ImmutableList.copyOf(jarUrlSplitter.split(jarUrl.getPath()));
+      ImmutableList<String> parts = ImmutableList.copyOf(JAR_URL_SPLITTER.split(jarUrl.getPath()));
       checkArgument(parts.size() == 2,
           "The jar url separator (!) appeared more than once in the url: %s", jarUrl);
       String pathPart = parts.get(1);

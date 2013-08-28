@@ -124,13 +124,13 @@ public final class JavaFileObjects {
 
   private static final class JarFileJavaFileObject
       extends ForwardingJavaFileObject<ResourceSourceJavaFileObject> {
-    final URI jarFileUri;
+    final String name;
 
     JarFileJavaFileObject(URL jarUrl) {
       // this is a cheap way to give SimpleJavaFileObject a uri that satisfies the contract
       // then we just override the methods that we want to behave differently for jars
       super(new ResourceSourceJavaFileObject(jarUrl, getPathUri(jarUrl)));
-      this.jarFileUri = URI.create(jarUrl.toString());
+      this.name = jarUrl.toString();
     }
 
     static final Splitter jarUrlSplitter = Splitter.on('!');
@@ -147,7 +147,7 @@ public final class JavaFileObjects {
 
     @Override
     public String getName() {
-      return jarFileUri.getSchemeSpecificPart();
+      return name;
     }
   }
 

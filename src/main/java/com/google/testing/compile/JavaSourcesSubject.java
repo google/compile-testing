@@ -76,7 +76,7 @@ public final class JavaSourcesSubject
   public interface SuccessfulCompilationClause extends ChainingClause<GeneratedPredicateClause> {}
 
   public interface UnuccessfulCompilationClause {
-    FileClause hasError(String message);
+    FileClause hasErrorContaining(String message);
   }
 
   @CheckReturnValue
@@ -111,9 +111,9 @@ public final class JavaSourcesSubject
       return new SuccessfulCompilationBuilder(result);
     }
 
-    public FileClause hasError(String message) {
+    public FileClause hasErrorContaining(String message) {
       Compilation.Result result = Compilation.compile(processors, getSubject());
-      return new UnsuccessfulCompilationBuilder(result).hasError(message);
+      return new UnsuccessfulCompilationBuilder(result).hasErrorContaining(message);
     }
   }
 
@@ -121,8 +121,8 @@ public final class JavaSourcesSubject
     return new CompilationClause().hasNoErrors();
   }
 
-  public FileClause hasError(String message) {
-    return new CompilationClause().hasError(message);
+  public FileClause hasErrorContaining(String message) {
+    return new CompilationClause().hasErrorContaining(message);
   }
 
   private final class UnsuccessfulCompilationBuilder implements UnuccessfulCompilationClause {
@@ -133,14 +133,14 @@ public final class JavaSourcesSubject
     }
 
     @Override
-    public FileClause hasError(final String message) {
+    public FileClause hasErrorContaining(final String message) {
       FluentIterable<Diagnostic<? extends JavaFileObject>> diagnostics =
           FluentIterable.from(result.diagnosticsByKind.get(Kind.ERROR));
       final FluentIterable<Diagnostic<? extends JavaFileObject>> diagnosticsWithMessage =
           diagnostics.filter(new Predicate<Diagnostic<?>>() {
             @Override
             public boolean apply(Diagnostic<?> input) {
-              return message.equals(input.getMessage(null));
+              return input.getMessage(null).contains(message);
             }
           });
       if (diagnosticsWithMessage.isEmpty()) {
@@ -325,8 +325,8 @@ public final class JavaSourcesSubject
       return delegate.hasNoErrors();
     }
 
-    public FileClause hasError(String message) {
-      return delegate.hasError(message);
+    public FileClause hasErrorContaining(String message) {
+      return delegate.hasErrorContaining(message);
     }
   }
 }

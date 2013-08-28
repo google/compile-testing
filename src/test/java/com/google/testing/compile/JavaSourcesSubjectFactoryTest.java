@@ -108,6 +108,23 @@ public class JavaSourcesSubjectFactoryTest {
             GeneratingProcessor.GENERATED_SOURCE));
   }
 
+  @Test
+  public void compilesResourcesInJarFiles() {
+    ASSERT.about(javaSource())
+        .that(JavaFileObjects.forResource("javax/inject/Inject.java"))
+        .hasNoErrors();
+  }
+
+  @Test
+  public void cannotFindResource() {
+    try {
+      JavaFileObjects.forResource("javax/inject/Inject.javaX");
+      ASSERT.fail("Should fail with an IllegalArgumentException.");
+    } catch (IllegalArgumentException e) {
+      ASSERT.that(e.getMessage()).contains("resource javax/inject/Inject.javaX not found");
+    }
+  }
+
   private static final class GeneratingProcessor extends AbstractProcessor {
     static final String GENERATED_CLASS_NAME = "Blah";
     static final String GENERATED_SOURCE = "final class Blah {}";

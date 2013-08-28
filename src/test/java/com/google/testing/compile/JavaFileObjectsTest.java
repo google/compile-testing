@@ -18,15 +18,15 @@ package com.google.testing.compile;
 import static javax.tools.JavaFileObject.Kind.CLASS;
 import static org.truth0.Truth.ASSERT;
 
+import com.google.common.io.Resources;
+
+import org.junit.Test;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
 import javax.tools.JavaFileObject;
-
-import org.junit.Test;
-
-import com.google.common.io.Resources;
 
 /**
  *  Tests {@link JavaFileObjects}.
@@ -41,5 +41,15 @@ public class JavaFileObjectsTest {
     ASSERT.that(resourceInJar.getName())
         .isEqualTo(Resources.getResource("java/lang/Object.class").toString());
     ASSERT.that(resourceInJar.isNameCompatible("Object", CLASS));
+  }
+
+  @Test
+  public void cannotFindResource() {
+    try {
+      JavaFileObjects.forResource("javax/inject/Inject.javaX");
+      ASSERT.fail("Should fail with an IllegalArgumentException.");
+    } catch (IllegalArgumentException e) {
+      ASSERT.that(e.getMessage()).contains("resource javax/inject/Inject.javaX not found");
+    }
   }
 }

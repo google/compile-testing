@@ -15,6 +15,7 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.base.Preconditions.checkArgument;
 import static javax.tools.JavaFileObject.Kind.SOURCE;
 
 import java.io.ByteArrayInputStream;
@@ -28,11 +29,14 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
 
+import javax.tools.ForwardingJavaFileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
 import javax.tools.SimpleJavaFileObject;
 
 import com.google.common.base.CharMatcher;
+import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
 import com.google.common.io.Resources;
 
@@ -97,7 +101,11 @@ public final class JavaFileObjects {
   }
 
   public static JavaFileObject forResource(URL resourceUrl) {
-    return new ResourceSourceJavaFileObject(resourceUrl);
+    if ("jar".equals(resourceUrl.getProtocol())) {
+      return new JarFileJavaFileObject(resourceUrl);
+    } else {
+      return new ResourceSourceJavaFileObject(resourceUrl);
+    }
   }
 
   public static JavaFileObject forResource(String resourceName) {
@@ -112,6 +120,35 @@ public final class JavaFileObjects {
       }
     }
     return Kind.OTHER;
+  }
+
+  private static final class JarFileJavaFileObject
+      extends ForwardingJavaFileObject<ResourceSourceJavaFileObject> {
+    final String name;
+
+    JarFileJavaFileObject(URL jarUrl) {
+      // this is a cheap way to give SimpleJavaFileObject a uri that satisfies the contract
+      // then we just override the methods that we want to behave differently for jars
+      super(new ResourceSourceJavaFileObject(jarUrl, getPathUri(jarUrl)));
+      this.name = jarUrl.toString();
+    }
+
+    static final Splitter JAR_URL_SPLITTER = Splitter.on('!');
+
+    static final URI getPathUri(URL jarUrl) {
+      ImmutableList<String> parts = ImmutableList.copyOf(JAR_URL_SPLITTER.split(jarUrl.getPath()));
+      checkArgument(parts.size() == 2,
+          "The jar url separator (!) appeared more than once in the url: %s", jarUrl);
+      String pathPart = parts.get(1);
+      checkArgument(!pathPart.endsWith("/"), "cannot create a java file object for a directory: %s",
+          pathPart);
+      return URI.create(pathPart);
+    }
+
+    @Override
+    public String getName() {
+      return name;
+    }
   }
 
   private static final class ResourceSourceJavaFileObject extends SimpleJavaFileObject {
@@ -134,18 +171,8 @@ public final class JavaFileObjects {
     }
 
     @Override
-    public OutputStream openOutputStream() {
-      throw new IllegalStateException();
-    }
-
-    @Override
     public InputStream openInputStream() throws IOException {
       return resourceByteSource.openStream();
-    }
-
-    @Override
-    public Writer openWriter() {
-      throw new IllegalStateException();
     }
 
     @Override

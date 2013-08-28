@@ -171,7 +171,6 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   private static final class NoOpProcessor extends AbstractProcessor {
-
     boolean invoked = false;
 
     @Override
@@ -189,7 +188,6 @@ public class JavaSourcesSubjectFactoryTest {
     public SourceVersion getSupportedSourceVersion() {
       return SourceVersion.latestSupported();
     }
-
   }
 
   private static final class VerificationException extends RuntimeException {

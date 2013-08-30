@@ -19,15 +19,6 @@ import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
 import static org.junit.Assert.fail;
 import static org.truth0.Truth.ASSERT;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.common.io.Resources;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-import org.truth0.FailureStrategy;
-import org.truth0.TestVerb;
-
 import java.io.IOException;
 import java.io.Writer;
 import java.util.Arrays;
@@ -39,6 +30,16 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.TypeElement;
 import javax.tools.JavaFileObject;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.truth0.FailureStrategy;
+import org.truth0.TestVerb;
+
+import com.google.common.base.Throwables;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.io.Resources;
 
 /**
  * Tests {@link JavaSourcesSubjectFactory} (and {@link JavaSourceSubjectFactory}).
@@ -59,7 +60,10 @@ public class JavaSourcesSubjectFactoryTest {
   public void compilesWithoutError() {
     ASSERT.about(javaSource())
         .that(JavaFileObjects.forResource(Resources.getResource("HelloWorld.java")))
-        .hasNoErrors();
+        .compilesWithoutError();
+    ASSERT.about(javaSource())
+        .that(JavaFileObjects.forSourceString("HelloWorld", "final class HelloWorld {}"))
+        .compilesWithoutError();
   }
 
   @Test
@@ -67,10 +71,35 @@ public class JavaSourcesSubjectFactoryTest {
     try {
       VERIFY.about(javaSource())
           .that(JavaFileObjects.forResource("HelloWorld-broken.java"))
-          .hasNoErrors();
+          .compilesWithoutError();
       fail();
     } catch (VerificationException expected) {
       // TODO(gak): verify the message
+    }
+  }
+
+  @Test
+  public void compilesWithoutError_exceptionPassedThrough() {
+    final RuntimeException e = new RuntimeException();
+    try {
+      VERIFY.about(javaSource())
+          .that(JavaFileObjects.forResource("HelloWorld.java"))
+          .processedWith(new AbstractProcessor() {
+            @Override
+            public Set<String> getSupportedAnnotationTypes() {
+              return ImmutableSet.of("*");
+            }
+
+            @Override
+            public boolean process(Set<? extends TypeElement> annotations,
+                RoundEnvironment roundEnv) {
+              throw e;
+            }
+          })
+          .compilesWithoutError();
+      fail();
+    } catch (RuntimeException expected) {
+      ASSERT.that(Throwables.getRootCause(expected)).is(e);
     }
   }
 
@@ -80,7 +109,7 @@ public class JavaSourcesSubjectFactoryTest {
     try {
       VERIFY.about(javaSource())
           .that(fileObject)
-          .hasErrorContaining("some error").in(fileObject);
+          .failsToCompile().withErrorContaining("some error").in(fileObject);
       fail();
     } catch (VerificationException expected) {
       // TODO(gak): verify the message
@@ -92,10 +121,11 @@ public class JavaSourcesSubjectFactoryTest {
     JavaFileObject fileObject = JavaFileObjects.forResource("HelloWorld-broken.java");
     ASSERT.about(javaSource())
         .that(fileObject)
-        .hasErrorContaining("not a statement")
-        .and().hasErrorContaining("not a statement").in(fileObject)
-        .and().hasErrorContaining("not a statement").in(fileObject).onLine(23)
-        .and().hasErrorContaining("not a statement").in(fileObject).onLine(23).atColumn(5);
+        .failsToCompile()
+        .withErrorContaining("not a statement")
+        .and().withErrorContaining("not a statement").in(fileObject)
+        .and().withErrorContaining("not a statement").in(fileObject).onLine(23)
+        .and().withErrorContaining("not a statement").in(fileObject).onLine(23).atColumn(5);
   }
 
   @Test
@@ -103,7 +133,7 @@ public class JavaSourcesSubjectFactoryTest {
     ASSERT.about(javaSource())
         .that(JavaFileObjects.forResource("HelloWorld.java"))
         .processedWith(new GeneratingProcessor())
-        .hasNoErrors()
+        .compilesWithoutError()
         .and().generatesSources(JavaFileObjects.forSourceString(
             GeneratingProcessor.GENERATED_CLASS_NAME,
             GeneratingProcessor.GENERATED_SOURCE));
@@ -118,7 +148,7 @@ public class JavaSourcesSubjectFactoryTest {
     ASSERT.about(javaSource())
         .that(JavaFileObjects.forResource("HelloWorld.java"))
         .processedWith(noopProcessor1, noopProcessor2)
-        .hasNoErrors();
+        .compilesWithoutError();
     ASSERT.that(noopProcessor1.invoked).isTrue();
     ASSERT.that(noopProcessor2.invoked).isTrue();
   }
@@ -132,7 +162,7 @@ public class JavaSourcesSubjectFactoryTest {
     ASSERT.about(javaSource())
         .that(JavaFileObjects.forResource("HelloWorld.java"))
         .processedWith(Arrays.asList(noopProcessor1, noopProcessor2))
-        .hasNoErrors();
+        .compilesWithoutError();
     ASSERT.that(noopProcessor1.invoked).isTrue();
     ASSERT.that(noopProcessor2.invoked).isTrue();
   }

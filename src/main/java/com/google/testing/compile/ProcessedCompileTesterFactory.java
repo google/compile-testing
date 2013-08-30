@@ -15,25 +15,21 @@
  */
 package com.google.testing.compile;
 
-import javax.tools.Diagnostic;
+import javax.annotation.CheckReturnValue;
+import javax.annotation.processing.Processor;
 
 /**
- * Utilities for working with {@link Diagnostic} instances and collections thereof.
+ * Creates {@link CompileTester} instances that test compilation with provided {@link Processor}
+ * instances.
  *
  * @author Gregory Kick
  */
-final class Diagnostics {
-  private Diagnostics() {}
+public interface ProcessedCompileTesterFactory {
+  /** Adds {@linkplain Processor annotation processors} to the compilation being tested.  */
+  @CheckReturnValue
+  CompileTester processedWith(Processor first, Processor... rest);
 
-  /**
-   * Returns {@code diagnostics} as a {@link String} similar to the error output printed by
-   * {@code javac}.
-   */
-  static String toString(Iterable<? extends Diagnostic<?>> diagnostics) {
-    StringBuilder builder = new StringBuilder();
-    for (Diagnostic<?> diagnostic : diagnostics) {
-      builder.append(diagnostic.toString()).append('\n');
-    }
-    return builder.toString();
-  }
+  /** Adds {@linkplain Processor annotation processors} to the compilation being tested.  */
+  @CheckReturnValue
+  CompileTester processedWith(Iterable<? extends Processor> processors);
 }

@@ -1,5 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
@@ -10,7 +9,7 @@
 
   <groupId>com.google.testing.compile</groupId>
   <artifactId>compile-testing</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>0.1</version>
 
   <name>Compile Testing</name>
   <description>Utilities for testing compilation.</description>
@@ -35,6 +34,7 @@
     <connection>scm:git:http://github.com/google/compile-testing</connection>
     <developerConnection>scm:git:git@github.com:google/compile-testing.git</developerConnection>
     <url>http://github.com/google/compile-testing</url>
+    <tag>compile-testing-0.1</tag>
   </scm>
   <dependencies>
     <dependency>

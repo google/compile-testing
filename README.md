@@ -1,7 +1,7 @@
 Compile Testing
 ===============
 
-A library for testing javac compilation with or without annotation processors.
+A library for testing javac compilation with or without annotation processors. See the javadoc for usage examples.
 
 License
 -------

@@ -16,6 +16,7 @@
 package com.google.testing.compile;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 import static javax.tools.JavaFileObject.Kind.SOURCE;
 
 import java.io.ByteArrayInputStream;
@@ -48,18 +49,25 @@ import com.google.common.io.Resources;
 public final class JavaFileObjects {
   private JavaFileObjects() { }
 
-  public static JavaFileObject forSourceString(String fullyQualifiedClassName,
-      final String source) {
-    return new StringSourceJavaFileObject(fullyQualifiedClassName, source);
+  /**
+   * Creates a {@link JavaFileObject} with a path corresponding to the {@code fullyQualifiedName}
+   * containing the give {@code source}. The returned object will always be read-only and have the
+   * {@link Kind#SOURCE} {@linkplain JavaFileObject#getKind() kind}.
+   *
+   * <p>Note that this method makes no attempt to verify that the name matches the contents of the
+   * source and compilation errors may result if they do not match.
+   */
+  public static JavaFileObject forSourceString(String fullyQualifiedName, String source) {
+    return new StringSourceJavaFileObject(checkNotNull(fullyQualifiedName), checkNotNull(source));
   }
 
   private static final class StringSourceJavaFileObject extends SimpleJavaFileObject {
     final String source;
     final long lastModified;
 
-    StringSourceJavaFileObject(String fullyQualifiedClassName, String source) {
-      super(createUri(fullyQualifiedClassName), SOURCE);
-      // TODO(gak): check that fullyQualifiedClassName looks like a fully qualified class name
+    StringSourceJavaFileObject(String fullyQualifiedName, String source) {
+      super(createUri(fullyQualifiedName), SOURCE);
+      // TODO(gak): check that fullyQualifiedName looks like a fully qualified class name
       this.source = source;
       this.lastModified = System.currentTimeMillis();
     }
@@ -100,6 +108,11 @@ public final class JavaFileObjects {
     }
   }
 
+  /**
+   * Returns a {@link JavaFileObject} for the resource at the given {@link URL}. The returned object
+   * will always be read-only and the {@linkplain JavaFileObject#getKind() kind} is inferred via
+   * the {@link Kind#extension}.
+   */
   public static JavaFileObject forResource(URL resourceUrl) {
     if ("jar".equals(resourceUrl.getProtocol())) {
       return new JarFileJavaFileObject(resourceUrl);
@@ -108,6 +121,11 @@ public final class JavaFileObjects {
     }
   }
 
+  /**
+   * Returns a {@link JavaFileObject} for the class path resource with the given
+   * {@code resourceName}. This method is equivalent to invoking
+   * {@code forResource(Resources.getResource(resourceName))}.
+   */
   public static JavaFileObject forResource(String resourceName) {
     return forResource(Resources.getResource(resourceName));
   }

@@ -15,10 +15,10 @@
   <name>Compile Testing</name>
   <description>Utilities for testing compilation.</description>
 
-  <url>http://github.com/google/auto</url>
+  <url>http://github.com/google/compile-testing</url>
   <issueManagement>
     <system>GitHub</system>
-    <url>http://github.com/google/auto/issues</url>
+    <url>http://github.com/google/compile-testing/issues</url>
   </issueManagement>
   <inceptionYear>2013</inceptionYear>
   <licenses>
@@ -32,9 +32,9 @@
     <maven>3.0.3</maven>
   </prerequisites>
   <scm>
-    <connection>scm:git:http://github.com/google/auto</connection>
-    <developerConnection>scm:git:git@github.com:google/auto.git</developerConnection>
-    <url>http://github.com/google/auto</url>
+    <connection>scm:git:http://github.com/google/compile-testing</connection>
+    <developerConnection>scm:git:git@github.com:google/compile-testing.git</developerConnection>
+    <url>http://github.com/google/compile-testing</url>
   </scm>
   <dependencies>
     <dependency>

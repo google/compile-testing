@@ -75,7 +75,7 @@ import com.sun.source.util.SimpleTreeVisitor;
 
 /**
  * A visitor that traverses a {@link Tree} in parallel with its argument to check that the trees are
- * the same.
+ * the same.  Returns {@code true} if the trees are the same, otherwise {@code false}.
  *
  * @author Gregory Kick
  */
@@ -83,6 +83,7 @@ import com.sun.source.util.SimpleTreeVisitor;
  * This should really just implement TreeVisitor this insulates against API changes in different
  * versions of Java.
  */
+@SuppressWarnings("restriction") // Sun APIs usage intended
 final class EqualityScanner extends SimpleTreeVisitor<Boolean, Tree> {
   private <T extends Tree> Optional<T> checkTypeAndCast(T reference, Tree tree) {
     Kind referenceKind = checkNotNull(reference).getKind();

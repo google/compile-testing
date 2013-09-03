@@ -24,8 +24,6 @@ import java.util.List;
 import java.util.Locale;
 
 import javax.annotation.processing.Processor;
-import javax.lang.model.util.Elements;
-import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
 import javax.tools.JavaFileObject;
@@ -35,11 +33,9 @@ import com.google.common.base.Function;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Iterables;
 import com.google.common.collect.Multimaps;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.util.JavacTask;
-import com.sun.source.util.Trees;
 import com.sun.tools.javac.api.JavacTool;
 
 /**
@@ -47,9 +43,15 @@ import com.sun.tools.javac.api.JavacTool;
  *
  * @author Gregory Kick
  */
+@SuppressWarnings("restriction") // Sun APIs usage intended
 final class Compilation {
   private Compilation() {}
 
+  /**
+   * Compile {@code sources} using {@code processors}.
+   *
+   * @throws RuntimeException if compilation fails.
+   */
   static Result compile(Iterable<? extends Processor> processors,
       Iterable<? extends JavaFileObject> sources) {
     JavacTool compiler = (JavacTool) ToolProvider.getSystemJavaCompiler();
@@ -65,21 +67,14 @@ final class Compilation {
         ImmutableSet.<String>of(),
         sources);
     task.setProcessors(processors);
-    // get elements, types and trees before you call generate()
-    Elements elements = task.getElements();
-    Types types = task.getTypes();
-    Trees trees = Trees.instance(task);
-    try {
-      // Use generate() rather than call() because call() invalidates Elements, Trees and Types
-      task.generate();
-    } catch (IOException e) {
-      throw new RuntimeException("Compilation failed for " + Iterables.toString(sources), e);
-    }
-    return new Result(elements, types, trees,
-        diagnosticCollector.getDiagnostics(),
-        fileManager.getOutputFiles());
+    task.call();
+    return new Result(diagnosticCollector.getDiagnostics(), fileManager.getOutputFiles());
   }
 
+  /**
+   * Parse {@code sources} into {@linkplain CompilationUnitTree compilation units}.  This method
+   * <b>does not</b> compile the sources.
+   */
   static Iterable<? extends CompilationUnitTree> parse(
       Iterable<? extends JavaFileObject> sources) {
     JavacTool compiler = (JavacTool) ToolProvider.getSystemJavaCompiler();
@@ -109,25 +104,15 @@ final class Compilation {
     }
   }
 
+  /** The diagnostic and file output of a compilation. */
   static final class Result {
-    final Elements elements;
-    final Types types;
-    final Trees trees;
-    final Iterable<Diagnostic<? extends JavaFileObject>> diagnostics;
     final ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>>
         diagnosticsByKind;
     final ImmutableListMultimap<JavaFileObject.Kind, JavaFileObject> generatedFilesByKind;
 
     Result(
-        Elements elements,
-        final Types types,
-        final Trees trees,
         Iterable<Diagnostic<? extends JavaFileObject>> diagnostics,
         Iterable<JavaFileObject> generatedFiles) {
-      this.elements = elements;
-      this.types = types;
-      this.trees = trees;
-      this.diagnostics = diagnostics;
       this.diagnosticsByKind = Multimaps.index(diagnostics,
           new Function<Diagnostic<?>, Diagnostic.Kind>() {
             @Override public Diagnostic.Kind apply(Diagnostic<?> input) {

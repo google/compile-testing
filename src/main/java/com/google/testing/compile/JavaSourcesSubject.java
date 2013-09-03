@@ -15,6 +15,18 @@
  */
 package com.google.testing.compile;
 
+import java.io.IOException;
+import java.util.Arrays;
+
+import javax.annotation.processing.Processor;
+import javax.tools.Diagnostic;
+import javax.tools.Diagnostic.Kind;
+import javax.tools.FileObject;
+import javax.tools.JavaFileObject;
+
+import org.truth0.FailureStrategy;
+import org.truth0.subjects.Subject;
+
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Optional;
@@ -25,76 +37,44 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
-
 import com.sun.source.tree.CompilationUnitTree;
-
-import org.truth0.FailureStrategy;
-import org.truth0.subjects.Subject;
-
-import java.io.IOException;
-import java.util.Arrays;
-
-import javax.annotation.CheckReturnValue;
-import javax.annotation.processing.Processor;
-import javax.tools.Diagnostic;
-import javax.tools.Diagnostic.Kind;
-import javax.tools.FileObject;
-import javax.tools.JavaFileObject;
 
 /**
  * A <a href="https://github.com/truth0/truth">Truth</a> {@link Subject} that evaluates the result
- * of a {@code javac} compilation.
+ * of a {@code javac} compilation.  See {@link com.google.testing.compile} for usage examples
  *
  * @author Gregory Kick
  */
+@SuppressWarnings("restriction") // Sun APIs usage intended
 public final class JavaSourcesSubject
-    extends Subject<JavaSourcesSubject, Iterable<? extends JavaFileObject>> {
+    extends Subject<JavaSourcesSubject, Iterable<? extends JavaFileObject>>
+    implements CompileTester, ProcessedCompileTesterFactory {
   JavaSourcesSubject(FailureStrategy failureStrategy, Iterable<? extends JavaFileObject> subject) {
     super(failureStrategy, subject);
   }
 
-  public interface ChainingClause<T> {
-    T and();
-  }
-
-  public interface FileClause extends ChainingClause<UnuccessfulCompilationClause> {
-    LineClause in(JavaFileObject file);
-  }
-
-  public interface LineClause extends ChainingClause<UnuccessfulCompilationClause> {
-    ColumnClause onLine(long lineNumber);
-  }
-
-  public interface ColumnClause extends ChainingClause<UnuccessfulCompilationClause> {
-    ChainingClause<UnuccessfulCompilationClause> atColumn(long columnNumber);
-  }
-
-  public interface GeneratedPredicateClause {
-    SuccessfulCompilationClause generatesSources(JavaFileObject first, JavaFileObject... rest);
-    SuccessfulCompilationClause generatesFiles(JavaFileObject first, JavaFileObject... rest);
-  }
-
-  public interface SuccessfulCompilationClause extends ChainingClause<GeneratedPredicateClause> {}
-
-  public interface UnuccessfulCompilationClause {
-    FileClause hasErrorContaining(String message);
-  }
-
-  @CheckReturnValue
-  public CompilationClause processedWith(Processor first, Processor... rest) {
+  @Override
+  public CompileTester processedWith(Processor first, Processor... rest) {
     return processedWith(Lists.asList(first, rest));
   }
 
-  @CheckReturnValue
-  public CompilationClause processedWith(Iterable<? extends Processor> processors) {
+  @Override
+  public CompileTester processedWith(Iterable<? extends Processor> processors) {
     return new CompilationClause(processors);
   }
 
-  private CompilationClause newCompilationClause(Iterable<? extends Processor> processors) {
-    return new CompilationClause(processors);
+  @Override
+  public SuccessfulCompilationClause compilesWithoutError() {
+    return new CompilationClause().compilesWithoutError();
   }
 
-  public final class CompilationClause {
+  @Override
+  public UnsuccessfulCompilationClause failsToCompile() {
+    return new CompilationClause().failsToCompile();
+  }
+
+  /** The clause in the fluent API for testing compilations. */
+  private final class CompilationClause implements CompileTester {
     private final ImmutableSet<Processor> processors;
 
     private CompilationClause() {
@@ -105,7 +85,7 @@ public final class JavaSourcesSubject
       this.processors = ImmutableSet.copyOf(processors);
     }
 
-    public SuccessfulCompilationClause hasNoErrors() {
+    public SuccessfulCompilationClause compilesWithoutError() {
       Compilation.Result result = Compilation.compile(processors, getSubject());
       ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
           result.diagnosticsByKind.get(Kind.ERROR);
@@ -117,21 +97,20 @@ public final class JavaSourcesSubject
       return new SuccessfulCompilationBuilder(result);
     }
 
-    public FileClause hasErrorContaining(String message) {
-      Compilation.Result result = Compilation.compile(processors, getSubject());
-      return new UnsuccessfulCompilationBuilder(result).hasErrorContaining(message);
+    public UnsuccessfulCompilationClause failsToCompile() {
+      return new UnsuccessfulCompilationBuilder(Compilation.compile(processors, getSubject()));
     }
   }
 
-  public SuccessfulCompilationClause hasNoErrors() {
-    return new CompilationClause().hasNoErrors();
+  /**
+   * A helper method for {@link SingleSourceAdapter} to ensure that the inner class is created
+   * correctly.
+   */
+  private CompilationClause newCompilationClause(Iterable<? extends Processor> processors) {
+    return new CompilationClause(processors);
   }
 
-  public FileClause hasErrorContaining(String message) {
-    return new CompilationClause().hasErrorContaining(message);
-  }
-
-  private final class UnsuccessfulCompilationBuilder implements UnuccessfulCompilationClause {
+  private final class UnsuccessfulCompilationBuilder implements UnsuccessfulCompilationClause {
     private final Compilation.Result result;
 
     UnsuccessfulCompilationBuilder(Compilation.Result result) {
@@ -139,19 +118,19 @@ public final class JavaSourcesSubject
     }
 
     @Override
-    public FileClause hasErrorContaining(final String message) {
+    public FileClause withErrorContaining(final String messageFragment) {
       FluentIterable<Diagnostic<? extends JavaFileObject>> diagnostics =
           FluentIterable.from(result.diagnosticsByKind.get(Kind.ERROR));
       final FluentIterable<Diagnostic<? extends JavaFileObject>> diagnosticsWithMessage =
           diagnostics.filter(new Predicate<Diagnostic<?>>() {
             @Override
             public boolean apply(Diagnostic<?> input) {
-              return input.getMessage(null).contains(message);
+              return input.getMessage(null).contains(messageFragment);
             }
           });
       if (diagnosticsWithMessage.isEmpty()) {
         failureStrategy.fail(String.format(
-            "Expected an error with message \"%s\", but only found %s", message,
+            "Expected an error containing \"%s\", but only found %s", messageFragment,
             diagnostics.transform(
               new Function<Diagnostic<?>, String>() {
                 @Override public String apply(Diagnostic<?> input) {
@@ -161,7 +140,7 @@ public final class JavaSourcesSubject
       }
       return new FileClause() {
         @Override
-        public UnuccessfulCompilationClause and() {
+        public UnsuccessfulCompilationClause and() {
           return UnsuccessfulCompilationBuilder.this;
         }
 
@@ -185,7 +164,7 @@ public final class JavaSourcesSubject
                     })));
           }
           return new LineClause() {
-            @Override public UnuccessfulCompilationClause and() {
+            @Override public UnsuccessfulCompilationClause and() {
               return UnsuccessfulCompilationBuilder.this;
             }
 
@@ -209,12 +188,12 @@ public final class JavaSourcesSubject
               }
               return new ColumnClause() {
                 @Override
-                public UnuccessfulCompilationClause and() {
+                public UnsuccessfulCompilationClause and() {
                   return UnsuccessfulCompilationBuilder.this;
                 }
 
                 @Override
-                public ChainingClause<UnuccessfulCompilationClause> atColumn(
+                public ChainingClause<UnsuccessfulCompilationClause> atColumn(
                     final long columnNumber) {
                   FluentIterable<Diagnostic<? extends JavaFileObject>> diagnosticsAtColumn =
                       diagnosticsOnLine.filter(new Predicate<Diagnostic<?>>() {
@@ -233,8 +212,8 @@ public final class JavaSourcesSubject
                               }
                             })));
                   }
-                  return new ChainingClause<JavaSourcesSubject.UnuccessfulCompilationClause>() {
-                    @Override public UnuccessfulCompilationClause and() {
+                  return new ChainingClause<UnsuccessfulCompilationClause>() {
+                    @Override public UnsuccessfulCompilationClause and() {
                       return UnsuccessfulCompilationBuilder.this;
                     }
                   };
@@ -313,7 +292,8 @@ public final class JavaSourcesSubject
   }
 
   public static final class SingleSourceAdapter
-      extends Subject<SingleSourceAdapter, JavaFileObject> {
+      extends Subject<SingleSourceAdapter, JavaFileObject>
+      implements CompileTester, ProcessedCompileTesterFactory {
     private final JavaSourcesSubject delegate;
 
     SingleSourceAdapter(FailureStrategy failureStrategy, JavaFileObject subject) {
@@ -322,22 +302,24 @@ public final class JavaSourcesSubject
           new JavaSourcesSubject(failureStrategy, ImmutableList.of(subject));
     }
 
-    @CheckReturnValue
-    public CompilationClause processedWith(Processor first, Processor... rest) {
+    @Override
+    public CompileTester processedWith(Processor first, Processor... rest) {
       return delegate.newCompilationClause(Lists.asList(first, rest));
     }
 
-    @CheckReturnValue
-    public CompilationClause processedWith(Iterable<? extends Processor> processors) {
+    @Override
+    public CompileTester processedWith(Iterable<? extends Processor> processors) {
       return delegate.newCompilationClause(processors);
     }
 
-    public SuccessfulCompilationClause hasNoErrors() {
-      return delegate.hasNoErrors();
+    @Override
+    public SuccessfulCompilationClause compilesWithoutError() {
+      return delegate.compilesWithoutError();
     }
 
-    public FileClause hasErrorContaining(String message) {
-      return delegate.hasErrorContaining(message);
+    @Override
+    public UnsuccessfulCompilationClause failsToCompile() {
+      return delegate.failsToCompile();
     }
   }
 }

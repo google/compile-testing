@@ -61,6 +61,6 @@ public class JarFileResourcesCompilationTest {
     ASSERT.about(javaSource())
       .that(JavaFileObjects.forResource(
           new URL("jar:" + jarFile.toURI() + "!/test/HelloWorld.java")))
-      .hasNoErrors();
+      .compilesWithoutError();
   }
 }

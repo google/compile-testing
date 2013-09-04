@@ -61,7 +61,7 @@
  *       .that(fileObject)
  *       .processedWith(new NoHelloWorld())
  *       .failsToCompile()
- *       .withErrorContaining("No types name HelloWorld!").in(fileObject).onLine(23).atColumn(5);
+ *       .withErrorContaining("No types named HelloWorld!").in(fileObject).onLine(23).atColumn(5);
  * }</pre>
  */
 package com.google.testing.compile;

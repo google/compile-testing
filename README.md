@@ -1,7 +1,7 @@
 Compile Testing
 ===============
 
-A library for testing javac compilation with or without annotation processors. See the javadoc for usage examples.
+A library for testing javac compilation with or without annotation processors. See the [javadoc][package-info] for usage examples.
 
 License
 -------
@@ -20,4 +20,4 @@ License
     See the License for the specific language governing permissions and
     limitations under the License.
 
-
+[package-info]: https://github.com/google/compile-testing/blob/master/src/main/java/com/google/testing/compile/package-info.java

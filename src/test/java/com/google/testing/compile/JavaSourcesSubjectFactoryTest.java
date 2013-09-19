@@ -25,10 +25,13 @@ import java.util.Arrays;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.Messager;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
+import javax.tools.Diagnostic.Kind;
 import javax.tools.JavaFileObject;
 
 import org.junit.Test;
@@ -74,7 +77,7 @@ public class JavaSourcesSubjectFactoryTest {
           .compilesWithoutError();
       fail();
     } catch (VerificationException expected) {
-      // TODO(gak): verify the message
+      ASSERT.that(expected.getMessage()).startsWith("Compilation produced the following errors:\n");
     }
   }
 
@@ -104,28 +107,87 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
-  public void failsToCompile_throws() {
+  public void failsToCompile_throwsNoMessage() {
+    try {
+      VERIFY.about(javaSource())
+          .that(JavaFileObjects.forResource("HelloWorld.java"))
+          .processedWith(new ErrorProcessor())
+          .failsToCompile().withErrorContaining("some error");
+      fail();
+    } catch (VerificationException expected) {
+      ASSERT.that(expected.getMessage()).isEqualTo(
+          "Expected an error containing \"some error\", but only found [\"expected error!\"]");
+    }
+  }
+
+  @Test
+  public void failsToCompile_throwsNotInFile() {
+    JavaFileObject fileObject = JavaFileObjects.forResource("HelloWorld.java");
+    JavaFileObject otherFileObject = JavaFileObjects.forResource("HelloWorld-different.java");
+    try {
+      VERIFY.about(javaSource())
+          .that(fileObject)
+          .processedWith(new ErrorProcessor())
+          .failsToCompile().withErrorContaining("expected error!")
+              .in(otherFileObject);
+      fail();
+    } catch (VerificationException expected) {
+      ASSERT.that(expected.getMessage())
+          .isEqualTo(String.format("Expected an error in %s, but only found errors in [%s]",
+              otherFileObject.getName(), fileObject.getName()));
+    }
+  }
+
+  @Test
+  public void failsToCompile_throwsNotOnLine() {
     JavaFileObject fileObject = JavaFileObjects.forResource("HelloWorld.java");
     try {
       VERIFY.about(javaSource())
           .that(fileObject)
-          .failsToCompile().withErrorContaining("some error").in(fileObject);
+          .processedWith(new ErrorProcessor())
+          .failsToCompile().withErrorContaining("expected error!")
+          .in(fileObject).onLine(1);
       fail();
     } catch (VerificationException expected) {
-      // TODO(gak): verify the message
+      ASSERT.that(expected.getMessage())
+          .isEqualTo(String.format(
+              "Expected an error on line 1 of %s, but only found errors on line(s) [18]",
+              fileObject.getName()));
+    }
+  }
+
+  @Test
+  public void failsToCompile_throwsNotAtColumn() {
+    JavaFileObject fileObject = JavaFileObjects.forResource("HelloWorld.java");
+    try {
+      VERIFY.about(javaSource())
+          .that(fileObject)
+          .processedWith(new ErrorProcessor())
+          .failsToCompile().withErrorContaining("expected error!")
+          .in(fileObject).onLine(18).atColumn(1);
+      fail();
+    } catch (VerificationException expected) {
+      ASSERT.that(expected.getMessage())
+          .isEqualTo(String.format(
+              "Expected an error at 18:1 of %s, but only found errors at column(s) [8]",
+              fileObject.getName()));
     }
   }
 
   @Test
   public void failsToCompile() {
-    JavaFileObject fileObject = JavaFileObjects.forResource("HelloWorld-broken.java");
+    JavaFileObject brokenFileObject = JavaFileObjects.forResource("HelloWorld-broken.java");
     ASSERT.about(javaSource())
-        .that(fileObject)
+        .that(brokenFileObject)
         .failsToCompile()
-        .withErrorContaining("not a statement")
-        .and().withErrorContaining("not a statement").in(fileObject)
-        .and().withErrorContaining("not a statement").in(fileObject).onLine(23)
-        .and().withErrorContaining("not a statement").in(fileObject).onLine(23).atColumn(5);
+        .withErrorContaining("not a statement").in(brokenFileObject).onLine(23).atColumn(5);
+
+    JavaFileObject happyFileObject = JavaFileObjects.forResource("HelloWorld.java");
+    ASSERT.about(javaSource())
+        .that(happyFileObject)
+        .processedWith(new ErrorProcessor())
+        .failsToCompile()
+        .withErrorContaining("expected error!").in(happyFileObject).onLine(18).atColumn(8);
   }
 
   @Test
@@ -225,6 +287,34 @@ public class JavaSourcesSubjectFactoryTest {
 
     VerificationException(String message) {
       super(message);
+    }
+  }
+
+  private static final class ErrorProcessor extends AbstractProcessor {
+    Messager messager;
+
+    @Override
+    public synchronized void init(ProcessingEnvironment processingEnv) {
+      super.init(processingEnv);
+      this.messager = processingEnv.getMessager();
+    }
+
+    @Override
+    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+      for (Element element : roundEnv.getRootElements()) {
+        messager.printMessage(Kind.ERROR, "expected error!", element);
+      }
+      return false;
+    }
+
+    @Override
+    public Set<String> getSupportedAnnotationTypes() {
+      return ImmutableSet.of("*");
+    }
+
+    @Override
+    public SourceVersion getSupportedSourceVersion() {
+      return SourceVersion.latestSupported();
     }
   }
 }

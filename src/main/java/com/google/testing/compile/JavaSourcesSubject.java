@@ -146,7 +146,7 @@ public final class JavaSourcesSubject
 
         @Override
         public LineClause in(final JavaFileObject file) {
-          FluentIterable<Diagnostic<? extends JavaFileObject>> diagnosticsInFile =
+          final FluentIterable<Diagnostic<? extends JavaFileObject>> diagnosticsInFile =
               diagnosticsWithMessage.filter(new Predicate<Diagnostic<? extends FileObject>>() {
                 @Override
                 public boolean apply(Diagnostic<? extends FileObject> input) {
@@ -155,7 +155,7 @@ public final class JavaSourcesSubject
               });
           if (diagnosticsInFile.isEmpty()) {
             failureStrategy.fail(String.format(
-                "Expected an error in %s, but only found errors in ", file.getName(),
+                "Expected an error in %s, but only found errors in %s", file.getName(),
                 diagnosticsWithMessage.transform(
                     new Function<Diagnostic<? extends FileObject>, String>() {
                       @Override public String apply(Diagnostic<? extends FileObject> input) {
@@ -178,8 +178,8 @@ public final class JavaSourcesSubject
                   });
               if (diagnosticsOnLine.isEmpty()) {
                 failureStrategy.fail(String.format(
-                    "Expected an error on line %d, but only found errors on line(s) %s",
-                    lineNumber, diagnosticsOnLine.transform(
+                    "Expected an error on line %d of %s, but only found errors on line(s) %s",
+                    lineNumber, file.getName(), diagnosticsInFile.transform(
                         new Function<Diagnostic<?>, Long>() {
                           @Override public Long apply(Diagnostic<?> input) {
                             return input.getLineNumber();
@@ -204,8 +204,8 @@ public final class JavaSourcesSubject
                       });
                   if (diagnosticsAtColumn.isEmpty()) {
                     failureStrategy.fail(String.format(
-                        "Expected an error at column %d, but only found errors at column(s) %s",
-                        columnNumber, diagnosticsOnLine.transform(
+                        "Expected an error at %d:%d of %s, but only found errors at column(s) %s",
+                        lineNumber, columnNumber, file.getName(), diagnosticsOnLine.transform(
                             new Function<Diagnostic<?>, Long>() {
                               @Override public Long apply(Diagnostic<?> input) {
                                 return input.getColumnNumber();

@@ -107,6 +107,19 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
+  public void failsToCompile_throws() {
+    try {
+      VERIFY.about(javaSource())
+          .that(JavaFileObjects.forResource("HelloWorld.java"))
+          .failsToCompile();
+      fail();
+    } catch (VerificationException expected) {
+      ASSERT.that(expected.getMessage()).isEqualTo(
+          "Compilation was expected to fail, but contained no errors");
+    }
+  }
+
+  @Test
   public void failsToCompile_throwsNoMessage() {
     try {
       VERIFY.about(javaSource())

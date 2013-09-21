@@ -15,6 +15,8 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import java.io.IOException;
 import java.util.Arrays;
 
@@ -37,6 +39,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
+import com.google.testing.compile.Compilation.Result;
 import com.sun.source.tree.CompilationUnitTree;
 
 /**
@@ -98,7 +101,11 @@ public final class JavaSourcesSubject
     }
 
     public UnsuccessfulCompilationClause failsToCompile() {
-      return new UnsuccessfulCompilationBuilder(Compilation.compile(processors, getSubject()));
+      Result result = Compilation.compile(processors, getSubject());
+      if (result.successful()) {
+        failureStrategy.fail("Compilation was expected to fail, but contained no errors");
+      }
+      return new UnsuccessfulCompilationBuilder(result);
     }
   }
 
@@ -114,6 +121,7 @@ public final class JavaSourcesSubject
     private final Compilation.Result result;
 
     UnsuccessfulCompilationBuilder(Compilation.Result result) {
+      checkArgument(!result.successful());
       this.result = result;
     }
 
@@ -231,6 +239,7 @@ public final class JavaSourcesSubject
     private final Compilation.Result result;
 
     SuccessfulCompilationBuilder(Compilation.Result result) {
+      checkArgument(result.successful());
       this.result = result;
     }
 

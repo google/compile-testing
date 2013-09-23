@@ -45,7 +45,6 @@ import com.sun.tools.javac.api.JavacTool;
  *
  * @author Gregory Kick
  */
-@SuppressWarnings("restriction") // Sun APIs usage intended
 final class Compilation {
   private Compilation() {}
 
@@ -79,12 +78,12 @@ final class Compilation {
    */
   static Iterable<? extends CompilationUnitTree> parse(
       Iterable<? extends JavaFileObject> sources) {
-    JavacTool compiler = (JavacTool) ToolProvider.getSystemJavaCompiler();
+    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
     DiagnosticCollector<JavaFileObject> diagnosticCollector =
         new DiagnosticCollector<JavaFileObject>();
     InMemoryJavaFileManager fileManager = new InMemoryJavaFileManager(
         compiler.getStandardFileManager(diagnosticCollector, Locale.getDefault(), UTF_8));
-    JavacTask task = compiler.getTask(
+    JavacTask task = ((JavacTool) compiler).getTask(
         null, // Ignore output because the diagnostic collector gets it
         fileManager,
         diagnosticCollector,

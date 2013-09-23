@@ -26,6 +26,8 @@ import java.util.Locale;
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaCompiler.CompilationTask;
 import javax.tools.JavaFileObject;
 import javax.tools.ToolProvider;
 
@@ -54,12 +56,12 @@ final class Compilation {
    */
   static Result compile(Iterable<? extends Processor> processors,
       Iterable<? extends JavaFileObject> sources) {
-    JavacTool compiler = (JavacTool) ToolProvider.getSystemJavaCompiler();
+    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
     DiagnosticCollector<JavaFileObject> diagnosticCollector =
         new DiagnosticCollector<JavaFileObject>();
     InMemoryJavaFileManager fileManager = new InMemoryJavaFileManager(
         compiler.getStandardFileManager(diagnosticCollector, Locale.getDefault(), UTF_8));
-    JavacTask task = compiler.getTask(
+    CompilationTask task = compiler.getTask(
         null, // Ignore output because the diagnostic collector gets it
         fileManager,
         diagnosticCollector,

@@ -128,8 +128,10 @@ public class JavaSourcesSubjectFactoryTest {
           .failsToCompile().withErrorContaining("some error");
       fail();
     } catch (VerificationException expected) {
-      ASSERT.that(expected.getMessage()).isEqualTo(
-          "Expected an error containing \"some error\", but only found [\"expected error!\"]");
+      ASSERT.that(expected.getMessage()).startsWith(
+          "Expected an error containing \"some error\", but only found [\"");
+      // some versions of javac wedge the file and position in the middle
+      ASSERT.that(expected.getMessage()).endsWith("expected error!\"]");
     }
   }
 

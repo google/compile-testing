@@ -90,11 +90,11 @@ public final class JavaSourcesSubject
 
     public SuccessfulCompilationClause compilesWithoutError() {
       Compilation.Result result = Compilation.compile(processors, getSubject());
-      ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
-          result.diagnosticsByKind.get(Kind.ERROR);
-      if (!errors.isEmpty()) {
+      if (!result.successful()) {
+        ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
+            result.diagnosticsByKind().get(Kind.ERROR);
         StringBuilder message = new StringBuilder("Compilation produced the following errors:\n");
-        Joiner.on("\n").appendTo(message, errors);
+        Joiner.on('\n').appendTo(message, errors);
         failureStrategy.fail(message.toString());
       }
       return new SuccessfulCompilationBuilder(result);
@@ -128,7 +128,7 @@ public final class JavaSourcesSubject
     @Override
     public FileClause withErrorContaining(final String messageFragment) {
       FluentIterable<Diagnostic<? extends JavaFileObject>> diagnostics =
-          FluentIterable.from(result.diagnosticsByKind.get(Kind.ERROR));
+          FluentIterable.from(result.diagnosticsByKind().get(Kind.ERROR));
       final FluentIterable<Diagnostic<? extends JavaFileObject>> diagnosticsWithMessage =
           diagnostics.filter(new Predicate<Diagnostic<?>>() {
             @Override
@@ -251,8 +251,7 @@ public final class JavaSourcesSubject
     @Override
     public SuccessfulCompilationClause generatesSources(JavaFileObject first,
         JavaFileObject... rest) {
-      ImmutableList<JavaFileObject> generatedSources =
-          result.generatedFilesByKind.get(JavaFileObject.Kind.SOURCE);
+      ImmutableList<JavaFileObject> generatedSources = result.generatedSources();
       Iterable<? extends CompilationUnitTree> actualCompilationUnits =
           Compilation.parse(generatedSources);
       final EqualityScanner scanner = new EqualityScanner();
@@ -285,7 +284,7 @@ public final class JavaSourcesSubject
     }
 
     boolean wasGenerated(Compilation.Result result, JavaFileObject expected) {
-      for (JavaFileObject generated : result.generatedFilesByKind.get(expected.getKind())) {
+      for (JavaFileObject generated : result.generatedFilesByKind().get(expected.getKind())) {
         try {
           if (Arrays.equals(
               ByteStreams.toByteArray(expected.openInputStream()),

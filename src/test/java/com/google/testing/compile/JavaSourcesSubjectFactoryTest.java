@@ -40,7 +40,6 @@ import org.junit.runners.JUnit4;
 import org.truth0.FailureStrategy;
 import org.truth0.TestVerb;
 
-import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Resources;
 
@@ -82,7 +81,7 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
-  public void compilesWithoutError_exceptionPassedThrough() {
+  public void compilesWithoutError_exceptionCreatedOrPassedThrough() {
     final RuntimeException e = new RuntimeException();
     try {
       VERIFY.about(javaSource())
@@ -101,8 +100,11 @@ public class JavaSourcesSubjectFactoryTest {
           })
           .compilesWithoutError();
       fail();
+    } catch (CompilationFailureException expected) {
+      // some old javacs don't pass through exceptions, so we create one
     } catch (RuntimeException expected) {
-      ASSERT.that(Throwables.getRootCause(expected)).is(e);
+      // newer jdks throw a runtime exception whose cause is the original exception
+      ASSERT.that(expected.getCause()).is(e);
     }
   }
 

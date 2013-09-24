@@ -16,7 +16,6 @@
 package com.google.testing.compile;
 
 import static com.google.common.base.Charsets.UTF_8;
-import static javax.tools.Diagnostic.Kind.ERROR;
 import static javax.tools.JavaFileObject.Kind.SOURCE;
 
 import java.io.IOException;
@@ -61,15 +60,16 @@ final class Compilation {
     InMemoryJavaFileManager fileManager = new InMemoryJavaFileManager(
         compiler.getStandardFileManager(diagnosticCollector, Locale.getDefault(), UTF_8));
     CompilationTask task = compiler.getTask(
-        null, // Ignore output because the diagnostic collector gets it
+        null, // explicitly use the default because old versions of javac log some output on stderr
         fileManager,
         diagnosticCollector,
         ImmutableSet.<String>of(),
         ImmutableSet.<String>of(),
         sources);
     task.setProcessors(processors);
-    task.call();
-    return new Result(diagnosticCollector.getDiagnostics(), fileManager.getOutputFiles());
+    boolean successful = task.call();
+    return new Result(successful, diagnosticCollector.getDiagnostics(),
+        fileManager.getOutputFiles());
   }
 
   /**
@@ -84,7 +84,7 @@ final class Compilation {
     InMemoryJavaFileManager fileManager = new InMemoryJavaFileManager(
         compiler.getStandardFileManager(diagnosticCollector, Locale.getDefault(), UTF_8));
     JavacTask task = ((JavacTool) compiler).getTask(
-        null, // Ignore output because the diagnostic collector gets it
+        null, // explicitly use the default because old versions of javac log some output on stderr
         fileManager,
         diagnosticCollector,
         ImmutableSet.<String>of(),
@@ -107,13 +107,16 @@ final class Compilation {
 
   /** The diagnostic and file output of a compilation. */
   static final class Result {
-    final ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>>
+    private final boolean successful;
+    private final ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>>
         diagnosticsByKind;
-    final ImmutableListMultimap<JavaFileObject.Kind, JavaFileObject> generatedFilesByKind;
+    private final ImmutableListMultimap<JavaFileObject.Kind, JavaFileObject> generatedFilesByKind;
 
     Result(
+        boolean successful,
         Iterable<Diagnostic<? extends JavaFileObject>> diagnostics,
         Iterable<JavaFileObject> generatedFiles) {
+      this.successful = successful;
       this.diagnosticsByKind = Multimaps.index(diagnostics,
           new Function<Diagnostic<?>, Diagnostic.Kind>() {
             @Override public Diagnostic.Kind apply(Diagnostic<?> input) {
@@ -126,10 +129,22 @@ final class Compilation {
               return input.getKind();
             }
           });
+      if (!successful && diagnosticsByKind.get(Diagnostic.Kind.ERROR).isEmpty()) {
+        throw new CompilationFailureException();
+      }
     }
 
     boolean successful() {
-      return diagnosticsByKind.get(ERROR).isEmpty();
+      return successful;
+    }
+
+    ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>>
+        diagnosticsByKind() {
+      return diagnosticsByKind;
+    }
+
+    ImmutableListMultimap<JavaFileObject.Kind, JavaFileObject> generatedFilesByKind() {
+      return generatedFilesByKind;
     }
 
     ImmutableList<JavaFileObject> generatedSources() {

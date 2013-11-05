@@ -21,6 +21,7 @@ import java.util.Iterator;
 
 import javax.annotation.Nullable;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Optional;
 import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.ArrayAccessTree;
@@ -306,7 +307,7 @@ final class EqualityScanner extends SimpleTreeVisitor<Boolean, Tree> {
   public Boolean visitLiteral(LiteralTree reference, Tree tree) {
     Optional<LiteralTree> other = checkTypeAndCast(reference, tree);
     return other.isPresent()
-        && reference.getValue().equals(other.get().getValue());
+        && Objects.equal(reference.getValue(), other.get().getValue());
   }
 
   @Override

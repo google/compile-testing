@@ -36,6 +36,7 @@ import javax.tools.JavaFileObject.Kind;
 import javax.tools.SimpleJavaFileObject;
 
 import com.google.common.base.CharMatcher;
+import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
@@ -59,6 +60,26 @@ public final class JavaFileObjects {
    */
   public static JavaFileObject forSourceString(String fullyQualifiedName, String source) {
     return new StringSourceJavaFileObject(checkNotNull(fullyQualifiedName), checkNotNull(source));
+  }
+
+  private static final Joiner LINE_JOINER = Joiner.on('\n');
+
+  /**
+   * Behaves exactly like {@link #forSourceString}, but joins lines so that multi-line source
+   * strings may omit the newline characters.  For example: <pre>   {@code
+   *
+   *   JavaFileObjects.forSourceLines("example.HelloWorld",
+   *       "package example;",
+   *       "",
+   *       "final class HelloWorld {",
+   *       "  void sayHello() {",
+   *       "    System.out.println(\"hello!\");",
+   *       "  }",
+   *       "}");
+   * }</pre>
+   */
+  public static JavaFileObject forSourceLines(String fullyQualifiedName, String... lines) {
+    return forSourceString(fullyQualifiedName, LINE_JOINER.join(lines));
   }
 
   private static final class StringSourceJavaFileObject extends SimpleJavaFileObject {

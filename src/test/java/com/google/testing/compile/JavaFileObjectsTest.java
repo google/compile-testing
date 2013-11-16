@@ -45,4 +45,23 @@ public class JavaFileObjectsTest {
         .isEqualTo(Resources.getResource("java/lang/Object.class").toString());
     ASSERT.that(resourceInJar.isNameCompatible("Object", CLASS));
   }
+
+  @Test public void forSourceLines() throws IOException {
+    JavaFileObject fileObject = JavaFileObjects.forSourceLines("example.HelloWorld",
+        "package example;",
+        "",
+        "final class HelloWorld {",
+        "  void sayHello() {",
+        "    System.out.println(\"hello!\");",
+        "  }",
+        "}");
+    ASSERT.that(fileObject.getCharContent(false)).isEqualTo(
+        "package example;\n"
+            + "\n"
+            + "final class HelloWorld {\n"
+            + "  void sayHello() {\n"
+            + "    System.out.println(\"hello!\");\n"
+            + "  }\n"
+            + "}");
+  }
 }

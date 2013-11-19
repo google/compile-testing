@@ -76,7 +76,7 @@ public final class JavaFileObjects {
    *       "    System.out.println(\"hello!\");",
    *       "  }",
    *       "}");
-   * }</pre>
+   *   }</pre>
    */
   public static JavaFileObject forSourceLines(String fullyQualifiedName, String... lines) {
     return forSourceString(fullyQualifiedName, LINE_JOINER.join(lines));

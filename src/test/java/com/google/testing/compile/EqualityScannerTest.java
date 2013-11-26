@@ -17,12 +17,14 @@ package com.google.testing.compile;
 
 import static org.truth0.Truth.ASSERT;
 
-import com.sun.source.tree.LiteralTree;
+import com.sun.source.tree.*;
 import com.sun.source.tree.Tree.Kind;
-import com.sun.source.tree.TreeVisitor;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
+
+import java.util.Arrays;
+import java.util.List;
 
 @RunWith(JUnit4.class)
 public class EqualityScannerTest {
@@ -36,6 +38,57 @@ public class EqualityScannerTest {
     ASSERT.that(scanner.visitLiteral(nullLiteral, nullLiteral)).isTrue();
     ASSERT.that(scanner.visitLiteral(nullLiteral, valueLiteral)).isFalse();
     ASSERT.that(scanner.visitLiteral(valueLiteral, nullLiteral)).isFalse();
+  }
+
+  @Test
+  public void uninitialisedArraysCanBeScanned() {
+    EqualityScanner scanner = new EqualityScanner();
+
+    SimpleLiteralTree simpleLiteralTree = new SimpleLiteralTree(1, Kind.INT_LITERAL) {
+      @Override public <R, D> R accept(TreeVisitor<R, D> visitor, D data) {
+        return visitor.visitLiteral(this, data);
+      }
+    };
+
+    // Declare a new ArrayTree with size 1, but no initialisation.
+    NewArrayTree newArrayTree = new SimpleNewArrayTree(Arrays.asList(simpleLiteralTree), null);
+    ASSERT.that(scanner.visitNewArray(newArrayTree, newArrayTree)).isTrue();
+  }
+
+  private static class SimpleNewArrayTree implements NewArrayTree {
+
+    private final List<? extends ExpressionTree> mDimensions;
+    private final List<? extends ExpressionTree> mInitializers;
+
+    SimpleNewArrayTree(List<? extends ExpressionTree> dimensions, List<? extends ExpressionTree> initializers) {
+      mDimensions = dimensions;
+      mInitializers = initializers;
+    }
+
+    @Override
+    public Tree getType() {
+      return null;
+    }
+
+    @Override
+    public List<? extends ExpressionTree> getDimensions() {
+      return mDimensions;
+    }
+
+    @Override
+    public List<? extends ExpressionTree> getInitializers() {
+      return mInitializers;
+    }
+
+    @Override
+    public Kind getKind() {
+      return Kind.NEW_ARRAY;
+    }
+
+    @Override
+    public <R, D> R accept(TreeVisitor<R, D> rdTreeVisitor, D d) {
+      return rdTreeVisitor.visitNewArray(this, d);
+    }
   }
 
   private static class SimpleLiteralTree implements LiteralTree {

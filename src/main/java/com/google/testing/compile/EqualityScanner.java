@@ -104,14 +104,20 @@ final class EqualityScanner extends SimpleTreeVisitor<Boolean, Tree> {
 
   private boolean parallelScan(Iterable<? extends Tree> reference,
       Iterable<? extends Tree> trees) {
-    Iterator<? extends Tree> referenceIterator = reference.iterator();
-    Iterator<? extends Tree> treesIterator = trees.iterator();
-    while (referenceIterator.hasNext() && treesIterator.hasNext()) {
-      if (!referenceIterator.next().accept(this, treesIterator.next())) {
-        return false;
+    if (reference == null && trees == null) {
+      return true;
+    } else if (reference != null && trees != null ) {
+      Iterator<? extends Tree> referenceIterator = reference.iterator();
+      Iterator<? extends Tree> treesIterator = trees.iterator();
+      while (referenceIterator.hasNext() && treesIterator.hasNext()) {
+        if (!referenceIterator.next().accept(this, treesIterator.next())) {
+          return false;
+        }
       }
+      return (referenceIterator.hasNext() == treesIterator.hasNext());
+    } else {
+      return false;
     }
-    return (referenceIterator.hasNext() == treesIterator.hasNext());
   }
 
   @Override

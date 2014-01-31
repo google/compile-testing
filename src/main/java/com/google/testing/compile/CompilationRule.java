@@ -39,8 +39,8 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 
 /**
- * A {@link JUnit4} {@link Rule} that executes tests such that an instances of {@link Elements}
- * and {@link Types} are available during execution.
+ * A {@link JUnit4} {@link Rule} that executes tests such that a instances of {@link Elements} and
+ * {@link Types} are available during execution.
  *
  * <p>To use this rule in a test, just add the following field: <pre>   {@code
  *   @Rule public CompilationRule compilationRule = new CompilationRule();}
@@ -99,11 +99,21 @@ public final class CompilationRule implements TestRule {
     };
   }
 
+  /**
+   * Returns the {@link Elements} instance associated with the current execution of the rule.
+   *
+   * @throws IllegalStateException if this method is invoked outside the execution of the rule.
+   */
   public Elements getElements() {
     checkState(elements != null, "Not running within the rule");
     return elements;
   }
 
+  /**
+   * Returns the {@link Types} instance associated with the current execution of the rule.
+   *
+   * @throws IllegalStateException if this method is invoked outside the execution of the rule.
+   */
   public Types getTypes() {
     checkState(elements != null, "Not running within the rule");
     return types;

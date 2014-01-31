@@ -18,6 +18,17 @@ package com.google.testing.compile;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static javax.tools.JavaFileObject.Kind.SOURCE;
 
+import com.google.common.base.Function;
+import com.google.common.base.Objects;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableListMultimap;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Multimaps;
+
+import com.sun.source.tree.CompilationUnitTree;
+import com.sun.source.util.JavacTask;
+import com.sun.tools.javac.api.JavacTool;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
@@ -29,16 +40,6 @@ import javax.tools.JavaCompiler;
 import javax.tools.JavaCompiler.CompilationTask;
 import javax.tools.JavaFileObject;
 import javax.tools.ToolProvider;
-
-import com.google.common.base.Function;
-import com.google.common.base.Objects;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableListMultimap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Multimaps;
-import com.sun.source.tree.CompilationUnitTree;
-import com.sun.source.util.JavacTask;
-import com.sun.tools.javac.api.JavacTool;
 
 /**
  * Utilities for performing compilation with {@code javac}.

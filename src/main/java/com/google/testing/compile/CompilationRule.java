@@ -17,6 +17,16 @@ package com.google.testing.compile;
 
 import static com.google.common.base.Preconditions.checkState;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.testing.compile.Compilation.Result;
+
+import org.junit.Rule;
+import org.junit.rules.TestRule;
+import org.junit.runner.Description;
+import org.junit.runners.JUnit4;
+import org.junit.runners.model.Statement;
+
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -27,16 +37,6 @@ import javax.lang.model.SourceVersion;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-
-import org.junit.Rule;
-import org.junit.rules.TestRule;
-import org.junit.runner.Description;
-import org.junit.runners.JUnit4;
-import org.junit.runners.model.Statement;
-
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
-import com.google.testing.compile.Compilation.Result;
 
 /**
  * A {@link JUnit4} {@link Rule} that executes tests such that an instances of {@link Elements}

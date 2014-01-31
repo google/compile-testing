@@ -15,7 +15,7 @@
  */
 package com.google.testing.compile;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
+import static com.google.common.base.Charsets.UTF_8;
 import static javax.tools.JavaFileObject.Kind.SOURCE;
 
 import com.google.common.base.Function;

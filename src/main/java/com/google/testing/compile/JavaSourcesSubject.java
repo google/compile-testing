@@ -17,30 +17,34 @@ package com.google.testing.compile;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import java.io.IOException;
-import java.util.Arrays;
-
-import javax.annotation.processing.Processor;
-import javax.tools.Diagnostic;
-import javax.tools.Diagnostic.Kind;
-import javax.tools.FileObject;
-import javax.tools.JavaFileObject;
-
-import org.truth0.FailureStrategy;
-import org.truth0.subjects.Subject;
-
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
 import com.google.testing.compile.Compilation.Result;
+
 import com.sun.source.tree.CompilationUnitTree;
+
+import org.truth0.FailureStrategy;
+import org.truth0.subjects.Subject;
+
+import java.io.IOException;
+import java.util.Arrays;
+
+import javax.annotation.Nullable;
+import javax.annotation.processing.Processor;
+import javax.tools.Diagnostic;
+import javax.tools.Diagnostic.Kind;
+import javax.tools.FileObject;
+import javax.tools.JavaFileObject;
+import javax.tools.StandardLocation;
 
 /**
  * A <a href="https://github.com/truth0/truth">Truth</a> {@link Subject} that evaluates the result
@@ -88,6 +92,7 @@ public final class JavaSourcesSubject
       this.processors = ImmutableSet.copyOf(processors);
     }
 
+    @Override
     public SuccessfulCompilationClause compilesWithoutError() {
       Compilation.Result result = Compilation.compile(processors, getSubject());
       if (!result.successful()) {
@@ -100,6 +105,7 @@ public final class JavaSourcesSubject
       return new SuccessfulCompilationBuilder(result);
     }
 
+    @Override
     public UnsuccessfulCompilationClause failsToCompile() {
       Result result = Compilation.compile(processors, getSubject());
       if (result.successful()) {
@@ -264,8 +270,30 @@ public final class JavaSourcesSubject
               }
             });
         if (!found.isPresent()) {
-          failureStrategy.fail("Did not find a source file coresponding to "
-              + expected.getSourceFile().getName());
+          ImmutableMap<String, JavaFileObject> p = FluentIterable.from(generatedSources)
+              .uniqueIndex(new Function<JavaFileObject, String>() {
+                @Override
+                @Nullable
+                public String apply(@Nullable JavaFileObject input) {
+                  String path = input.toUri().getPath();
+                  // Trim "/" + StandardLocation.name() + "/" from path.
+                  // TODO(cgruber): Does this play out on Windows?
+                  return path.substring(StandardLocation.SOURCE_OUTPUT.name().length() + 2);
+                }
+              });
+          JavaFileObject actual = p.get(expected.getSourceFile().toUri().getPath());
+          String expectedPath = expected.getSourceFile().getName();
+          if (actual != null) {
+            CharSequence actualSource = null;
+            try {
+              actualSource = actual.getCharContent(true);
+            } catch (IOException ignored) {}
+            failureStrategy.fail("Generated file " + expectedPath
+                + " did not match expectation. Found:\n"
+                + (actualSource == null ? "no source found" : actualSource));
+          } else {
+            failureStrategy.fail("Did not find a source file coresponding to " + expectedPath);
+          }
         }
       }
       return this;

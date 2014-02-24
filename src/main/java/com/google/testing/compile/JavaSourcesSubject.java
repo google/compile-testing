@@ -17,18 +17,6 @@ package com.google.testing.compile;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
-import java.io.IOException;
-import java.util.Arrays;
-
-import javax.annotation.processing.Processor;
-import javax.tools.Diagnostic;
-import javax.tools.Diagnostic.Kind;
-import javax.tools.FileObject;
-import javax.tools.JavaFileObject;
-
-import org.truth0.FailureStrategy;
-import org.truth0.subjects.Subject;
-
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.base.Optional;
@@ -40,7 +28,20 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.io.ByteStreams;
 import com.google.testing.compile.Compilation.Result;
+
 import com.sun.source.tree.CompilationUnitTree;
+
+import org.truth0.FailureStrategy;
+import org.truth0.subjects.Subject;
+
+import java.io.IOException;
+import java.util.Arrays;
+
+import javax.annotation.processing.Processor;
+import javax.tools.Diagnostic;
+import javax.tools.Diagnostic.Kind;
+import javax.tools.FileObject;
+import javax.tools.JavaFileObject;
 
 /**
  * A <a href="https://github.com/truth0/truth">Truth</a> {@link Subject} that evaluates the result
@@ -88,6 +89,7 @@ public final class JavaSourcesSubject
       this.processors = ImmutableSet.copyOf(processors);
     }
 
+    @Override
     public SuccessfulCompilationClause compilesWithoutError() {
       Compilation.Result result = Compilation.compile(processors, getSubject());
       if (!result.successful()) {
@@ -100,6 +102,7 @@ public final class JavaSourcesSubject
       return new SuccessfulCompilationBuilder(result);
     }
 
+    @Override
     public UnsuccessfulCompilationClause failsToCompile() {
       Result result = Compilation.compile(processors, getSubject());
       if (result.successful()) {
@@ -255,17 +258,35 @@ public final class JavaSourcesSubject
       Iterable<? extends CompilationUnitTree> actualCompilationUnits =
           Compilation.parse(generatedSources);
       final EqualityScanner scanner = new EqualityScanner();
-      for (final CompilationUnitTree expected : Compilation.parse(Lists.asList(first, rest))) {
+      for (final CompilationUnitTree expectedTree : Compilation.parse(Lists.asList(first, rest))) {
         Optional<? extends CompilationUnitTree> found =
             Iterables.tryFind(actualCompilationUnits, new Predicate<CompilationUnitTree>() {
               @Override
-              public boolean apply(CompilationUnitTree input) {
-                return scanner.visitCompilationUnit(expected, input);
+              public boolean apply(CompilationUnitTree actualTree) {
+                return scanner.visitCompilationUnit(expectedTree, actualTree);
               }
             });
         if (!found.isPresent()) {
-          failureStrategy.fail("Did not find a source file coresponding to "
-              + expected.getSourceFile().getName());
+          final JavaFileObject expected = expectedTree.getSourceFile();
+          Optional<JavaFileObject> actual =
+              FluentIterable.from(generatedSources).firstMatch(new Predicate<JavaFileObject>() {
+                @Override public boolean apply(JavaFileObject generatedFile) {
+                  return generatedFile.toUri().getPath().endsWith(expected.toUri().getPath());
+                }
+              });
+          if (actual.isPresent()) {
+            CharSequence actualSource = null;
+            try {
+              actualSource = actual.get().getCharContent(false);
+            } catch (IOException e) {
+              throw new RuntimeException("Exception reading source content.", e);
+            }
+            failureStrategy.fail("Generated file " + expected.getName()
+                + " did not match expectation. Found:\n"
+                + (actualSource == null ? "no source found" : actualSource));
+          } else {
+            failureStrategy.fail("Did not find a source file named " + expected.getName());
+          }
         }
       }
       return this;

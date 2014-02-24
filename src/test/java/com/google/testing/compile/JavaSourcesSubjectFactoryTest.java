@@ -19,6 +19,15 @@ import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
 import static org.junit.Assert.fail;
 import static org.truth0.Truth.ASSERT;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.io.Resources;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.truth0.FailureStrategy;
+import org.truth0.TestVerb;
+
 import java.io.IOException;
 import java.io.Writer;
 import java.util.Arrays;
@@ -33,15 +42,6 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.JavaFileObject;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-import org.truth0.FailureStrategy;
-import org.truth0.TestVerb;
-
-import com.google.common.collect.ImmutableSet;
-import com.google.common.io.Resources;
 
 /**
  * Tests {@link JavaSourcesSubjectFactory} (and {@link JavaSourceSubjectFactory}).
@@ -226,6 +226,24 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
+  public void generatesUnexpectedSource() {
+    String failingExpectationSource = "abstract class Blah {}";
+    try {
+      VERIFY.about(javaSource())
+          .that(JavaFileObjects.forResource("HelloWorld.java"))
+          .processedWith(new GeneratingProcessor())
+          .compilesWithoutError()
+          .and().generatesSources(JavaFileObjects.forSourceString(
+              GeneratingProcessor.GENERATED_CLASS_NAME,
+              failingExpectationSource));
+    } catch (VerificationException expected) {
+      ASSERT.that(expected.getMessage()).contains(
+          "Generated file Blah.java did not match expectation. Found:");
+      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_SOURCE);
+    }
+  }
+
+  @Test
   public void invokesMultipleProcesors() {
     NoOpProcessor noopProcessor1 = new NoOpProcessor();
     NoOpProcessor noopProcessor2 = new NoOpProcessor();
@@ -256,7 +274,7 @@ public class JavaSourcesSubjectFactoryTest {
 
   private static final class GeneratingProcessor extends AbstractProcessor {
     static final String GENERATED_CLASS_NAME = "Blah";
-    static final String GENERATED_SOURCE = "final class Blah {}";
+    static final String GENERATED_SOURCE = "final class Blah {\n  String blah = \"blah\";\n}";
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {

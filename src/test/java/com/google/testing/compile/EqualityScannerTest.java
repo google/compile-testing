@@ -19,11 +19,13 @@ import static org.truth0.Truth.ASSERT;
 
 import com.sun.source.tree.*;
 import com.sun.source.tree.Tree.Kind;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 @RunWith(JUnit4.class)
@@ -55,6 +57,7 @@ public class EqualityScannerTest {
     ASSERT.that(scanner.visitNewArray(newArrayTree, newArrayTree)).isTrue();
   }
 
+  // TODO(gak): replace this with a CompilationRule and actual trees from javac
   private static class SimpleNewArrayTree implements NewArrayTree {
 
     private final List<? extends ExpressionTree> mDimensions;
@@ -88,6 +91,16 @@ public class EqualityScannerTest {
     @Override
     public <R, D> R accept(TreeVisitor<R, D> rdTreeVisitor, D d) {
       return rdTreeVisitor.visitNewArray(this, d);
+    }
+
+    // JDK8 Compatibility:
+
+    public List<? extends AnnotationTree> getAnnotations() {
+      return Collections.emptyList();
+    }
+
+    public List<? extends List<? extends AnnotationTree>> getDimAnnotations()  {
+      return Collections.emptyList();
     }
   }
 

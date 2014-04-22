@@ -43,7 +43,7 @@ public class JavaFileObjectsTest {
     ASSERT.that(resourceInJar.toUri()).isEqualTo(URI.create("/java/lang/Object.class"));
     ASSERT.that(resourceInJar.getName())
         .isEqualTo(Resources.getResource("java/lang/Object.class").toString());
-    ASSERT.that(resourceInJar.isNameCompatible("Object", CLASS));
+    ASSERT.that(resourceInJar.isNameCompatible("Object", CLASS)).isTrue();
   }
 
   @Test public void forSourceLines() throws IOException {

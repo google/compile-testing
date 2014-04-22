@@ -23,9 +23,11 @@ import com.google.common.base.Optional;
 import com.google.common.base.Predicate;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
 import com.google.testing.compile.Compilation.Result;
 
@@ -36,6 +38,7 @@ import org.truth0.subjects.Subject;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Map;
 
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
@@ -254,38 +257,73 @@ public final class JavaSourcesSubject
     @Override
     public SuccessfulCompilationClause generatesSources(JavaFileObject first,
         JavaFileObject... rest) {
-      ImmutableList<JavaFileObject> generatedSources = result.generatedSources();
-      Iterable<? extends CompilationUnitTree> actualCompilationUnits =
-          Compilation.parse(generatedSources);
+
+      final FluentIterable<? extends CompilationUnitTree> actualTrees = FluentIterable.from(
+          Compilation.parse(result.generatedSources()));
+      final FluentIterable<? extends CompilationUnitTree> expectedTrees = FluentIterable.from(
+          Compilation.parse(Lists.asList(first, rest)));
       final EqualityScanner scanner = new EqualityScanner();
-      for (final CompilationUnitTree expectedTree : Compilation.parse(Lists.asList(first, rest))) {
-        Optional<? extends CompilationUnitTree> found =
-            Iterables.tryFind(actualCompilationUnits, new Predicate<CompilationUnitTree>() {
-              @Override
-              public boolean apply(CompilationUnitTree actualTree) {
-                return scanner.visitCompilationUnit(expectedTree, actualTree);
-              }
-            });
-        if (!found.isPresent()) {
-          final JavaFileObject expected = expectedTree.getSourceFile();
-          Optional<JavaFileObject> actual =
-              FluentIterable.from(generatedSources).firstMatch(new Predicate<JavaFileObject>() {
-                @Override public boolean apply(JavaFileObject generatedFile) {
-                  return generatedFile.toUri().getPath().endsWith(expected.toUri().getPath());
+
+      Function<? super CompilationUnitTree, ImmutableSet<String>> getTypesFunction =
+          new Function<CompilationUnitTree, ImmutableSet<String>>() {
+            @Override public ImmutableSet<String> apply(CompilationUnitTree compilationUnit) {
+              return TypeScanner.getTopLevelTypes(compilationUnit);
+            }
+      };
+
+      final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> expectedTreeTypes =
+          Maps.toMap(expectedTrees, getTypesFunction);
+      final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> actualTreeTypes =
+          Maps.toMap(actualTrees, getTypesFunction);
+      final ImmutableMap<? extends CompilationUnitTree, Optional<? extends CompilationUnitTree>>
+          matchedTrees = Maps.toMap(expectedTrees,
+              new Function<CompilationUnitTree, Optional<? extends CompilationUnitTree>>() {
+                @Override public Optional<? extends CompilationUnitTree> apply(
+                    final CompilationUnitTree expectedTree) {
+                  return Iterables.tryFind(actualTrees,
+                      new Predicate<CompilationUnitTree>() {
+                        @Override public boolean apply(CompilationUnitTree actualTree) {
+                          return expectedTreeTypes.get(expectedTree).equals(
+                              actualTreeTypes.get(actualTree));
+                        }
+                      });
                 }
               });
-          if (actual.isPresent()) {
-            CharSequence actualSource = null;
-            try {
-              actualSource = actual.get().getCharContent(false);
-            } catch (IOException e) {
-              throw new RuntimeException("Exception reading source content.", e);
-            }
-            failureStrategy.fail("Generated file " + expected.getName()
-                + " did not match expectation. Found:\n"
-                + (actualSource == null ? "no source found" : actualSource));
-          } else {
-            failureStrategy.fail("Did not find a source file named " + expected.getName());
+
+      for (Map.Entry<? extends CompilationUnitTree, Optional<? extends CompilationUnitTree>>
+               matchedTreePair : matchedTrees.entrySet()) {
+        final CompilationUnitTree expectedTree = matchedTreePair.getKey();
+        JavaFileObject expectedSource = expectedTree.getSourceFile();
+        if (!matchedTreePair.getValue().isPresent()) {
+          failureStrategy.fail(String.format("None of the sources generated declared the same "
+                  + "top-level types as the expected source at %s (Types: %s).\n "
+                  + "Generated files at:\n%s",
+                  expectedSource.getName(), expectedTreeTypes.get(expectedTree),
+                  Joiner.on('\n').join(
+                      actualTrees.transform(new Function<CompilationUnitTree, String>() {
+                        @Override public String apply(CompilationUnitTree generated) {
+                          return String.format("%s (Types: %s)",
+                              generated.getSourceFile().getName(),
+                              actualTreeTypes.get(generated));
+                        }
+                      })
+                      .toList())));
+        }
+
+        CompilationUnitTree actualTree = matchedTreePair.getValue().get();
+        JavaFileObject actualSource = actualTree.getSourceFile();
+
+        if (!scanner.visitCompilationUnit(expectedTree, actualTree)) {
+          try {
+            String expectedContent = expectedSource.getCharContent(false).toString();
+            String actualContent = actualSource.getCharContent(false).toString();
+            failureStrategy.fail(String.format("The source generated at %s declared the same "
+                    + "top-level types as the expected source at %s, but didn't match exactly. "
+                    + "Actual:\n\n%s\n\nExpected:\n\n%s", actualSource.getName(),
+                    expectedSource.getName(), actualContent, expectedContent));
+          } catch (IOException e) {
+            throw new IllegalStateException("Couldn't read from JavaFileObject when it was already "
+                + "in memory.", e);
           }
         }
       }

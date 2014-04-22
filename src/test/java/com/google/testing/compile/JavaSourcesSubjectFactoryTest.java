@@ -215,7 +215,7 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
-  public void generates() {
+  public void generatesSources() {
     ASSERT.about(javaSource())
         .that(JavaFileObjects.forResource("HelloWorld.java"))
         .processedWith(new GeneratingProcessor())
@@ -226,7 +226,7 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
-  public void generatesUnexpectedSource() {
+  public void generatesSources_failOnUnexpected() {
     String failingExpectationSource = "abstract class Blah {}";
     try {
       VERIFY.about(javaSource())
@@ -236,10 +236,30 @@ public class JavaSourcesSubjectFactoryTest {
           .and().generatesSources(JavaFileObjects.forSourceString(
               GeneratingProcessor.GENERATED_CLASS_NAME,
               failingExpectationSource));
+      fail();
     } catch (VerificationException expected) {
-      ASSERT.that(expected.getMessage()).contains(
-          "Generated file Blah.java did not match expectation. Found:");
+      ASSERT.that(expected.getMessage()).contains("didn't match exactly");
+      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
       ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_SOURCE);
+    }
+  }
+
+  @Test
+  public void generatesSources_failWithNoCandidates() {
+    String failingExpectationName = "ThisIsNotTheRightFile";
+    String failingExpectationSource = "abstract class ThisIsNotTheRightFile {}";
+    try {
+      VERIFY.about(javaSource())
+          .that(JavaFileObjects.forResource("HelloWorld.java"))
+          .processedWith(new GeneratingProcessor())
+          .compilesWithoutError()
+          .and().generatesSources(JavaFileObjects.forSourceString(
+              failingExpectationName,
+              failingExpectationSource));
+    } catch (VerificationException expected) {
+      ASSERT.that(expected.getMessage()).contains("None of the sources generated");
+      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
+      ASSERT.that(expected.getMessage()).contains(failingExpectationName);
     }
   }
 

@@ -226,7 +226,7 @@ public class JavaSourcesSubjectFactoryTest {
       fail();
     } catch (IllegalArgumentException expected) {
       ASSERT.that(expected.getMessage())
-          .isEqualTo("More than one line ([18, 19]) containted \"public\".");
+          .isEqualTo("More than one line ([18, 19]) contained \"public\".");
     }
   }
 

@@ -269,7 +269,7 @@ public final class JavaSourcesSubject
                   return onLine(Iterables.getOnlyElement(matchingLineNumbers));
                 default:
                   throw new IllegalArgumentException(String.format(
-                      "More than one line (%s) containted \"%s\".",
+                      "More than one line (%s) contained \"%s\".",
                       matchingLineNumbers, substring));
                 }
               } catch (IOException e) {

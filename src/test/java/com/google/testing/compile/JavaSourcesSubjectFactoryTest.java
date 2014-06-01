@@ -19,15 +19,6 @@ import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
 import static org.junit.Assert.fail;
 import static org.truth0.Truth.ASSERT;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.common.io.Resources;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-import org.truth0.FailureStrategy;
-import org.truth0.TestVerb;
-
 import java.io.IOException;
 import java.io.Writer;
 import java.util.Arrays;
@@ -42,6 +33,15 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.JavaFileObject;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
+import org.truth0.FailureStrategy;
+import org.truth0.TestVerb;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.common.io.Resources;
 
 /**
  * Tests {@link JavaSourcesSubjectFactory} (and {@link JavaSourceSubjectFactory}).
@@ -181,6 +181,56 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
+  public void failsToCompile_throwsNotOnLineContaining() {
+    JavaFileObject fileObject = JavaFileObjects.forResource("HelloWorld.java");
+    try {
+      VERIFY.about(javaSource())
+          .that(fileObject)
+          .processedWith(new ErrorProcessor())
+          .failsToCompile().withErrorContaining("expected error!")
+          .in(fileObject).onLineContaining("System.out");
+      fail();
+    } catch (VerificationException expected) {
+      ASSERT.that(expected.getMessage())
+      .isEqualTo(String.format(
+          "Expected an error on line 20 of %s, but only found errors on line(s) [18]",
+          fileObject.getName()));
+    }
+  }
+
+  @Test
+  public void onLineContaining_noneMatching() {
+    JavaFileObject fileObject = JavaFileObjects.forResource("HelloWorld.java");
+    try {
+      VERIFY.about(javaSource())
+          .that(fileObject)
+          .processedWith(new ErrorProcessor())
+          .failsToCompile().withErrorContaining("expected error!")
+          .in(fileObject).onLineContaining("this string is not in the file");
+      fail();
+    } catch (IllegalArgumentException expected) {
+      ASSERT.that(expected.getMessage()).isEqualTo(
+          "No line containing \"this string is not in the file\" existed in the source file");
+    }
+  }
+
+  @Test
+  public void onLineContaining_tooManyMatching() {
+    JavaFileObject fileObject = JavaFileObjects.forResource("HelloWorld.java");
+    try {
+      VERIFY.about(javaSource())
+          .that(fileObject)
+          .processedWith(new ErrorProcessor())
+          .failsToCompile().withErrorContaining("expected error!")
+          .in(fileObject).onLineContaining("public");
+      fail();
+    } catch (IllegalArgumentException expected) {
+      ASSERT.that(expected.getMessage())
+          .isEqualTo("More than one line ([18, 19]) containted \"public\".");
+    }
+  }
+
+  @Test
   public void failsToCompile_throwsNotAtColumn() {
     JavaFileObject fileObject = JavaFileObjects.forResource("HelloWorld.java");
     try {
@@ -212,6 +262,12 @@ public class JavaSourcesSubjectFactoryTest {
         .processedWith(new ErrorProcessor())
         .failsToCompile()
         .withErrorContaining("expected error!").in(happyFileObject).onLine(18).atColumn(8);
+    ASSERT.about(javaSource())
+        .that(happyFileObject)
+        .processedWith(new ErrorProcessor())
+        .failsToCompile()
+        .withErrorContaining("expected error!").in(happyFileObject)
+            .onLineContaining("class HelloWorld");
   }
 
   @Test

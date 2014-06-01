@@ -16,6 +16,20 @@
 package com.google.testing.compile;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Map;
+
+import javax.annotation.processing.Processor;
+import javax.tools.Diagnostic;
+import javax.tools.Diagnostic.Kind;
+import javax.tools.FileObject;
+import javax.tools.JavaFileObject;
+
+import org.truth0.FailureStrategy;
+import org.truth0.subjects.Subject;
 
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
@@ -29,22 +43,10 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.ByteStreams;
+import com.google.common.io.CharSource;
+import com.google.common.io.LineProcessor;
 import com.google.testing.compile.Compilation.Result;
-
 import com.sun.source.tree.CompilationUnitTree;
-
-import org.truth0.FailureStrategy;
-import org.truth0.subjects.Subject;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Map;
-
-import javax.annotation.processing.Processor;
-import javax.tools.Diagnostic;
-import javax.tools.Diagnostic.Kind;
-import javax.tools.FileObject;
-import javax.tools.JavaFileObject;
 
 /**
  * A <a href="https://github.com/truth0/truth">Truth</a> {@link Subject} that evaluates the result
@@ -233,6 +235,46 @@ public final class JavaSourcesSubject
                   };
                 }
               };
+            }
+
+            @Override
+            public ColumnClause onLineContaining(final String substring) {
+              checkNotNull(substring);
+              try {
+                ImmutableList<Long> matchingLineNumbers =
+                    CharSource.wrap(file.getCharContent(false))
+                        .readLines(new LineProcessor<ImmutableList<Long>>() {
+                          ImmutableList.Builder<Long> matchingLines = ImmutableList.builder();
+                          long currentLineNumber = 0;
+
+                          @Override
+                          public boolean processLine(String line) throws IOException {
+                            currentLineNumber++;
+                            if (line.contains(substring)) {
+                              matchingLines.add(currentLineNumber);
+                            }
+                            return true;
+                          }
+
+                          @Override
+                          public ImmutableList<Long> getResult() {
+                            return matchingLines.build();
+                          }
+                        });
+                switch (matchingLineNumbers.size()) {
+                case 0:
+                  throw new IllegalArgumentException(String.format(
+                      "No line containing \"%s\" existed in the source file", substring));
+                case 1:
+                  return onLine(Iterables.getOnlyElement(matchingLineNumbers));
+                default:
+                  throw new IllegalArgumentException(String.format(
+                      "More than one line (%s) containted \"%s\".",
+                      matchingLineNumbers, substring));
+                }
+              } catch (IOException e) {
+                throw new RuntimeException("An IOException reading a String?!?", e);
+              }
             }
           };
         }

@@ -52,6 +52,16 @@ public interface CompileTester {
    */
   public interface LineClause extends ChainingClause<UnsuccessfulCompilationClause> {
     ColumnClause onLine(long lineNumber);
+
+    /**
+     * Checks that the diagnostic occurs on the <i>single</i> line that contains the given
+     * substring.
+     *
+     * @throws IllegalArgumentException if no lines or more that one line in the source file contain
+     * the substring.
+     */
+    // TODO(gak): should this _really_ let you test columns?
+    ColumnClause onLineContaining(String substring);
   }
 
   /**

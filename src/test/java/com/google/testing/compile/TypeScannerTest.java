@@ -109,6 +109,47 @@ public class TypeScannerTest {
   }
 
   @Test
+  public void getTopLevelTypes_worksForAnnotationTypes() {
+    CompilationUnitTree compilation = compileLines("test.HelloWorld",
+        "package path.to.test;",
+        "import java.util.List;",
+        "",
+        "public @interface HelloWorld {}");
+
+    ASSERT.that(TypeScanner.getTopLevelTypes(compilation)).has().exactly(
+        "path.to.test.HelloWorld");
+  }
+
+  @Test
+  public void getTopLevelTypes_worksForEnums() {
+    CompilationUnitTree compilation = compileLines("test.HelloWorld",
+        "package path.to.test;",
+        "import java.util.List;",
+        "",
+        "public enum HelloWorld {",
+        "  HELLO,",
+        "  WORLD;",
+        "}");
+
+    ASSERT.that(TypeScanner.getTopLevelTypes(compilation)).has().exactly(
+        "path.to.test.HelloWorld");
+  }
+
+  @Test
+  public void getTopLevelTypes_worksForInterfaces() {
+    CompilationUnitTree compilation = compileLines("test.HelloWorld",
+        "package path.to.test;",
+        "import java.util.List;",
+        "",
+        "public interface HelloWorld {",
+        "  public String getSalutation();",
+        "}");
+
+    ASSERT.that(TypeScanner.getTopLevelTypes(compilation)).has().exactly(
+        "path.to.test.HelloWorld");
+  }
+
+  @Test
   public void getTopLevelTypes_worksForNull() {
     ASSERT.that(TypeScanner.getTopLevelTypes(null)).isEmpty();
   }

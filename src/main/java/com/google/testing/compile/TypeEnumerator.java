@@ -15,16 +15,8 @@
  */
 package com.google.testing.compile;
 
-import static com.sun.source.tree.Tree.Kind.ANNOTATION_TYPE;
-import static com.sun.source.tree.Tree.Kind.CLASS;
-import static com.sun.source.tree.Tree.Kind.COMPILATION_UNIT;
-import static com.sun.source.tree.Tree.Kind.ENUM;
-import static com.sun.source.tree.Tree.Kind.EXPRESSION_STATEMENT;
-import static com.sun.source.tree.Tree.Kind.IDENTIFIER;
-import static com.sun.source.tree.Tree.Kind.INTERFACE;
-import static com.sun.source.tree.Tree.Kind.MEMBER_SELECT;
-
 import com.google.common.base.Function;
+import com.google.common.base.Objects;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
@@ -62,15 +54,9 @@ final class TypeEnumerator {
    */
   @SuppressWarnings("restriction") // Sun APIs usage intended
   static final class TypeScanner extends TreeScanner<Set<String>, Void> {
-
-    private static final Set<Tree.Kind> RELEVANT_KINDS = Sets.immutableEnumSet(
-        ANNOTATION_TYPE, CLASS, ENUM, COMPILATION_UNIT, EXPRESSION_STATEMENT, IDENTIFIER, INTERFACE,
-        MEMBER_SELECT);
-
     @Override
     public Set<String> scan(Tree node, Void v) {
-      return (node != null) && RELEVANT_KINDS.contains(node.getKind()) ?
-          node.accept(this, v) : ImmutableSet.<String>of();
+      return Objects.firstNonNull(super.scan(node, v), ImmutableSet.<String>of());
     }
 
     @Override

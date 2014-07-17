@@ -77,6 +77,21 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
+  public void compilesWithoutError_failureReportsFiles() {
+    try {
+      VERIFY.about(javaSource())
+          .that(JavaFileObjects.forResource(Resources.getResource("HelloWorld.java")))
+          .processedWith(new FailingGeneratingProcessor())
+          .compilesWithoutError();
+      fail();
+    } catch (VerificationException expected) {
+      ASSERT.that(expected.getMessage()).contains("Compilation produced the following errors:\n");
+      ASSERT.that(expected.getMessage()).contains(FailingGeneratingProcessor.GENERATED_CLASS_NAME);
+      ASSERT.that(expected.getMessage()).contains(FailingGeneratingProcessor.GENERATED_SOURCE);
+    }
+  }
+
+  @Test
   public void compilesWithoutError_throws() {
     try {
       VERIFY.about(javaSource())
@@ -85,6 +100,7 @@ public class JavaSourcesSubjectFactoryTest {
       fail();
     } catch (VerificationException expected) {
       ASSERT.that(expected.getMessage()).startsWith("Compilation produced the following errors:\n");
+      ASSERT.that(expected.getMessage()).contains("No files were generated.");
     }
   }
 
@@ -124,8 +140,9 @@ public class JavaSourcesSubjectFactoryTest {
           .failsToCompile();
       fail();
     } catch (VerificationException expected) {
-      ASSERT.that(expected.getMessage()).isEqualTo(
+      ASSERT.that(expected.getMessage()).startsWith(
           "Compilation was expected to fail, but contained no errors");
+      ASSERT.that(expected.getMessage()).contains("No files were generated.");
     }
   }
 
@@ -366,6 +383,37 @@ public class JavaSourcesSubjectFactoryTest {
     @Override
     public SourceVersion getSupportedSourceVersion() {
       return SourceVersion.latestSupported();
+    }
+  }
+
+  private static final class FailingGeneratingProcessor extends AbstractProcessor {
+    static final String GENERATED_CLASS_NAME = GeneratingProcessor.GENERATED_CLASS_NAME;
+    static final String GENERATED_SOURCE = GeneratingProcessor.GENERATED_SOURCE;
+    static final String ERROR_MESSAGE = "expected error!";
+    final GeneratingProcessor delegate = new GeneratingProcessor();
+    Messager messager;
+
+    @Override
+    public synchronized void init(ProcessingEnvironment processingEnv) {
+      delegate.init(processingEnv);
+      this.messager = processingEnv.getMessager();
+    }
+
+    @Override
+    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+      delegate.process(annotations, roundEnv);
+      messager.printMessage(Kind.ERROR, ERROR_MESSAGE);
+      return false;
+    }
+
+    @Override
+    public Set<String> getSupportedAnnotationTypes() {
+      return delegate.getSupportedAnnotationTypes();
+    }
+
+    @Override
+    public SourceVersion getSupportedSourceVersion() {
+      return delegate.getSupportedSourceVersion();
     }
   }
 

@@ -16,6 +16,7 @@
 package com.google.testing.compile;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static javax.tools.JavaFileObject.Kind.CLASS;
 
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
@@ -28,6 +29,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
 import com.google.testing.compile.Compilation.Result;
 
@@ -92,6 +94,45 @@ public final class JavaSourcesSubject
       this.processors = ImmutableSet.copyOf(processors);
     }
 
+    /** Returns a {@code String} report describing the contents of a given generated file. */
+    private String reportFileGenerated(JavaFileObject generatedFile) {
+      try {
+        StringBuilder entry =
+            new StringBuilder().append(String.format("\n%s:\n", generatedFile.toUri().getPath()));
+        if (generatedFile.getKind().equals(CLASS)) {
+          entry.append(String.format("[generated class file (%s bytes)]",
+                  ByteSource.wrap(ByteStreams.toByteArray(generatedFile.openInputStream()))
+                  .size()));
+        } else {
+          entry.append(generatedFile.getCharContent(true));
+        }
+        return entry.append("\n").toString();
+      } catch (IOException e) {
+        throw new IllegalStateException("Couldn't read from JavaFileObject when it was "
+            + "already in memory.", e);
+      }
+    }
+
+    /**
+     * Returns a {@code String} report describing what files were generated in the given
+     * {@link Compilation.Result}
+     */
+    private String reportFilesGenerated(Compilation.Result result) {
+      FluentIterable<JavaFileObject> generatedFiles =
+          FluentIterable.from(result.generatedSources());
+      StringBuilder message = new StringBuilder("\n\n");
+      if (generatedFiles.isEmpty()) {
+        return message.append("(No files were generated.)\n").toString();
+      } else {
+        message.append("Generated Files\n")
+            .append("===============\n");
+        for (JavaFileObject generatedFile : generatedFiles) {
+          message.append(reportFileGenerated(generatedFile));
+        }
+        return message.toString();
+      }
+    }
+
     @Override
     public SuccessfulCompilationClause compilesWithoutError() {
       Compilation.Result result = Compilation.compile(processors, getSubject());
@@ -99,7 +140,12 @@ public final class JavaSourcesSubject
         ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
             result.diagnosticsByKind().get(Kind.ERROR);
         StringBuilder message = new StringBuilder("Compilation produced the following errors:\n");
-        Joiner.on('\n').appendTo(message, errors);
+        for (Diagnostic<? extends JavaFileObject> error : errors) {
+          message.append('\n');
+          message.append(error);
+        }
+        message.append('\n');
+        message.append(reportFilesGenerated(result));
         failureStrategy.fail(message.toString());
       }
       return new SuccessfulCompilationBuilder(result);
@@ -109,7 +155,11 @@ public final class JavaSourcesSubject
     public UnsuccessfulCompilationClause failsToCompile() {
       Result result = Compilation.compile(processors, getSubject());
       if (result.successful()) {
-        failureStrategy.fail("Compilation was expected to fail, but contained no errors");
+        String message = Joiner.on('\n').join(
+            "Compilation was expected to fail, but contained no errors.",
+            "",
+            reportFilesGenerated(result));
+        failureStrategy.fail(message);
       }
       return new UnsuccessfulCompilationBuilder(result);
     }

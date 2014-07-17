@@ -110,12 +110,14 @@ public class TreeDifferTest {
     ASSERT.that(diff.getExtraExpectedNodes().isEmpty()).isTrue();
     ASSERT.that(diff.getExtraActualNodes().size()).isEqualTo(extraNodesExpected.size());
 
-    ImmutableList.Builder<SimplifiedDiff> extraNodesFound = new ImmutableList.Builder<>();
+    ImmutableList.Builder<SimplifiedDiff> extraNodesFound =
+        new ImmutableList.Builder<SimplifiedDiff>();
     for (TreeDifference.OneWayDiff extraNode : diff.getExtraActualNodes()) {
       extraNodesFound.add(SimplifiedDiff.create(extraNode));
     }
     ASSERT.that(extraNodesExpected).iteratesAs(extraNodesFound.build());
-    ImmutableList.Builder<SimplifiedDiff> differingNodesFound = new ImmutableList.Builder<>();
+    ImmutableList.Builder<SimplifiedDiff> differingNodesFound =
+        new ImmutableList.Builder<SimplifiedDiff>();
     for (TreeDifference.TwoWayDiff differingNode : diff.getDifferingNodes()) {
       differingNodesFound.add(SimplifiedDiff.create(differingNode));
     }

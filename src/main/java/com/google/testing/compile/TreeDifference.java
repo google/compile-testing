@@ -89,7 +89,7 @@ final class TreeDifference {
    * corresponding entries in the report.
    */
   String getDiffReport(@Nullable TreeContext expectedContext, @Nullable TreeContext actualContext) {
-    ImmutableList.Builder<String> reportLines = new ImmutableList.Builder<>();
+    ImmutableList.Builder<String> reportLines = new ImmutableList.Builder<String>();
     if (!extraExpectedNodes.isEmpty()) {
       reportLines.add(String.format("Found %s unmatched nodes in the expected tree. %n",
               extraExpectedNodes.size()));
@@ -165,9 +165,9 @@ final class TreeDifference {
     private final ImmutableList.Builder<TwoWayDiff> differingNodesBuilder;
 
     Builder() {
-      this.extraExpectedNodesBuilder = new ImmutableList.Builder<>();
-      this.extraActualNodesBuilder = new ImmutableList.Builder<>();
-      this.differingNodesBuilder = new ImmutableList.Builder<>();
+      this.extraExpectedNodesBuilder = new ImmutableList.Builder<OneWayDiff>();
+      this.extraActualNodesBuilder = new ImmutableList.Builder<OneWayDiff>();
+      this.differingNodesBuilder = new ImmutableList.Builder<TwoWayDiff>();
     }
 
     /** Logs an extra node on the expected tree in the {@code TreeDifference} being built. */

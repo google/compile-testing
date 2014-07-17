@@ -257,7 +257,7 @@ public class JavaSourcesSubjectFactoryTest {
               failingExpectationName,
               failingExpectationSource));
     } catch (VerificationException expected) {
-      ASSERT.that(expected.getMessage()).contains("None of the sources generated");
+      ASSERT.that(expected.getMessage()).contains("top-level types that were not generated");
       ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
       ASSERT.that(expected.getMessage()).contains(failingExpectationName);
     }

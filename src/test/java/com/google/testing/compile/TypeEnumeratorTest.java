@@ -15,10 +15,7 @@
  */
 package com.google.testing.compile;
 
-import static org.junit.Assert.fail;
 import static org.truth0.Truth.ASSERT;
-
-import com.google.common.collect.ImmutableList;
 
 import com.sun.source.tree.CompilationUnitTree;
 
@@ -27,24 +24,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /**
- * Unit test for {@link TypeScanner}
+ * Unit test for {@link TypeEnumerator}
  */
 @RunWith(JUnit4.class)
-public class TypeScannerTest {
-
-  private CompilationUnitTree compileLines(String fullyQualifiedName,
-      String... source) {
-    Iterable<? extends CompilationUnitTree> parseResults = Compilation.parse(
-        ImmutableList.of(JavaFileObjects.forSourceLines(fullyQualifiedName, source)));
-    if (!parseResults.iterator().hasNext()) {
-      fail("Successfully parsed source as given, but no compilation units were returned");
-    }
-    return parseResults.iterator().next();
-  }
-
+public class TypeEnumeratorTest {
   @Test
   public void getTopLevelTypes_singleQualifiedType() {
-    CompilationUnitTree compilation = compileLines("test.HelloWorld",
+    CompilationUnitTree compilation = MoreTrees.parseLinesToTree(
         "package path.to.test;",
         "import java.util.List;",
         "",
@@ -54,13 +40,13 @@ public class TypeScannerTest {
         "  }",
         "}");
 
-    ASSERT.that(TypeScanner.getTopLevelTypes(compilation)).has().exactly(
+    ASSERT.that(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
         "path.to.test.HelloWorld");
   }
 
   @Test
   public void getTopLevelTypes_manyQualifiedTypes() {
-    CompilationUnitTree compilation = compileLines("test.HelloWorld",
+    CompilationUnitTree compilation = MoreTrees.parseLinesToTree(
         "package path.to.test;",
         "import java.util.List;",
         "",
@@ -72,13 +58,13 @@ public class TypeScannerTest {
         "",
         "final class HelperWorld {}");
 
-    ASSERT.that(TypeScanner.getTopLevelTypes(compilation)).has().exactly(
+    ASSERT.that(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
         "path.to.test.HelloWorld", "path.to.test.HelperWorld");
   }
 
   @Test
   public void getTopLevelTypes_singleSimpleTypes() {
-    CompilationUnitTree compilation = compileLines("test.HelloWorld",
+    CompilationUnitTree compilation = MoreTrees.parseLinesToTree(
         "import java.util.List;",
         "",
         "public class HelloWorld {",
@@ -87,13 +73,13 @@ public class TypeScannerTest {
         "  }",
         "}");
 
-    ASSERT.that(TypeScanner.getTopLevelTypes(compilation)).has().exactly(
+    ASSERT.that(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
         "HelloWorld");
   }
 
   @Test
   public void getTopLevelTypes_manySimpleTypes() {
-    CompilationUnitTree compilation = compileLines("test.HelloWorld",
+    CompilationUnitTree compilation = MoreTrees.parseLinesToTree(
         "import java.util.List;",
         "",
         "public class HelloWorld {",
@@ -104,25 +90,25 @@ public class TypeScannerTest {
         "",
         "final class HelperWorld {}");
 
-    ASSERT.that(TypeScanner.getTopLevelTypes(compilation)).has().exactly(
+    ASSERT.that(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
         "HelloWorld", "HelperWorld");
   }
 
   @Test
   public void getTopLevelTypes_worksForAnnotationTypes() {
-    CompilationUnitTree compilation = compileLines("test.HelloWorld",
+    CompilationUnitTree compilation = MoreTrees.parseLinesToTree(
         "package path.to.test;",
         "import java.util.List;",
         "",
         "public @interface HelloWorld {}");
 
-    ASSERT.that(TypeScanner.getTopLevelTypes(compilation)).has().exactly(
+    ASSERT.that(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
         "path.to.test.HelloWorld");
   }
 
   @Test
   public void getTopLevelTypes_worksForEnums() {
-    CompilationUnitTree compilation = compileLines("test.HelloWorld",
+    CompilationUnitTree compilation = MoreTrees.parseLinesToTree(
         "package path.to.test;",
         "import java.util.List;",
         "",
@@ -131,13 +117,13 @@ public class TypeScannerTest {
         "  WORLD;",
         "}");
 
-    ASSERT.that(TypeScanner.getTopLevelTypes(compilation)).has().exactly(
+    ASSERT.that(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
         "path.to.test.HelloWorld");
   }
 
   @Test
   public void getTopLevelTypes_worksForInterfaces() {
-    CompilationUnitTree compilation = compileLines("test.HelloWorld",
+    CompilationUnitTree compilation = MoreTrees.parseLinesToTree(
         "package path.to.test;",
         "import java.util.List;",
         "",
@@ -145,12 +131,12 @@ public class TypeScannerTest {
         "  public String getSalutation();",
         "}");
 
-    ASSERT.that(TypeScanner.getTopLevelTypes(compilation)).has().exactly(
+    ASSERT.that(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
         "path.to.test.HelloWorld");
   }
 
   @Test
   public void getTopLevelTypes_worksForNull() {
-    ASSERT.that(TypeScanner.getTopLevelTypes(null)).isEmpty();
+    ASSERT.that(TypeEnumerator.getTopLevelTypes(null)).isEmpty();
   }
 }

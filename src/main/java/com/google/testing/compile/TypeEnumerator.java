@@ -17,8 +17,8 @@ package com.google.testing.compile;
 
 import static com.sun.source.tree.Tree.Kind.ANNOTATION_TYPE;
 import static com.sun.source.tree.Tree.Kind.CLASS;
-import static com.sun.source.tree.Tree.Kind.ENUM;
 import static com.sun.source.tree.Tree.Kind.COMPILATION_UNIT;
+import static com.sun.source.tree.Tree.Kind.ENUM;
 import static com.sun.source.tree.Tree.Kind.EXPRESSION_STATEMENT;
 import static com.sun.source.tree.Tree.Kind.IDENTIFIER;
 import static com.sun.source.tree.Tree.Kind.INTERFACE;
@@ -42,10 +42,12 @@ import java.util.Set;
 /**
  * Provides information about the set of types that are declared by a
  * {@code CompilationUnitTree}.
+ *
+ * @author Stephen Pratt
  */
-final class TypeScanner {
-  private static final NameVisitor nameVisitor = new NameVisitor();
-  private TypeScanner() {}
+final class TypeEnumerator {
+  private static final TypeScanner nameVisitor = new TypeScanner();
+  private TypeEnumerator() {}
 
   /**
    * Returns a set of strings containing the fully qualified names of all
@@ -56,10 +58,10 @@ final class TypeScanner {
   }
 
   /**
-   * A {@link SimpleTreeVisitor} for determining type declarations
+   * A {@link TreeScanner} for determining type declarations
    */
   @SuppressWarnings("restriction") // Sun APIs usage intended
-  static final class NameVisitor extends TreeScanner<Set<String>, Void> {
+  static final class TypeScanner extends TreeScanner<Set<String>, Void> {
 
     private static final Set<Tree.Kind> RELEVANT_KINDS = Sets.immutableEnumSet(
         ANNOTATION_TYPE, CLASS, ENUM, COMPILATION_UNIT, EXPRESSION_STATEMENT, IDENTIFIER, INTERFACE,

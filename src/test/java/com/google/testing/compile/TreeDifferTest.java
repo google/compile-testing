@@ -56,7 +56,6 @@ public class TreeDifferTest {
       MoreTrees.parseLinesToTree("package test;",
           "import java.util.List;",
           "",
-          "",
           "final class TestClass {",
           "    public String toString() {",
           "        Object variable = new Object();",
@@ -71,10 +70,23 @@ public class TreeDifferTest {
           "            }",
           "        }",
           "    }",
-          "",
           "    public int extraNonsense() {",
           "      return 0;",
           "    }",
+          "}");
+  private static final CompilationUnitTree ASSERT_TREE_WITH_MESSAGE =
+      MoreTrees.parseLinesToTree("package test;",
+          "final class TestClass {",
+          "   private void fail() {",
+          "      assert false : \"details\";",
+          "   }",
+          "}");
+  private static final CompilationUnitTree ASSERT_TREE_WITHOUT_MESSAGE =
+      MoreTrees.parseLinesToTree("package test;",
+          "final class TestClass {",
+          "   private void fail() {",
+          "      assert false;",
+          "   }",
           "}");
 
   @Test
@@ -108,7 +120,15 @@ public class TreeDifferTest {
       differingNodesFound.add(SimplifiedDiff.create(differingNode));
     }
     ASSERT.that(differingNodesExpected).iteratesAs(differingNodesFound.build());
+  }
 
+  @Test
+  public void scan_testExtraFields() {
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(ASSERT_TREE_WITH_MESSAGE, ASSERT_TREE_WITHOUT_MESSAGE);
+    ASSERT.that(diff.isEmpty()).isFalse();
+    diff = TreeDiffer.diffCompilationUnits(ASSERT_TREE_WITHOUT_MESSAGE, ASSERT_TREE_WITH_MESSAGE);
+    ASSERT.that(diff.isEmpty()).isFalse();
   }
 
   @Test

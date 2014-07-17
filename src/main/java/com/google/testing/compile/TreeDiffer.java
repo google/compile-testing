@@ -181,10 +181,12 @@ final class TreeDiffer {
     }
 
     private TreePath actualPathPlus(Tree actual) {
+      checkNotNull(actual, "Tried to push null actual tree onto path.");
       return new TreePath(actualPath, actual);
     }
 
     private TreePath expectedPathPlus(Tree expected) {
+      checkNotNull(expected, "Tried to push null expected tree onto path.");
       return new TreePath(expectedPath, expected);
     }
 
@@ -209,13 +211,14 @@ final class TreeDiffer {
     }
 
     public Void scan(@Nullable Tree expected, @Nullable Tree actual) {
-      if (expected == null) {
-        if (actual != null) {
-          diffBuilder.addExtraActualNode(actualPathPlus(actual));
-        }
-        return null;
+      if (expected == null && actual != null) {
+        diffBuilder.addExtraActualNode(actualPathPlus(actual));
+      } else if (expected != null && actual == null) {
+        diffBuilder.addExtraExpectedNode(expectedPathPlus(expected));
+      } else if (actual != null && expected != null) {
+        pushPathAndAccept(expected, actual);
       }
-      return pushPathAndAccept(expected, actual);
+      return null;
     }
 
     private Void parallelScan(Iterable<? extends Tree> expecteds,

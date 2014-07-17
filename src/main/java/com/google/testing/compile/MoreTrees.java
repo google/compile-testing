@@ -158,13 +158,7 @@ final class MoreTrees {
    */
   static final class SearchScanner extends TreePathScanner<Optional<TreePath>, Void> {
     private final Optional<String> identifier;
-
     private final Tree.Kind kindSought;
-    private static final ImmutableSet<Tree.Kind> IDENTIFIABLE_KINDS =
-        Sets.immutableEnumSet(BREAK, ANNOTATION_TYPE, CLASS, ENUM, INTERFACE, CONTINUE, IDENTIFIER,
-            LABELED_STATEMENT, BOOLEAN_LITERAL, CHAR_LITERAL, DOUBLE_LITERAL, FLOAT_LITERAL,
-            INT_LITERAL, LONG_LITERAL, NULL_LITERAL, STRING_LITERAL, METHOD, MEMBER_SELECT,
-            TYPE_PARAMETER, VARIABLE);
 
     public SearchScanner(Tree.Kind kindSought, Optional<String> identifier) {
       this.kindSought = kindSought;

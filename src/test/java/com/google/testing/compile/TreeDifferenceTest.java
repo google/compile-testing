@@ -132,6 +132,29 @@ public class TreeDifferenceTest {
         .contains(twoWayDiffContextStr());
   }
 
+  @Test
+  public void getDiffReport_emptyElementContext() {
+    CompilationUnitTree modifiersPresent =
+      MoreTrees.parseLinesToTree("package test;",
+          "final class TestClass {",
+          "   TestClass() {}",
+          "}");
+    CompilationUnitTree modifiersAbsent =
+      MoreTrees.parseLinesToTree("package test;",
+          "class TestClass {",
+          "   TestClass() {}",
+          "}");
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(modifiersPresent, modifiersAbsent);
+    ASSERT.that(
+        diff.getDiffReport(treeContext(modifiersPresent), treeContext(modifiersAbsent))
+        .isEmpty()).isFalse();
+    diff = TreeDiffer.diffCompilationUnits(modifiersAbsent, modifiersPresent);
+    ASSERT.that(
+        diff.getDiffReport(treeContext(modifiersAbsent), treeContext(modifiersPresent))
+        .isEmpty()).isFalse();
+  }
+
   private TreeDifference emptyDiff() {
     return new TreeDifference();
   }
@@ -199,5 +222,9 @@ public class TreeDifferenceTest {
 
   private TreeContext treeContext() {
     return new TreeContext(COMPILATION_UNIT, TREES);
+  }
+
+  private TreeContext treeContext(CompilationUnitTree compilationUnit) {
+    return new TreeContext(compilationUnit, TREES);
   }
 }

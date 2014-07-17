@@ -15,6 +15,8 @@
  */
 package com.google.testing.compile;
 
+import static javax.tools.Diagnostic.NOPOS;
+
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 
@@ -29,6 +31,7 @@ import javax.annotation.Nullable;
  * @author Stephen Pratt
  */
 final class TreeDifference {
+  private static final String NO_LINE = "[unavailable]";
 
   private final ImmutableList<OneWayDiff> extraExpectedNodes;
   private final ImmutableList<OneWayDiff> extraActualNodes;
@@ -120,14 +123,16 @@ final class TreeDifference {
   /** Creates a log entry about an extra node on the expected or actual tree. */
   private String createMessage(String details, TreePath nodePath, @Nullable TreeContext treeContext,
       boolean onExpected) {
-    String contextStr = (treeContext == null) ? "[context unavailable]" : String.format(
-        "Line %s %s.", treeContext.getNodeStartLine(nodePath.getLeaf()),
+    long startLine = (treeContext == null)
+        ? NOPOS : treeContext.getNodeStartLine(nodePath.getLeaf());
+    String contextStr = String.format("Line %s %s",
+        (startLine == NOPOS) ? NO_LINE : startLine,
         Breadcrumbs.describeTreePath(nodePath));
     return Joiner.on('\n').join(
         String.format("> Extra node in %s tree.", onExpected ? "expected" : "actual"),
-        String.format("\t %s", contextStr),
-        String.format("\t Node contents: <%s>.", nodeContents(nodePath.getLeaf())),
-        String.format("\t %s", details),
+        String.format("  %s", contextStr),
+        String.format("  Node contents: <%s>.", nodeContents(nodePath.getLeaf())),
+        String.format("  %s", details),
         "");
   }
 
@@ -135,18 +140,22 @@ final class TreeDifference {
   private String createMessage(String details, TreePath expectedNodePath,
       @Nullable TreeContext expectedTreeContext, TreePath actualNodePath,
       @Nullable TreeContext actualTreeContext) {
-    String expectedContextStr = (expectedTreeContext == null)
-        ? "[context unavailable]" : String.format(
-            "Line %s %s.", expectedTreeContext.getNodeStartLine(expectedNodePath.getLeaf()),
-            Breadcrumbs.describeTreePath(expectedNodePath));
-    String actualContextStr = (actualTreeContext == null) ? "[context unavailable]" : String.format(
-        "Line %s %s.", actualTreeContext.getNodeStartLine(actualNodePath.getLeaf()),
+
+    long expectedTreeStartLine = (expectedTreeContext == null)
+        ? NOPOS : expectedTreeContext.getNodeStartLine(expectedNodePath.getLeaf());
+    String expectedContextStr = String.format("Line %s %s",
+        (expectedTreeStartLine == NOPOS) ? NO_LINE : expectedTreeStartLine,
+        Breadcrumbs.describeTreePath(expectedNodePath));
+    long actualTreeStartLine = (actualTreeContext == null)
+        ? NOPOS : actualTreeContext.getNodeStartLine(actualNodePath.getLeaf());
+    String actualContextStr = String.format("Line %s %s",
+        (actualTreeStartLine == NOPOS) ? NO_LINE : actualTreeStartLine,
         Breadcrumbs.describeTreePath(actualNodePath));
     return Joiner.on('\n').join(
         "> Difference in expected tree and actual tree.",
-        String.format("\t Expected node: %s", expectedContextStr),
-        String.format("\t Actual node: %s", actualContextStr),
-        String.format("\t %s", details),
+        String.format("  Expected node: %s", expectedContextStr),
+        String.format("  Actual node: %s", actualContextStr),
+        String.format("  %s", details),
         "");
   }
 

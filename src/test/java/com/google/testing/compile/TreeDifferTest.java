@@ -20,6 +20,7 @@ import static org.truth0.Truth.ASSERT;
 import com.google.common.collect.ImmutableList;
 
 import com.sun.source.tree.*;
+import com.sun.source.util.TreePath;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -140,27 +141,29 @@ public class TreeDifferTest {
 
   @Test
   public void scan_identicalMethods() {
-    ASSERT.that(
-        TreeDiffer.diffSubtrees(EXPECTED_TREE, baseToStringTree(), ACTUAL_TREE, diffToStringTree())
+    ASSERT.that(TreeDiffer.diffSubtrees(baseToStringTree(), diffToStringTree())
         .isEmpty()).isTrue();
   }
 
   @Test
   public void scan_differentTypes() {
-    TreeDifference diff =
-        TreeDiffer.diffSubtrees(EXPECTED_TREE, EXPECTED_TREE, ACTUAL_TREE, diffToStringTree());
+    TreeDifference diff = TreeDiffer.diffSubtrees(asPath(EXPECTED_TREE), diffToStringTree());
     ASSERT.that(diff.isEmpty()).isFalse();
     for (TreeDifference.TwoWayDiff differingNode : diff.getDifferingNodes()) {
       ASSERT.that(differingNode.getDetails()).contains("Expected node kind to be");
     }
   }
 
-  private Tree baseToStringTree() {
-    return MoreTrees.findSubtree(EXPECTED_TREE, Tree.Kind.METHOD, "toString");
+  private TreePath asPath(CompilationUnitTree compilationUnit) {
+    return MoreTrees.findSubtreePath(compilationUnit, Tree.Kind.COMPILATION_UNIT);
   }
 
-  private Tree diffToStringTree() {
-    return MoreTrees.findSubtree(ACTUAL_TREE, Tree.Kind.METHOD, "toString");
+  private TreePath baseToStringTree() {
+    return MoreTrees.findSubtreePath(EXPECTED_TREE, Tree.Kind.METHOD, "toString");
+  }
+
+  private TreePath diffToStringTree() {
+    return MoreTrees.findSubtreePath(ACTUAL_TREE, Tree.Kind.METHOD, "toString");
   }
 
   private static class SimplifiedDiff {

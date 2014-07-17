@@ -175,9 +175,9 @@ public class JavaSourcesSubjectFactoryTest {
       fail();
     } catch (VerificationException expected) {
       ASSERT.that(expected.getMessage())
-          .isEqualTo(String.format("Expected an error in %s, but only found errors in %s",
-              otherFileObject.getName(), ImmutableSet.of(fileObject.getName(),
-                  "(no associated file)")));
+          .contains(String.format("Expected an error in %s", otherFileObject.getName()));
+      ASSERT.that(expected.getMessage()).contains(fileObject.getName());
+      //                  "(no associated file)")));
     }
   }
 
@@ -192,10 +192,10 @@ public class JavaSourcesSubjectFactoryTest {
           .in(fileObject).onLine(1);
       fail();
     } catch (VerificationException expected) {
+      int actualErrorLine = 18;
       ASSERT.that(expected.getMessage())
-          .isEqualTo(String.format(
-              "Expected an error on line 1 of %s, but only found errors on line(s) [18]",
-              fileObject.getName()));
+          .contains(String.format("Expected an error on line 1 of %s", fileObject.getName()));
+      ASSERT.that(expected.getMessage()).contains("" + actualErrorLine);
     }
   }
 
@@ -210,10 +210,10 @@ public class JavaSourcesSubjectFactoryTest {
           .in(fileObject).onLine(18).atColumn(1);
       fail();
     } catch (VerificationException expected) {
+      int actualErrorCol = 8;
       ASSERT.that(expected.getMessage())
-          .isEqualTo(String.format(
-              "Expected an error at 18:1 of %s, but only found errors at column(s) [8]",
-              fileObject.getName()));
+          .contains(String.format("Expected an error at 18:1 of %s", fileObject.getName()));
+      ASSERT.that(expected.getMessage()).contains("" + actualErrorCol);
     }
   }
 

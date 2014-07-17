@@ -108,19 +108,18 @@ final class TreeDiffer {
   }
 
   /**
-   * Returns a {@code TreeDifference} describing the difference between the two
-   * sub-{@code Tree}s of the {@code CompilationUnitTree}s provided.
+   * Returns a {@link TreeDifference} describing the difference between the two
+   * sub-{@code Tree}s. The trees diffed are the leaves of the {@link TreePath}s
+   * provided.
    *
-   * @throws IllegalArgumentException if the subtrees given are not members of their respective
-   *   compilation units.
+   * <p>Used for testing.
    */
-  static final TreeDifference diffSubtrees(CompilationUnitTree expectedCompilationUnit,
-      @Nullable Tree expectedSubtree, CompilationUnitTree actualCompilationUnit,
-      @Nullable Tree actualSubtree) {
+  static final TreeDifference diffSubtrees(@Nullable TreePath pathToExpected,
+      @Nullable TreePath pathToActual) {
     TreeDifference.Builder diffBuilder = new TreeDifference.Builder();
     DiffVisitor diffVisitor = new DiffVisitor(diffBuilder,
-        expectedCompilationUnit, expectedSubtree, actualCompilationUnit, actualSubtree);
-    diffVisitor.scan(expectedSubtree, actualSubtree);
+        pathToExpected, pathToActual);
+    diffVisitor.scan(pathToExpected.getLeaf(), pathToActual.getLeaf());
     return diffBuilder.build();
   }
 
@@ -142,22 +141,14 @@ final class TreeDiffer {
     }
 
     /**
-     * Constructs a DiffVisitor whose {@code TreePath}s are initialized with paths constructed
-     * from the trees provided
-     *
-     * @throws IllegalArgumentException if the subtrees given are not members of their respective
-     *   compilation units.
+     * Constructs a DiffVisitor whose {@code TreePath}s are initialized with the paths
+     * provided.
      */
     public DiffVisitor(TreeDifference.Builder diffBuilder,
-        CompilationUnitTree expectedCompilationUnit, Tree expectedSubtree,
-        CompilationUnitTree actualCompilationUnit, Tree actualSubtree) {
+        TreePath pathToExpected, TreePath pathToActual) {
       this.diffBuilder = diffBuilder;
-      expectedPath = TreePath.getPath(expectedCompilationUnit, expectedSubtree);
-      actualPath = TreePath.getPath(actualCompilationUnit, actualSubtree);
-      checkArgument(expectedPath != null, "Couldn't initialize differ because no "
-          + "path could be found connecting the node and compilation root given.");
-      checkArgument(actualPath != null, "Couldn't initialize differ because no "
-          + "path could be found connecting the node and compilation root given.");
+      expectedPath = pathToExpected;
+      actualPath = pathToActual;
     }
 
     /**

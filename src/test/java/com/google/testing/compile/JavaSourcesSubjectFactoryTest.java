@@ -40,6 +40,7 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
+import javax.tools.Diagnostic;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.JavaFileObject;
 
@@ -157,8 +158,9 @@ public class JavaSourcesSubjectFactoryTest {
       fail();
     } catch (VerificationException expected) {
       ASSERT.that(expected.getMessage())
-          .isEqualTo(String.format("Expected an error in %s, but only found errors in [%s]",
-              otherFileObject.getName(), fileObject.getName()));
+          .isEqualTo(String.format("Expected an error in %s, but only found errors in %s",
+              otherFileObject.getName(), ImmutableSet.of(fileObject.getName(),
+                  "(no associated file)")));
     }
   }
 
@@ -365,6 +367,7 @@ public class JavaSourcesSubjectFactoryTest {
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
       for (Element element : roundEnv.getRootElements()) {
         messager.printMessage(Kind.ERROR, "expected error!", element);
+        messager.printMessage(Kind.ERROR, "another expected error!");
       }
       return false;
     }

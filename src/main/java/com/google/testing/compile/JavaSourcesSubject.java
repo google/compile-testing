@@ -164,7 +164,8 @@ public final class JavaSourcesSubject
               diagnosticsWithMessage.filter(new Predicate<Diagnostic<? extends FileObject>>() {
                 @Override
                 public boolean apply(Diagnostic<? extends FileObject> input) {
-                  return file.toUri().getPath().equals(input.getSource().toUri().getPath());
+                  return ((input.getSource() != null)
+                      && file.toUri().getPath().equals(input.getSource().toUri().getPath()));
                 }
               });
           if (diagnosticsInFile.isEmpty()) {
@@ -173,9 +174,11 @@ public final class JavaSourcesSubject
                 diagnosticsWithMessage.transform(
                     new Function<Diagnostic<? extends FileObject>, String>() {
                       @Override public String apply(Diagnostic<? extends FileObject> input) {
-                        return input.getSource().getName();
+                        return (input.getSource() != null) ? input.getSource().getName()
+                            : "(no associated file)";
                       }
-                    })));
+                    })
+                .toSet()));
           }
           return new LineClause() {
             @Override public UnsuccessfulCompilationClause and() {
@@ -194,11 +197,14 @@ public final class JavaSourcesSubject
                 failureStrategy.fail(String.format(
                     "Expected an error on line %d of %s, but only found errors on line(s) %s",
                     lineNumber, file.getName(), diagnosticsInFile.transform(
-                        new Function<Diagnostic<?>, Long>() {
-                          @Override public Long apply(Diagnostic<?> input) {
-                            return input.getLineNumber();
+                        new Function<Diagnostic<?>, String>() {
+                          @Override public String apply(Diagnostic<?> input) {
+                            long errLine = input.getLineNumber();
+                            return (errLine != Diagnostic.NOPOS) ? errLine + ""
+                                : "(no associated position)";
                           }
-                        })));
+                        })
+                    .toSet()));
               }
               return new ColumnClause() {
                 @Override
@@ -220,11 +226,14 @@ public final class JavaSourcesSubject
                     failureStrategy.fail(String.format(
                         "Expected an error at %d:%d of %s, but only found errors at column(s) %s",
                         lineNumber, columnNumber, file.getName(), diagnosticsOnLine.transform(
-                            new Function<Diagnostic<?>, Long>() {
-                              @Override public Long apply(Diagnostic<?> input) {
-                                return input.getColumnNumber();
+                            new Function<Diagnostic<?>, String>() {
+                              @Override public String apply(Diagnostic<?> input) {
+                                long errCol = input.getColumnNumber();
+                                return (errCol != Diagnostic.NOPOS) ? errCol + ""
+                                    : "(no associated position)";
                               }
-                            })));
+                            })
+                        .toSet()));
                   }
                   return new ChainingClause<UnsuccessfulCompilationClause>() {
                     @Override public UnsuccessfulCompilationClause and() {

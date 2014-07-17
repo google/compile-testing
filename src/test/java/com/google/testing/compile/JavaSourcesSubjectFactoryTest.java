@@ -247,6 +247,49 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
+  public void generatesSources_failOnExtraExpected() {
+    try {
+      VERIFY.about(javaSource())
+          .that(JavaFileObjects.forResource("HelloWorld.java"))
+          .processedWith(new GeneratingProcessor())
+          .compilesWithoutError()
+          .and().generatesSources(JavaFileObjects.forSourceLines(
+              GeneratingProcessor.GENERATED_CLASS_NAME,
+              "import java.util.List;  // Extra import",
+              "final class Blah {",
+              "   String blah = \"blah\";",
+              "}"));
+      fail();
+    } catch (VerificationException expected) {
+      ASSERT.that(expected.getMessage()).contains("didn't match exactly");
+      ASSERT.that(expected.getMessage()).contains("unmatched nodes in the expected tree");
+      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
+      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_SOURCE);
+    }
+  }
+
+  @Test
+  public void generatesSources_failOnExtraActual() {
+    try {
+      VERIFY.about(javaSource())
+          .that(JavaFileObjects.forResource("HelloWorld.java"))
+          .processedWith(new GeneratingProcessor())
+          .compilesWithoutError()
+          .and().generatesSources(JavaFileObjects.forSourceLines(
+              GeneratingProcessor.GENERATED_CLASS_NAME,
+              "final class Blah {",
+              "  // missing field",
+              "}"));
+      fail();
+    } catch (VerificationException expected) {
+      ASSERT.that(expected.getMessage()).contains("didn't match exactly");
+      ASSERT.that(expected.getMessage()).contains("unmatched nodes in the actual tree");
+      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
+      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_SOURCE);
+    }
+  }
+
+  @Test
   public void generatesSources_failWithNoCandidates() {
     String failingExpectationName = "ThisIsNotTheRightFile";
     String failingExpectationSource = "abstract class ThisIsNotTheRightFile {}";

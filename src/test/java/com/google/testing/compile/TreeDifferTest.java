@@ -33,7 +33,7 @@ import org.junit.runners.JUnit4;
 @RunWith(JUnit4.class)
 public class TreeDifferTest {
   @Rule public final ExpectedException expectedExn = ExpectedException.none();
-  private static final CompilationUnitTree BASE_TREE =
+  private static final CompilationUnitTree EXPECTED_TREE =
       MoreTrees.parseLinesToTree("package test;",
           "import java.util.Set;",
           "",
@@ -52,7 +52,7 @@ public class TreeDifferTest {
           "        }",
           "    }",
           "}");
-  private static final CompilationUnitTree DIFF_TREE =
+  private static final CompilationUnitTree ACTUAL_TREE =
       MoreTrees.parseLinesToTree("package test;",
           "import java.util.List;",
           "",
@@ -79,7 +79,7 @@ public class TreeDifferTest {
 
   @Test
   public void scan_differingCompilationUnits() {
-    TreeDifference diff = TreeDiffer.diffCompilationUnits(BASE_TREE, DIFF_TREE);
+    TreeDifference diff = TreeDiffer.diffCompilationUnits(EXPECTED_TREE, ACTUAL_TREE);
     ASSERT.that(diff.isEmpty()).isFalse();
 
     ImmutableList<SimplifiedDiff> extraNodesExpected = ImmutableList.of(
@@ -95,11 +95,11 @@ public class TreeDifferTest {
             "Expected identifier to be <numbers> but was <numberz>."),
         new SimplifiedDiff(Tree.Kind.IDENTIFIER,
             "Expected identifier to be <IllegalStateException> but was <RuntimeException>."));
-    ASSERT.that(diff.getExtraNodesOnLeft().isEmpty()).isTrue();
-    ASSERT.that(diff.getExtraNodesOnRight().size()).isEqualTo(extraNodesExpected.size());
+    ASSERT.that(diff.getExtraExpectedNodes().isEmpty()).isTrue();
+    ASSERT.that(diff.getExtraActualNodes().size()).isEqualTo(extraNodesExpected.size());
 
     ImmutableList.Builder<SimplifiedDiff> extraNodesFound = new ImmutableList.Builder<>();
-    for (TreeDifference.OneWayDiff extraNode : diff.getExtraNodesOnRight()) {
+    for (TreeDifference.OneWayDiff extraNode : diff.getExtraActualNodes()) {
       extraNodesFound.add(SimplifiedDiff.create(extraNode));
     }
     ASSERT.that(extraNodesExpected).iteratesAs(extraNodesFound.build());
@@ -113,20 +113,20 @@ public class TreeDifferTest {
 
   @Test
   public void scan_sameCompilationUnit() {
-    ASSERT.that(TreeDiffer.diffCompilationUnits(BASE_TREE, BASE_TREE).isEmpty()).isTrue();
+    ASSERT.that(TreeDiffer.diffCompilationUnits(EXPECTED_TREE, EXPECTED_TREE).isEmpty()).isTrue();
   }
 
   @Test
   public void scan_identicalMethods() {
     ASSERT.that(
-        TreeDiffer.diffSubtrees(BASE_TREE, baseToStringTree(), DIFF_TREE, diffToStringTree())
+        TreeDiffer.diffSubtrees(EXPECTED_TREE, baseToStringTree(), ACTUAL_TREE, diffToStringTree())
         .isEmpty()).isTrue();
   }
 
   @Test
   public void scan_differentTypes() {
     TreeDifference diff =
-        TreeDiffer.diffSubtrees(BASE_TREE, BASE_TREE, DIFF_TREE, diffToStringTree());
+        TreeDiffer.diffSubtrees(EXPECTED_TREE, EXPECTED_TREE, ACTUAL_TREE, diffToStringTree());
     ASSERT.that(diff.isEmpty()).isFalse();
     for (TreeDifference.TwoWayDiff differingNode : diff.getDifferingNodes()) {
       ASSERT.that(differingNode.getDetails()).contains("Expected node kind to be");
@@ -134,11 +134,11 @@ public class TreeDifferTest {
   }
 
   private Tree baseToStringTree() {
-    return MoreTrees.findSubtree(BASE_TREE, Tree.Kind.METHOD, "toString");
+    return MoreTrees.findSubtree(EXPECTED_TREE, Tree.Kind.METHOD, "toString");
   }
 
   private Tree diffToStringTree() {
-    return MoreTrees.findSubtree(DIFF_TREE, Tree.Kind.METHOD, "toString");
+    return MoreTrees.findSubtree(ACTUAL_TREE, Tree.Kind.METHOD, "toString");
   }
 
   private static class SimplifiedDiff {
@@ -163,7 +163,8 @@ public class TreeDifferTest {
     }
 
     static SimplifiedDiff create(TreeDifference.TwoWayDiff other) {
-      return new SimplifiedDiff(other.getLeftNodePath().getLeaf().getKind(), other.getDetails());
+      return new SimplifiedDiff(
+          other.getExpectedNodePath().getLeaf().getKind(), other.getDetails());
     }
 
     @Override

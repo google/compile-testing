@@ -30,45 +30,47 @@ import javax.annotation.Nullable;
  */
 final class TreeDifference {
 
-  private final ImmutableList<OneWayDiff> extraNodesOnLeft;
-  private final ImmutableList<OneWayDiff> extraNodesOnRight;
+  private final ImmutableList<OneWayDiff> extraExpectedNodes;
+  private final ImmutableList<OneWayDiff> extraActualNodes;
   private final ImmutableList<TwoWayDiff> differingNodes;
 
   /** Constructs an empty {@code TreeDifference}. */
   TreeDifference() {
-    this.extraNodesOnLeft = ImmutableList.<OneWayDiff>of();
-    this.extraNodesOnRight = ImmutableList.<OneWayDiff>of();
+    this.extraExpectedNodes = ImmutableList.<OneWayDiff>of();
+    this.extraActualNodes = ImmutableList.<OneWayDiff>of();
     this.differingNodes = ImmutableList.<TwoWayDiff>of();
   }
 
   /** Constructs a {@code TreeDifference} that includes the given diffs. */
-  TreeDifference(ImmutableList<OneWayDiff> extraNodesOnLeft,
-      ImmutableList<OneWayDiff> extraNodesOnRight, ImmutableList<TwoWayDiff> differingNodes) {
-    this.extraNodesOnLeft = extraNodesOnLeft;
-    this.extraNodesOnRight = extraNodesOnRight;
+  TreeDifference(ImmutableList<OneWayDiff> extraExpectedNodes,
+      ImmutableList<OneWayDiff> extraActualNodes, ImmutableList<TwoWayDiff> differingNodes) {
+    this.extraExpectedNodes = extraExpectedNodes;
+    this.extraActualNodes = extraActualNodes;
     this.differingNodes = differingNodes;
   }
 
   /** Returns {@code true} iff there are no diffs. */
   boolean isEmpty() {
-    return extraNodesOnLeft.isEmpty() && extraNodesOnRight.isEmpty() && differingNodes.isEmpty();
+    return extraExpectedNodes.isEmpty() && extraActualNodes.isEmpty() && differingNodes.isEmpty();
   }
 
   /**
-   * Returns {@code OneWayDiff}s describing nodes on the left tree that are unmatched on the right.
+   * Returns {@code OneWayDiff}s describing nodes on the expected tree that are unmatched on the
+   * actual tree.
    */
-  ImmutableList<OneWayDiff> getExtraNodesOnLeft() {
-    return extraNodesOnLeft;
+  ImmutableList<OneWayDiff> getExtraExpectedNodes() {
+    return extraExpectedNodes;
   }
 
   /**
-   *Returns {@code OneWayDiff}s describing nodes on the right tree that are unmatched on the left.
+   * Returns {@code OneWayDiff}s describing nodes on the actual tree that are unmatched on the
+   * expected tree.
    */
-  ImmutableList<OneWayDiff> getExtraNodesOnRight() {
-    return extraNodesOnRight;
+  ImmutableList<OneWayDiff> getExtraActualNodes() {
+    return extraActualNodes;
   }
 
-  /** Returns {@code TwoWayDiff}s describing nodes that differ on the left and right trees. */
+  /** Returns {@code TwoWayDiff}s describing nodes that differ on the expected and actual trees. */
   ImmutableList<TwoWayDiff> getDifferingNodes() {
     return differingNodes;
   }
@@ -82,45 +84,47 @@ final class TreeDifference {
   }
 
   /**
-   * Returns a {@code String} reporting all diffs known to this {@code TreeDifference}. If a left
-   * or right {@code TreeContext} is provided, then it will be used to contextualize corresponding
-   * entries in the report.
+   * Returns a {@code String} reporting all diffs known to this {@code TreeDifference}. If an
+   * expected or actual {@code TreeContext} is provided, then it will be used to contextualize
+   * corresponding entries in the report.
    */
-  String getDiffReport(@Nullable TreeContext leftContext, @Nullable TreeContext rightContext) {
+  String getDiffReport(@Nullable TreeContext expectedContext, @Nullable TreeContext actualContext) {
     ImmutableList.Builder<String> reportLines = new ImmutableList.Builder<>();
-    if (!extraNodesOnLeft.isEmpty()) {
+    if (!extraExpectedNodes.isEmpty()) {
       reportLines.add(String.format("Found %s unmatched nodes in the expected tree. %n",
-              extraNodesOnLeft.size()));
-      for (OneWayDiff diff : extraNodesOnLeft) {
-        reportLines.add(createMessage(diff.getDetails(), diff.getNodePath(), leftContext, true));
+              extraExpectedNodes.size()));
+      for (OneWayDiff diff : extraExpectedNodes) {
+        reportLines.add(
+            createMessage(diff.getDetails(), diff.getNodePath(), expectedContext, true));
       }
     }
-    if (!extraNodesOnRight.isEmpty()) {
+    if (!extraActualNodes.isEmpty()) {
       reportLines.add(String.format("Found %s unmatched nodes in the actual tree. %n",
-              extraNodesOnRight.size()));
-      for (OneWayDiff diff : extraNodesOnRight) {
-        reportLines.add(createMessage(diff.getDetails(), diff.getNodePath(), rightContext, false));
+              extraActualNodes.size()));
+      for (OneWayDiff diff : extraActualNodes) {
+        reportLines.add(
+            createMessage(diff.getDetails(), diff.getNodePath(), actualContext, false));
       }
     }
     if (!differingNodes.isEmpty()) {
       reportLines.add(String.format("Found %s nodes that differed in expected and actual trees. %n",
               differingNodes.size()));
       for (TwoWayDiff diff : differingNodes) {
-        reportLines.add(createMessage(diff.getDetails(), diff.getLeftNodePath(), leftContext,
-                diff.getRightNodePath(), rightContext));
+        reportLines.add(createMessage(diff.getDetails(), diff.getExpectedNodePath(),
+                expectedContext, diff.getActualNodePath(), actualContext));
       }
     }
     return Joiner.on('\n').join(reportLines.build());
   }
 
-  /** Creates a log entry about an extra node on the left or right tree. */
+  /** Creates a log entry about an extra node on the expected or actual tree. */
   private String createMessage(String details, TreePath nodePath, @Nullable TreeContext treeContext,
-      boolean onLeft) {
+      boolean onExpected) {
     String contextStr = (treeContext == null) ? "[context unavailable]" : String.format(
         "Line %s %s.", treeContext.getNodeStartLine(nodePath.getLeaf()),
         Breadcrumbs.describeTreePath(nodePath));
     return Joiner.on('\n').join(
-        String.format("> Extra node in %s tree.", onLeft ? "expected" : "actual"),
+        String.format("> Extra node in %s tree.", onExpected ? "expected" : "actual"),
         String.format("\t %s", contextStr),
         String.format("\t Node contents: <%s>.", nodeContents(nodePath.getLeaf())),
         String.format("\t %s", details),
@@ -128,19 +132,20 @@ final class TreeDifference {
   }
 
   /** Creates a log entry about two differing nodes. */
-  private String createMessage(String details, TreePath leftNodePath,
-      @Nullable TreeContext leftTreeContext, TreePath rightNodePath,
-      @Nullable TreeContext rightTreeContext) {
-    String leftContextStr = (leftTreeContext == null) ? "[context unavailable]" : String.format(
-        "Line %s %s.", leftTreeContext.getNodeStartLine(leftNodePath.getLeaf()),
-        Breadcrumbs.describeTreePath(leftNodePath));
-    String rightContextStr = (rightTreeContext == null) ? "[context unavailable]" : String.format(
-        "Line %s %s.", rightTreeContext.getNodeStartLine(rightNodePath.getLeaf()),
-        Breadcrumbs.describeTreePath(rightNodePath));
+  private String createMessage(String details, TreePath expectedNodePath,
+      @Nullable TreeContext expectedTreeContext, TreePath actualNodePath,
+      @Nullable TreeContext actualTreeContext) {
+    String expectedContextStr = (expectedTreeContext == null)
+        ? "[context unavailable]" : String.format(
+            "Line %s %s.", expectedTreeContext.getNodeStartLine(expectedNodePath.getLeaf()),
+            Breadcrumbs.describeTreePath(expectedNodePath));
+    String actualContextStr = (actualTreeContext == null) ? "[context unavailable]" : String.format(
+        "Line %s %s.", actualTreeContext.getNodeStartLine(actualNodePath.getLeaf()),
+        Breadcrumbs.describeTreePath(actualNodePath));
     return Joiner.on('\n').join(
         "> Difference in expected tree and actual tree.",
-        String.format("\t Expected node: %s", leftContextStr),
-        String.format("\t Actual node: %s", rightContextStr),
+        String.format("\t Expected node: %s", expectedContextStr),
+        String.format("\t Actual node: %s", actualContextStr),
         String.format("\t %s", details),
         "");
   }
@@ -155,62 +160,64 @@ final class TreeDifference {
    */
   static final class Builder {
 
-    private final ImmutableList.Builder<OneWayDiff> extraNodesOnLeftBuilder;
-    private final ImmutableList.Builder<OneWayDiff> extraNodesOnRightBuilder;
+    private final ImmutableList.Builder<OneWayDiff> extraExpectedNodesBuilder;
+    private final ImmutableList.Builder<OneWayDiff> extraActualNodesBuilder;
     private final ImmutableList.Builder<TwoWayDiff> differingNodesBuilder;
 
     Builder() {
-      this.extraNodesOnLeftBuilder = new ImmutableList.Builder<>();
-      this.extraNodesOnRightBuilder = new ImmutableList.Builder<>();
+      this.extraExpectedNodesBuilder = new ImmutableList.Builder<>();
+      this.extraActualNodesBuilder = new ImmutableList.Builder<>();
       this.differingNodesBuilder = new ImmutableList.Builder<>();
     }
 
-    /** Logs an extra node on the left tree in the {@code TreeDifference} being built. */
-    Builder addExtraNodeOnLeft(TreePath extraNode) {
-      return addExtraNodeOnLeft(extraNode, "");
+    /** Logs an extra node on the expected tree in the {@code TreeDifference} being built. */
+    Builder addExtraExpectedNode(TreePath extraNode) {
+      return addExtraExpectedNode(extraNode, "");
     }
 
-    /** Logs an extra node on the left tree in the {@code TreeDifference} being built. */
-    Builder addExtraNodeOnLeft(TreePath extraNode, String message) {
-      extraNodesOnLeftBuilder.add(new OneWayDiff(extraNode, message));
+    /** Logs an extra node on the expected tree in the {@code TreeDifference} being built. */
+    Builder addExtraExpectedNode(TreePath extraNode, String message) {
+      extraExpectedNodesBuilder.add(new OneWayDiff(extraNode, message));
       return this;
     }
 
-    /** Logs an extra node on the right tree in the {@code TreeDifference} being built. */
-    Builder addExtraNodeOnRight(TreePath extraNode, String message) {
-      extraNodesOnRightBuilder.add(new OneWayDiff(extraNode, message));
+    /** Logs an extra node on the actual tree in the {@code TreeDifference} being built. */
+    Builder addExtraActualNode(TreePath extraNode, String message) {
+      extraActualNodesBuilder.add(new OneWayDiff(extraNode, message));
       return this;
     }
 
-    /** Logs an extra node on the right tree in the {@code TreeDifference} being built. */
-    Builder addExtraNodeOnRight(TreePath extraNode) {
-      return addExtraNodeOnRight(extraNode, "");
+    /** Logs an extra node on the actual tree in the {@code TreeDifference} being built. */
+    Builder addExtraActualNode(TreePath extraNode) {
+      return addExtraActualNode(extraNode, "");
     }
 
     /**
-     * Logs a discrepancy between a left and right node in the {@code TreeDifference} being built.
+     * Logs a discrepancy between an expected and actual node in the {@code TreeDifference} being
+     * built.
      */
-    Builder addDifferingNodes(TreePath leftNode, TreePath rightNode) {
-      return addDifferingNodes(leftNode, rightNode, "");
+    Builder addDifferingNodes(TreePath expectedNode, TreePath actualNode) {
+      return addDifferingNodes(expectedNode, actualNode, "");
     }
 
     /**
-     * Logs a discrepancy between a left and right node in the {@code TreeDifference} being built.
+     * Logs a discrepancy between an expected and actual node in the {@code TreeDifference} being
+     * built.
      */
-    Builder addDifferingNodes(TreePath leftNode, TreePath rightNode, String message) {
-      differingNodesBuilder.add(new TwoWayDiff(leftNode, rightNode, message));
+    Builder addDifferingNodes(TreePath expectedNode, TreePath actualNode, String message) {
+      differingNodesBuilder.add(new TwoWayDiff(expectedNode, actualNode, message));
       return this;
     }
 
     /** Builds and returns the {@code TreeDifference}. */
     TreeDifference build() {
-      return new TreeDifference(extraNodesOnLeftBuilder.build(),
-          extraNodesOnRightBuilder.build(), differingNodesBuilder.build());
+      return new TreeDifference(extraExpectedNodesBuilder.build(),
+          extraActualNodesBuilder.build(), differingNodesBuilder.build());
     }
   }
 
   /**
-   * A class describing an extra node on either the left or right tree.
+   * A class describing an extra node on either the expected or actual tree.
    */
   static final class OneWayDiff {
     private final TreePath nodePath;
@@ -232,26 +239,26 @@ final class TreeDifference {
   }
 
   /**
-   * A class describing a difference between a node on the left tree and a corresponding node on
-   * the right.
+   * A class describing a difference between a node on the expected tree and a corresponding node on
+   * the actual tree.
    */
   static final class TwoWayDiff {
-    private final TreePath leftNodePath;
-    private final TreePath rightNodePath;
+    private final TreePath expectedNodePath;
+    private final TreePath actualNodePath;
     private String details;
 
-    TwoWayDiff(TreePath leftNodePath, TreePath rightNodePath, String details) {
-      this.leftNodePath = leftNodePath;
-      this.rightNodePath = rightNodePath;
+    TwoWayDiff(TreePath expectedNodePath, TreePath actualNodePath, String details) {
+      this.expectedNodePath = expectedNodePath;
+      this.actualNodePath = actualNodePath;
       this.details = details;
     }
 
-    TreePath getLeftNodePath() {
-      return leftNodePath;
+    TreePath getExpectedNodePath() {
+      return expectedNodePath;
     }
 
-    TreePath getRightNodePath() {
-      return rightNodePath;
+    TreePath getActualNodePath() {
+      return actualNodePath;
     }
 
     /** Returns a string that provides contextual details about the diff. */

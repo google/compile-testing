@@ -308,11 +308,11 @@ public final class JavaSourcesSubject
               actualTreeTypes, actualTrees);
         } else {
           CompilationUnitTree actualTree = matchedTreePair.getValue().get();
-          TreeDifference treeDifference = TreeDiffer.diffCompilationUnits(actualTree, expectedTree);
+          TreeDifference treeDifference = TreeDiffer.diffCompilationUnits(expectedTree, actualTree);
           if (!treeDifference.isEmpty()) {
             String diffReport = treeDifference.getDiffReport(
-                new TreeContext(actualTree, actualResult.trees()),
-                new TreeContext(expectedTree, expectedResult.trees()));
+                new TreeContext(expectedTree, expectedResult.trees()),
+                new TreeContext(actualTree, actualResult.trees()));
             failWithCandidate(expectedTree.getSourceFile(), actualTree.getSourceFile(), diffReport);
           }
         }

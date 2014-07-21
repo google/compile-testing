@@ -15,7 +15,7 @@
  */
 package com.google.testing.compile;
 
-import static org.truth0.Truth.ASSERT;
+import static com.google.common.truth.Truth.ASSERT;
 
 import com.sun.source.tree.CompilationUnitTree;
 

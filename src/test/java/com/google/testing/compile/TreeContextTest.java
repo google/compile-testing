@@ -15,11 +15,12 @@
  */
 package com.google.testing.compile;
 
-import static org.truth0.Truth.ASSERT;
+import static com.google.common.truth.Truth.ASSERT;
 
 import com.google.common.collect.ImmutableList;
 
-import com.sun.source.tree.*;
+import com.sun.source.tree.CompilationUnitTree;
+import com.sun.source.tree.Tree;
 import com.sun.source.util.Trees;
 
 import org.junit.Rule;

@@ -15,18 +15,18 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.truth.Truth.ASSERT;
 import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
 import static org.junit.Assert.fail;
-import static org.truth0.Truth.ASSERT;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Resources;
+import com.google.common.truth.FailureStrategy;
+import com.google.common.truth.TestVerb;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import com.google.common.truth.FailureStrategy;
-import com.google.common.truth.TestVerb;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -40,7 +40,6 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
-import javax.tools.Diagnostic;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.JavaFileObject;
 

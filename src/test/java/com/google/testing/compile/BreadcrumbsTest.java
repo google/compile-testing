@@ -15,9 +15,16 @@
  */
 package com.google.testing.compile;
 
-import static org.truth0.Truth.ASSERT;
+import static com.google.common.truth.Truth.ASSERT;
 
-import com.sun.source.tree.*;
+import com.google.testing.compile.Breadcrumbs.BreadcrumbVisitor;
+
+import com.sun.source.tree.ClassTree;
+import com.sun.source.tree.CompilationUnitTree;
+import com.sun.source.tree.LiteralTree;
+import com.sun.source.tree.MethodTree;
+import com.sun.source.tree.Tree;
+import com.sun.source.tree.VariableTree;
 import com.sun.source.util.TreePath;
 
 import org.junit.Rule;

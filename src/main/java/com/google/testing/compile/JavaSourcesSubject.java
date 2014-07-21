@@ -31,12 +31,11 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
+import com.google.common.truth.FailureStrategy;
+import com.google.common.truth.Subject;
 import com.google.testing.compile.Compilation.Result;
 
 import com.sun.source.tree.CompilationUnitTree;
-
-import org.truth0.FailureStrategy;
-import org.truth0.subjects.Subject;
 
 import java.io.IOException;
 import java.util.Arrays;

@@ -17,8 +17,13 @@ package com.google.testing.compile;
 
 import static org.truth0.Truth.ASSERT;
 
-import com.sun.source.tree.*;
+import com.sun.source.tree.AnnotationTree;
+import com.sun.source.tree.ExpressionTree;
+import com.sun.source.tree.LiteralTree;
+import com.sun.source.tree.NewArrayTree;
+import com.sun.source.tree.Tree;
 import com.sun.source.tree.Tree.Kind;
+import com.sun.source.tree.TreeVisitor;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -93,12 +98,12 @@ public class EqualityScannerTest {
       return rdTreeVisitor.visitNewArray(this, d);
     }
 
-    // JDK8 Compatibility:
-
+    @SuppressWarnings("unused") // JDK8 Compatibility.
     public List<? extends AnnotationTree> getAnnotations() {
       return Collections.emptyList();
     }
 
+    @SuppressWarnings("unused") // JDK8 Compatibility.
     public List<? extends List<? extends AnnotationTree>> getDimAnnotations()  {
       return Collections.emptyList();
     }

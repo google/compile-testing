@@ -25,8 +25,8 @@ import com.google.common.io.Resources;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.truth0.FailureStrategy;
-import org.truth0.TestVerb;
+import com.google.common.truth.FailureStrategy;
+import com.google.common.truth.TestVerb;
 
 import java.io.IOException;
 import java.io.Writer;

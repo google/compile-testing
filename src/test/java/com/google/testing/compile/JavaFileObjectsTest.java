@@ -15,20 +15,20 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.truth.Truth.ASSERT;
 import static javax.tools.JavaFileObject.Kind.CLASS;
-import static org.truth0.Truth.ASSERT;
+
+import com.google.common.io.Resources;
+
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 
 import javax.tools.JavaFileObject;
-
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-
-import com.google.common.io.Resources;
 
 /**
  *  Tests {@link JavaFileObjects}.

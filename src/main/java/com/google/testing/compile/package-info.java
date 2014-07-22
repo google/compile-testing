@@ -15,9 +15,10 @@
  */
 
 /**
- * This package contains utilities that facilitate testing {@code javac} compilation with
- * {@link org.truth0.Truth}. Particularly, this enables quick, small tests of
- * {@linkplain javax.annotation.processing.Processor annotation processors} without forking
+ * This package contains two {@link org.truth0.Truth} subjects
+ * ({@link JavaSourceSubjectFactory#javaSource} and {@link JavaSourcesSubjectFactory#javaSources})
+ * that facilitate testing {@code javac} compilation. Particularly, this enables quick, small tests
+ * of {@linkplain javax.annotation.processing.Processor annotation processors} without forking
  * {@code javac} or creating separate integration test projects.
  *
  * <p>The simplest invocation looks like this: <pre>   {@code
@@ -27,9 +28,9 @@
  *       .compilesWithoutError();
  * }</pre>
  *
- * <p>The above code snippet tests that the provide source compiles without error. There is not much
- * utility in testing compilation for simple sources, but the API also allows for the addition of
- * {@linkplain javax.annotation.processing.Processor annotation processors}. Here is the same
+ * <p>The above code snippet tests that the provided source compiles without error. There is not
+ * much utility in testing compilation for simple sources, but the API also allows for the addition
+ * of {@linkplain javax.annotation.processing.Processor annotation processors}. Here is the same
  * example with a processor: <pre>   {@code
  *
  *   ASSERT.about(javaSource())
@@ -47,16 +48,16 @@
  * generates a source file equivalent to a golden file: <pre>   {@code
  *
  *   ASSERT.about(javaSource())
- *       .that(JavaFileObjects.forResouce("HelloWorld.java"))
+ *       .that(JavaFileObjects.forResource("HelloWorld.java"))
  *       .processedWith(new MyAnnotationProcessor())
  *       .compilesWithoutError()
- *       .and().generatesSources(JavaFileObjects.forResouce("GeneratedHelloWorld.java"));
+ *       .and().generatesSources(JavaFileObjects.forResource("GeneratedHelloWorld.java"));
  * }</pre>
  *
  * <p>Finally, negative tests are possible as well.  The following tests that a processor adds an
  * error to a source file: <pre>   {@code
  *
- *   JavaFileObject fileObject = JavaFileObjects.forResouce("HelloWorld.java");
+ *   JavaFileObject fileObject = JavaFileObjects.forResource("HelloWorld.java");
  *   ASSERT.about(javaSource())
  *       .that(fileObject)
  *       .processedWith(new NoHelloWorld())

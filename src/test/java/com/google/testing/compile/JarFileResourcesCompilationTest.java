@@ -15,15 +15,10 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.truth.Truth.ASSERT;
 import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
-import static org.truth0.Truth.ASSERT;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.net.URL;
-import java.util.jar.JarEntry;
-import java.util.jar.JarOutputStream;
+import com.google.common.io.Resources;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -32,7 +27,12 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
-import com.google.common.io.Resources;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.URL;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
 
 /**
  * An integration test to ensure that testing works when resources are in jar files.

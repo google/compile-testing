@@ -15,10 +15,10 @@
  */
 package com.google.testing.compile;
 
-import javax.tools.JavaFileObject;
+import com.google.common.truth.FailureStrategy;
+import com.google.common.truth.SubjectFactory;
 
-import org.truth0.FailureStrategy;
-import org.truth0.subjects.SubjectFactory;
+import javax.tools.JavaFileObject;
 
 /**
  * A <a href="https://github.com/truth0/truth">Truth</a> {@link SubjectFactory} for creating

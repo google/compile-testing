@@ -15,13 +15,8 @@
  */
 package com.google.testing.compile;
 
-import static com.sun.source.tree.Tree.Kind.CLASS;
-import static com.sun.source.tree.Tree.Kind.COMPILATION_UNIT;
-import static com.sun.source.tree.Tree.Kind.EXPRESSION_STATEMENT;
-import static com.sun.source.tree.Tree.Kind.IDENTIFIER;
-import static com.sun.source.tree.Tree.Kind.MEMBER_SELECT;
-
 import com.google.common.base.Function;
+import com.google.common.base.Objects;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
@@ -39,10 +34,12 @@ import java.util.Set;
 /**
  * Provides information about the set of types that are declared by a
  * {@code CompilationUnitTree}.
+ *
+ * @author Stephen Pratt
  */
-final class TypeScanner {
-  private static final NameVisitor nameVisitor = new NameVisitor();
-  private TypeScanner() {}
+final class TypeEnumerator {
+  private static final TypeScanner nameVisitor = new TypeScanner();
+  private TypeEnumerator() {}
 
   /**
    * Returns a set of strings containing the fully qualified names of all
@@ -53,18 +50,13 @@ final class TypeScanner {
   }
 
   /**
-   * A {@link SimpleTreeVisitor} for determining type declarations
+   * A {@link TreeScanner} for determining type declarations
    */
   @SuppressWarnings("restriction") // Sun APIs usage intended
-  static final class NameVisitor extends TreeScanner<Set<String>, Void> {
-
-    private static final Set<Tree.Kind> RELEVANT_KINDS = Sets.immutableEnumSet(
-        CLASS, COMPILATION_UNIT, EXPRESSION_STATEMENT, IDENTIFIER, MEMBER_SELECT);
-
+  static final class TypeScanner extends TreeScanner<Set<String>, Void> {
     @Override
     public Set<String> scan(Tree node, Void v) {
-      return (node != null) && RELEVANT_KINDS.contains(node.getKind()) ?
-          node.accept(this, v) : ImmutableSet.<String>of();
+      return Objects.firstNonNull(super.scan(node, v), ImmutableSet.<String>of());
     }
 
     @Override

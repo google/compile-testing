@@ -15,18 +15,18 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.truth.Truth.ASSERT;
 import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
 import static org.junit.Assert.fail;
-import static org.truth0.Truth.ASSERT;
 
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Resources;
+import com.google.common.truth.FailureStrategy;
+import com.google.common.truth.TestVerb;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-import org.truth0.FailureStrategy;
-import org.truth0.TestVerb;
 
 import java.io.IOException;
 import java.io.Writer;
@@ -76,6 +76,21 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
+  public void compilesWithoutError_failureReportsFiles() {
+    try {
+      VERIFY.about(javaSource())
+          .that(JavaFileObjects.forResource(Resources.getResource("HelloWorld.java")))
+          .processedWith(new FailingGeneratingProcessor())
+          .compilesWithoutError();
+      fail();
+    } catch (VerificationException expected) {
+      ASSERT.that(expected.getMessage()).contains("Compilation produced the following errors:\n");
+      ASSERT.that(expected.getMessage()).contains(FailingGeneratingProcessor.GENERATED_CLASS_NAME);
+      ASSERT.that(expected.getMessage()).contains(FailingGeneratingProcessor.GENERATED_SOURCE);
+    }
+  }
+
+  @Test
   public void compilesWithoutError_throws() {
     try {
       VERIFY.about(javaSource())
@@ -84,6 +99,7 @@ public class JavaSourcesSubjectFactoryTest {
       fail();
     } catch (VerificationException expected) {
       ASSERT.that(expected.getMessage()).startsWith("Compilation produced the following errors:\n");
+      ASSERT.that(expected.getMessage()).contains("No files were generated.");
     }
   }
 
@@ -123,8 +139,9 @@ public class JavaSourcesSubjectFactoryTest {
           .failsToCompile();
       fail();
     } catch (VerificationException expected) {
-      ASSERT.that(expected.getMessage()).isEqualTo(
+      ASSERT.that(expected.getMessage()).startsWith(
           "Compilation was expected to fail, but contained no errors");
+      ASSERT.that(expected.getMessage()).contains("No files were generated.");
     }
   }
 
@@ -157,8 +174,9 @@ public class JavaSourcesSubjectFactoryTest {
       fail();
     } catch (VerificationException expected) {
       ASSERT.that(expected.getMessage())
-          .isEqualTo(String.format("Expected an error in %s, but only found errors in [%s]",
-              otherFileObject.getName(), fileObject.getName()));
+          .contains(String.format("Expected an error in %s", otherFileObject.getName()));
+      ASSERT.that(expected.getMessage()).contains(fileObject.getName());
+      //                  "(no associated file)")));
     }
   }
 
@@ -173,10 +191,10 @@ public class JavaSourcesSubjectFactoryTest {
           .in(fileObject).onLine(1);
       fail();
     } catch (VerificationException expected) {
+      int actualErrorLine = 18;
       ASSERT.that(expected.getMessage())
-          .isEqualTo(String.format(
-              "Expected an error on line 1 of %s, but only found errors on line(s) [18]",
-              fileObject.getName()));
+          .contains(String.format("Expected an error on line 1 of %s", fileObject.getName()));
+      ASSERT.that(expected.getMessage()).contains("" + actualErrorLine);
     }
   }
 
@@ -191,10 +209,10 @@ public class JavaSourcesSubjectFactoryTest {
           .in(fileObject).onLine(18).atColumn(1);
       fail();
     } catch (VerificationException expected) {
+      int actualErrorCol = 8;
       ASSERT.that(expected.getMessage())
-          .isEqualTo(String.format(
-              "Expected an error at 18:1 of %s, but only found errors at column(s) [8]",
-              fileObject.getName()));
+          .contains(String.format("Expected an error at 18:1 of %s", fileObject.getName()));
+      ASSERT.that(expected.getMessage()).contains("" + actualErrorCol);
     }
   }
 
@@ -245,6 +263,49 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
+  public void generatesSources_failOnExtraExpected() {
+    try {
+      VERIFY.about(javaSource())
+          .that(JavaFileObjects.forResource("HelloWorld.java"))
+          .processedWith(new GeneratingProcessor())
+          .compilesWithoutError()
+          .and().generatesSources(JavaFileObjects.forSourceLines(
+              GeneratingProcessor.GENERATED_CLASS_NAME,
+              "import java.util.List;  // Extra import",
+              "final class Blah {",
+              "   String blah = \"blah\";",
+              "}"));
+      fail();
+    } catch (VerificationException expected) {
+      ASSERT.that(expected.getMessage()).contains("didn't match exactly");
+      ASSERT.that(expected.getMessage()).contains("unmatched nodes in the expected tree");
+      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
+      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_SOURCE);
+    }
+  }
+
+  @Test
+  public void generatesSources_failOnExtraActual() {
+    try {
+      VERIFY.about(javaSource())
+          .that(JavaFileObjects.forResource("HelloWorld.java"))
+          .processedWith(new GeneratingProcessor())
+          .compilesWithoutError()
+          .and().generatesSources(JavaFileObjects.forSourceLines(
+              GeneratingProcessor.GENERATED_CLASS_NAME,
+              "final class Blah {",
+              "  // missing field",
+              "}"));
+      fail();
+    } catch (VerificationException expected) {
+      ASSERT.that(expected.getMessage()).contains("didn't match exactly");
+      ASSERT.that(expected.getMessage()).contains("unmatched nodes in the actual tree");
+      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
+      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_SOURCE);
+    }
+  }
+
+  @Test
   public void generatesSources_failWithNoCandidates() {
     String failingExpectationName = "ThisIsNotTheRightFile";
     String failingExpectationSource = "abstract class ThisIsNotTheRightFile {}";
@@ -257,7 +318,7 @@ public class JavaSourcesSubjectFactoryTest {
               failingExpectationName,
               failingExpectationSource));
     } catch (VerificationException expected) {
-      ASSERT.that(expected.getMessage()).contains("None of the sources generated");
+      ASSERT.that(expected.getMessage()).contains("top-level types that were not generated");
       ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
       ASSERT.that(expected.getMessage()).contains(failingExpectationName);
     }
@@ -324,6 +385,37 @@ public class JavaSourcesSubjectFactoryTest {
     }
   }
 
+  private static final class FailingGeneratingProcessor extends AbstractProcessor {
+    static final String GENERATED_CLASS_NAME = GeneratingProcessor.GENERATED_CLASS_NAME;
+    static final String GENERATED_SOURCE = GeneratingProcessor.GENERATED_SOURCE;
+    static final String ERROR_MESSAGE = "expected error!";
+    final GeneratingProcessor delegate = new GeneratingProcessor();
+    Messager messager;
+
+    @Override
+    public synchronized void init(ProcessingEnvironment processingEnv) {
+      delegate.init(processingEnv);
+      this.messager = processingEnv.getMessager();
+    }
+
+    @Override
+    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+      delegate.process(annotations, roundEnv);
+      messager.printMessage(Kind.ERROR, ERROR_MESSAGE);
+      return false;
+    }
+
+    @Override
+    public Set<String> getSupportedAnnotationTypes() {
+      return delegate.getSupportedAnnotationTypes();
+    }
+
+    @Override
+    public SourceVersion getSupportedSourceVersion() {
+      return delegate.getSupportedSourceVersion();
+    }
+  }
+
   private static final class NoOpProcessor extends AbstractProcessor {
     boolean invoked = false;
 
@@ -365,6 +457,7 @@ public class JavaSourcesSubjectFactoryTest {
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
       for (Element element : roundEnv.getRootElements()) {
         messager.printMessage(Kind.ERROR, "expected error!", element);
+        messager.printMessage(Kind.ERROR, "another expected error!");
       }
       return false;
     }

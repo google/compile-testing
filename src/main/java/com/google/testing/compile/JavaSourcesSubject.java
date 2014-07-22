@@ -16,6 +16,7 @@
 package com.google.testing.compile;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static javax.tools.JavaFileObject.Kind.CLASS;
 
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
@@ -28,13 +29,13 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
+import com.google.common.truth.FailureStrategy;
+import com.google.common.truth.Subject;
 import com.google.testing.compile.Compilation.Result;
 
 import com.sun.source.tree.CompilationUnitTree;
-
-import org.truth0.FailureStrategy;
-import org.truth0.subjects.Subject;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -92,6 +93,45 @@ public final class JavaSourcesSubject
       this.processors = ImmutableSet.copyOf(processors);
     }
 
+    /** Returns a {@code String} report describing the contents of a given generated file. */
+    private String reportFileGenerated(JavaFileObject generatedFile) {
+      try {
+        StringBuilder entry =
+            new StringBuilder().append(String.format("\n%s:\n", generatedFile.toUri().getPath()));
+        if (generatedFile.getKind().equals(CLASS)) {
+          entry.append(String.format("[generated class file (%s bytes)]",
+                  ByteSource.wrap(ByteStreams.toByteArray(generatedFile.openInputStream()))
+                  .size()));
+        } else {
+          entry.append(generatedFile.getCharContent(true));
+        }
+        return entry.append("\n").toString();
+      } catch (IOException e) {
+        throw new IllegalStateException("Couldn't read from JavaFileObject when it was "
+            + "already in memory.", e);
+      }
+    }
+
+    /**
+     * Returns a {@code String} report describing what files were generated in the given
+     * {@link Compilation.Result}
+     */
+    private String reportFilesGenerated(Compilation.Result result) {
+      FluentIterable<JavaFileObject> generatedFiles =
+          FluentIterable.from(result.generatedSources());
+      StringBuilder message = new StringBuilder("\n\n");
+      if (generatedFiles.isEmpty()) {
+        return message.append("(No files were generated.)\n").toString();
+      } else {
+        message.append("Generated Files\n")
+            .append("===============\n");
+        for (JavaFileObject generatedFile : generatedFiles) {
+          message.append(reportFileGenerated(generatedFile));
+        }
+        return message.toString();
+      }
+    }
+
     @Override
     public SuccessfulCompilationClause compilesWithoutError() {
       Compilation.Result result = Compilation.compile(processors, getSubject());
@@ -99,7 +139,12 @@ public final class JavaSourcesSubject
         ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
             result.diagnosticsByKind().get(Kind.ERROR);
         StringBuilder message = new StringBuilder("Compilation produced the following errors:\n");
-        Joiner.on('\n').appendTo(message, errors);
+        for (Diagnostic<? extends JavaFileObject> error : errors) {
+          message.append('\n');
+          message.append(error);
+        }
+        message.append('\n');
+        message.append(reportFilesGenerated(result));
         failureStrategy.fail(message.toString());
       }
       return new SuccessfulCompilationBuilder(result);
@@ -109,7 +154,11 @@ public final class JavaSourcesSubject
     public UnsuccessfulCompilationClause failsToCompile() {
       Result result = Compilation.compile(processors, getSubject());
       if (result.successful()) {
-        failureStrategy.fail("Compilation was expected to fail, but contained no errors");
+        String message = Joiner.on('\n').join(
+            "Compilation was expected to fail, but contained no errors.",
+            "",
+            reportFilesGenerated(result));
+        failureStrategy.fail(message);
       }
       return new UnsuccessfulCompilationBuilder(result);
     }
@@ -164,7 +213,8 @@ public final class JavaSourcesSubject
               diagnosticsWithMessage.filter(new Predicate<Diagnostic<? extends FileObject>>() {
                 @Override
                 public boolean apply(Diagnostic<? extends FileObject> input) {
-                  return file.toUri().getPath().equals(input.getSource().toUri().getPath());
+                  return ((input.getSource() != null)
+                      && file.toUri().getPath().equals(input.getSource().toUri().getPath()));
                 }
               });
           if (diagnosticsInFile.isEmpty()) {
@@ -173,9 +223,11 @@ public final class JavaSourcesSubject
                 diagnosticsWithMessage.transform(
                     new Function<Diagnostic<? extends FileObject>, String>() {
                       @Override public String apply(Diagnostic<? extends FileObject> input) {
-                        return input.getSource().getName();
+                        return (input.getSource() != null) ? input.getSource().getName()
+                            : "(no associated file)";
                       }
-                    })));
+                    })
+                .toSet()));
           }
           return new LineClause() {
             @Override public UnsuccessfulCompilationClause and() {
@@ -194,11 +246,14 @@ public final class JavaSourcesSubject
                 failureStrategy.fail(String.format(
                     "Expected an error on line %d of %s, but only found errors on line(s) %s",
                     lineNumber, file.getName(), diagnosticsInFile.transform(
-                        new Function<Diagnostic<?>, Long>() {
-                          @Override public Long apply(Diagnostic<?> input) {
-                            return input.getLineNumber();
+                        new Function<Diagnostic<?>, String>() {
+                          @Override public String apply(Diagnostic<?> input) {
+                            long errLine = input.getLineNumber();
+                            return (errLine != Diagnostic.NOPOS) ? errLine + ""
+                                : "(no associated position)";
                           }
-                        })));
+                        })
+                    .toSet()));
               }
               return new ColumnClause() {
                 @Override
@@ -220,11 +275,14 @@ public final class JavaSourcesSubject
                     failureStrategy.fail(String.format(
                         "Expected an error at %d:%d of %s, but only found errors at column(s) %s",
                         lineNumber, columnNumber, file.getName(), diagnosticsOnLine.transform(
-                            new Function<Diagnostic<?>, Long>() {
-                              @Override public Long apply(Diagnostic<?> input) {
-                                return input.getColumnNumber();
+                            new Function<Diagnostic<?>, String>() {
+                              @Override public String apply(Diagnostic<?> input) {
+                                long errCol = input.getColumnNumber();
+                                return (errCol != Diagnostic.NOPOS) ? errCol + ""
+                                    : "(no associated position)";
                               }
-                            })));
+                            })
+                        .toSet()));
                   }
                   return new ChainingClause<UnsuccessfulCompilationClause>() {
                     @Override public UnsuccessfulCompilationClause and() {
@@ -258,16 +316,17 @@ public final class JavaSourcesSubject
     public SuccessfulCompilationClause generatesSources(JavaFileObject first,
         JavaFileObject... rest) {
 
+      final Compilation.ParseResult actualResult = Compilation.parse(result.generatedSources());
+      final Compilation.ParseResult expectedResult = Compilation.parse(Lists.asList(first, rest));
       final FluentIterable<? extends CompilationUnitTree> actualTrees = FluentIterable.from(
-          Compilation.parse(result.generatedSources()));
+          actualResult.compilationUnits());
       final FluentIterable<? extends CompilationUnitTree> expectedTrees = FluentIterable.from(
-          Compilation.parse(Lists.asList(first, rest)));
-      final EqualityScanner scanner = new EqualityScanner();
+          expectedResult.compilationUnits());
 
       Function<? super CompilationUnitTree, ImmutableSet<String>> getTypesFunction =
           new Function<CompilationUnitTree, ImmutableSet<String>>() {
             @Override public ImmutableSet<String> apply(CompilationUnitTree compilationUnit) {
-              return TypeScanner.getTopLevelTypes(compilationUnit);
+              return TypeEnumerator.getTopLevelTypes(compilationUnit);
             }
       };
 
@@ -293,42 +352,83 @@ public final class JavaSourcesSubject
       for (Map.Entry<? extends CompilationUnitTree, Optional<? extends CompilationUnitTree>>
                matchedTreePair : matchedTrees.entrySet()) {
         final CompilationUnitTree expectedTree = matchedTreePair.getKey();
-        JavaFileObject expectedSource = expectedTree.getSourceFile();
         if (!matchedTreePair.getValue().isPresent()) {
-          failureStrategy.fail(String.format("None of the sources generated declared the same "
-                  + "top-level types as the expected source at %s (Types: %s).\n "
-                  + "Generated files at:\n%s",
-                  expectedSource.getName(), expectedTreeTypes.get(expectedTree),
-                  Joiner.on('\n').join(
-                      actualTrees.transform(new Function<CompilationUnitTree, String>() {
-                        @Override public String apply(CompilationUnitTree generated) {
-                          return String.format("%s (Types: %s)",
-                              generated.getSourceFile().getName(),
-                              actualTreeTypes.get(generated));
-                        }
-                      })
-                      .toList())));
-        }
-
-        CompilationUnitTree actualTree = matchedTreePair.getValue().get();
-        JavaFileObject actualSource = actualTree.getSourceFile();
-
-        if (!scanner.visitCompilationUnit(expectedTree, actualTree)) {
-          try {
-            String expectedContent = expectedSource.getCharContent(false).toString();
-            String actualContent = actualSource.getCharContent(false).toString();
-            failureStrategy.fail(String.format("The source generated at %s declared the same "
-                    + "top-level types as the expected source at %s, but didn't match exactly. "
-                    + "Actual:\n\n%s\n\nExpected:\n\n%s", actualSource.getName(),
-                    expectedSource.getName(), actualContent, expectedContent));
-          } catch (IOException e) {
-            throw new IllegalStateException("Couldn't read from JavaFileObject when it was already "
-                + "in memory.", e);
+          failNoCandidates(expectedTreeTypes.get(expectedTree), expectedTree,
+              actualTreeTypes, actualTrees);
+        } else {
+          CompilationUnitTree actualTree = matchedTreePair.getValue().get();
+          TreeDifference treeDifference = TreeDiffer.diffCompilationUnits(expectedTree, actualTree);
+          if (!treeDifference.isEmpty()) {
+            String diffReport = treeDifference.getDiffReport(
+                new TreeContext(expectedTree, expectedResult.trees()),
+                new TreeContext(actualTree, actualResult.trees()));
+            failWithCandidate(expectedTree.getSourceFile(), actualTree.getSourceFile(), diffReport);
           }
         }
       }
       return this;
     }
+
+    /** Called when the {@code generatesSources()} verb fails with no diff candidates. */
+    private void failNoCandidates(ImmutableSet<String> expectedTypes,
+        CompilationUnitTree expectedTree,
+        final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> actualTypes,
+        FluentIterable<? extends CompilationUnitTree> actualTrees) {
+      String generatedTypesReport = Joiner.on('\n').join(
+          actualTrees.transform(new Function<CompilationUnitTree, String>() {
+                @Override public String apply(CompilationUnitTree generated) {
+                  return String.format("- %s in <%s>",
+                      actualTypes.get(generated),
+                      generated.getSourceFile().toUri().getPath());
+                }
+              })
+          .toList());
+      failureStrategy.fail(Joiner.on('\n').join(
+          "",
+          "An expected source declared one or more top-level types that were not generated.",
+          "",
+          String.format("Expected top-level types: <%s>", expectedTypes),
+          String.format("Declared by expected file: <%s>",
+              expectedTree.getSourceFile().toUri().getPath()),
+          "",
+          "The top-level types that were generated are as follows: ",
+          "",
+          generatedTypesReport,
+          ""));
+    }
+
+    /** Called when the {@code generatesSources()} verb fails with a diff candidate. */
+    private void failWithCandidate(JavaFileObject expectedSource,
+        JavaFileObject actualSource, String diffReport) {
+      try {
+        failureStrategy.fail(Joiner.on('\n').join(
+            "",
+            "A generated source declared the same top-level types of an expected source, but",
+            "didn't match exactly.",
+            "",
+            String.format("Expected file: <%s>", expectedSource.toUri().getPath()),
+            String.format("Generated file: <%s>", actualSource.toUri().getPath()),
+            "",
+            "Diffs:",
+            "======",
+            "",
+            diffReport,
+            "",
+            "Expected Source: ",
+            "================",
+            "",
+            expectedSource.getCharContent(false).toString(),
+            "",
+            "Actual Source:",
+            "=================",
+            "",
+            actualSource.getCharContent(false).toString()));
+      } catch (IOException e) {
+        throw new IllegalStateException("Couldn't read from JavaFileObject when it was already "
+            + "in memory.", e);
+      }
+    }
+
 
     @Override
     public SuccessfulCompilationClause generatesFiles(JavaFileObject first,

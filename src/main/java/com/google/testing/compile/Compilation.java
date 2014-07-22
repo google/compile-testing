@@ -27,6 +27,7 @@ import com.google.common.collect.Multimaps;
 
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.util.JavacTask;
+import com.sun.source.util.Trees;
 import com.sun.tools.javac.api.JavacTool;
 
 import java.io.IOException;
@@ -70,7 +71,7 @@ final class Compilation {
         sources);
     task.setProcessors(processors);
     boolean successful = task.call();
-    return new Result(successful, diagnosticCollector.getDiagnostics(),
+    return new Result(successful, sortDiagnosticsByKind(diagnosticCollector.getDiagnostics()),
         fileManager.getOutputFiles());
   }
 
@@ -78,8 +79,7 @@ final class Compilation {
    * Parse {@code sources} into {@linkplain CompilationUnitTree compilation units}.  This method
    * <b>does not</b> compile the sources.
    */
-  static Iterable<? extends CompilationUnitTree> parse(
-      Iterable<? extends JavaFileObject> sources) {
+  static ParseResult parse(Iterable<? extends JavaFileObject> sources) {
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
     DiagnosticCollector<JavaFileObject> diagnosticCollector =
         new DiagnosticCollector<JavaFileObject>();
@@ -101,9 +101,58 @@ final class Compilation {
               + Diagnostics.toString(diagnostics));
         }
       }
-      return parsedCompilationUnits;
+      return new ParseResult(sortDiagnosticsByKind(diagnostics), parsedCompilationUnits,
+          Trees.instance(task));
     } catch (IOException e) {
       throw new RuntimeException(e);
+    }
+  }
+
+  private static ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>>
+      sortDiagnosticsByKind(Iterable<Diagnostic<? extends JavaFileObject>> diagnostics) {
+    return Multimaps.index(diagnostics,
+        new Function<Diagnostic<?>, Diagnostic.Kind>() {
+          @Override public Diagnostic.Kind apply(Diagnostic<?> input) {
+            return input.getKind();
+          }
+        });
+  }
+
+  /**
+   * The diagnostic, parse trees, and {@link Trees} instance for a parse task.
+   *
+   * <p>Note: It is possible for the {@link Trees} instance contained within a {@code ParseResult}
+   * to be invalidated by a call to {@link com.sun.tools.javac.api.JavacTaskImpl#cleanup()}. Though
+   * we do not currently expose the {@link JavacTask} used to create a {@code ParseResult} to
+   * {@code cleanup()} calls on its underlying implementation, this should be acknowledged as an
+   * implementation detail that could cause unexpected behavior when making calls to methods in
+   * {@link Trees}.
+   */
+  static final class ParseResult {
+    private final ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>>
+        diagnostics;
+    private final ImmutableList<? extends CompilationUnitTree> compilationUnits;
+    private final Trees trees;
+
+    ParseResult(
+        ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>> diagnostics,
+        Iterable<? extends CompilationUnitTree> compilationUnits, Trees trees) {
+      this.trees = trees;
+      this.compilationUnits = ImmutableList.copyOf(compilationUnits);
+      this.diagnostics = diagnostics;
+    }
+
+    ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>>
+        diagnosticsByKind() {
+      return diagnostics;
+    }
+
+    Iterable<? extends CompilationUnitTree> compilationUnits() {
+      return compilationUnits;
+    }
+
+    Trees trees() {
+      return trees;
     }
   }
 
@@ -111,27 +160,21 @@ final class Compilation {
   static final class Result {
     private final boolean successful;
     private final ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>>
-        diagnosticsByKind;
+        diagnostics;
     private final ImmutableListMultimap<JavaFileObject.Kind, JavaFileObject> generatedFilesByKind;
 
-    Result(
-        boolean successful,
-        Iterable<Diagnostic<? extends JavaFileObject>> diagnostics,
+    Result(boolean successful,
+        ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>> diagnostics,
         Iterable<JavaFileObject> generatedFiles) {
       this.successful = successful;
-      this.diagnosticsByKind = Multimaps.index(diagnostics,
-          new Function<Diagnostic<?>, Diagnostic.Kind>() {
-            @Override public Diagnostic.Kind apply(Diagnostic<?> input) {
-              return input.getKind();
-            }
-          });
+      this.diagnostics = diagnostics;
       this.generatedFilesByKind = Multimaps.index(generatedFiles,
           new Function<JavaFileObject, JavaFileObject.Kind>() {
             @Override public JavaFileObject.Kind apply(JavaFileObject input) {
               return input.getKind();
             }
           });
-      if (!successful && diagnosticsByKind.get(Diagnostic.Kind.ERROR).isEmpty()) {
+      if (!successful && diagnostics.get(Diagnostic.Kind.ERROR).isEmpty()) {
         throw new CompilationFailureException();
       }
     }
@@ -142,7 +185,7 @@ final class Compilation {
 
     ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>>
         diagnosticsByKind() {
-      return diagnosticsByKind;
+      return diagnostics;
     }
 
     ImmutableListMultimap<JavaFileObject.Kind, JavaFileObject> generatedFilesByKind() {
@@ -157,7 +200,7 @@ final class Compilation {
     public String toString() {
       return Objects.toStringHelper(this)
           .add("successful", successful)
-          .add("diagnostics", diagnosticsByKind)
+          .add("diagnostics", diagnostics)
           .toString();
     }
   }

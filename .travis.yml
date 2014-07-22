@@ -3,7 +3,6 @@ install: mvn -U install clean --fail-never --quiet -DskipTests=true -Dinvoker.sk
 script: mvn verify
 
 jdk:
-  - openjdk6
   - openjdk7
   - oraclejdk7
 

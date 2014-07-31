@@ -140,7 +140,7 @@ public class JavaSourcesSubjectFactoryTest {
 
   @Test
   public void parsesAs() {
-    assert_().about(javaSource())
+    assertAbout(javaSource())
         .that(JavaFileObjects.forResource(Resources.getResource("HelloWorld.java")))
         .parsesAs(JavaFileObjects.forSourceLines("test.HelloWorld",
             "package test;",

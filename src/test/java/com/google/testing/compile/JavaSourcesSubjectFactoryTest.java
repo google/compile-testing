@@ -127,7 +127,7 @@ public class JavaSourcesSubjectFactoryTest {
       // some old javacs don't pass through exceptions, so we create one
     } catch (RuntimeException expected) {
       // newer jdks throw a runtime exception whose cause is the original exception
-      ASSERT.that(expected.getCause()).is(e);
+      ASSERT.that(expected.getCause()).isEqualTo(e);
     }
   }
 

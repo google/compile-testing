@@ -15,7 +15,7 @@
  */
 
 /**
- * This package contains two {@link org.truth0.Truth} subjects
+ * This package contains two {@link com.google.common.truth.Truth} subjects
  * ({@link JavaSourceSubjectFactory#javaSource} and {@link JavaSourcesSubjectFactory#javaSources})
  * that facilitate testing {@code javac} compilation. Particularly, this enables quick, small tests
  * of {@linkplain javax.annotation.processing.Processor annotation processors} without forking

@@ -25,6 +25,8 @@ import com.google.common.io.Resources;
 import com.google.common.truth.FailureStrategy;
 import com.google.common.truth.TestVerb;
 
+import com.sun.tools.javac.processing.AnnotationProcessingError;
+
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -129,6 +131,10 @@ public class JavaSourcesSubjectFactoryTest {
     } catch (RuntimeException expected) {
       // newer jdks throw a runtime exception whose cause is the original exception
       assertThat(expected.getCause()).isEqualTo(e);
+    } catch (AnnotationProcessingError expected) {
+      // newer jdks throw a runtime exception whose cause is the original exception
+      assertThat(expected.getCause()).isEqualTo(e);
+      
     }
   }
 

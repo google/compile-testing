@@ -33,7 +33,7 @@ import org.junit.runners.JUnit4;
  */
 @RunWith(JUnit4.class)
 public class TreeDifferenceTest {
-  private static final Compilation.ParseResult PARSE_RESULTS =
+  private static final JavacCompilation.ParseResult PARSE_RESULTS =
       MoreTrees.parseLines("package test;",
           "",
           "final class TestClass {",

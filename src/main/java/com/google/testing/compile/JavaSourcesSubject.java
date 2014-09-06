@@ -32,7 +32,8 @@ import com.google.common.collect.Maps;
 import com.google.common.io.ByteSource;
 import com.google.common.truth.FailureStrategy;
 import com.google.common.truth.Subject;
-import com.google.testing.compile.Compilation.Result;
+import com.google.testing.compile.JavacCompilation.Result;
+import com.google.testing.compile.CompileTester.SuccessfulCompilationClause;
 
 import com.sun.source.tree.CompilationUnitTree;
 
@@ -111,9 +112,9 @@ public final class JavaSourcesSubject
 
     /**
      * Returns a {@code String} report describing what files were generated in the given
-     * {@link Compilation.Result}
+     * {@link JavacCompilation.Result}
      */
-    private String reportFilesGenerated(Compilation.Result result) {
+    private String reportFilesGenerated(JavacCompilation.Result result) {
       FluentIterable<JavaFileObject> generatedFiles =
           FluentIterable.from(result.generatedSources());
       StringBuilder message = new StringBuilder("\n\n");
@@ -131,7 +132,7 @@ public final class JavaSourcesSubject
 
     @Override
     public SuccessfulCompilationClause compilesWithoutError() {
-      Compilation.Result result = Compilation.compile(processors, getSubject());
+      JavacCompilation.Result result = JavacCompilation.compile(processors, getSubject());
       if (!result.successful()) {
         ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
             result.diagnosticsByKind().get(Kind.ERROR);
@@ -149,7 +150,7 @@ public final class JavaSourcesSubject
 
     @Override
     public UnsuccessfulCompilationClause failsToCompile() {
-      Result result = Compilation.compile(processors, getSubject());
+      Result result = JavacCompilation.compile(processors, getSubject());
       if (result.successful()) {
         String message = Joiner.on('\n').join(
             "Compilation was expected to fail, but contained no errors.",
@@ -170,9 +171,9 @@ public final class JavaSourcesSubject
   }
 
   private final class UnsuccessfulCompilationBuilder implements UnsuccessfulCompilationClause {
-    private final Compilation.Result result;
+    private final JavacCompilation.Result result;
 
-    UnsuccessfulCompilationBuilder(Compilation.Result result) {
+    UnsuccessfulCompilationBuilder(JavacCompilation.Result result) {
       checkArgument(!result.successful());
       this.result = result;
     }
@@ -297,9 +298,9 @@ public final class JavaSourcesSubject
 
   private final class SuccessfulCompilationBuilder implements SuccessfulCompilationClause,
       GeneratedPredicateClause {
-    private final Compilation.Result result;
+    private final JavacCompilation.Result result;
 
-    SuccessfulCompilationBuilder(Compilation.Result result) {
+    SuccessfulCompilationBuilder(JavacCompilation.Result result) {
       checkArgument(result.successful());
       this.result = result;
     }
@@ -310,11 +311,22 @@ public final class JavaSourcesSubject
     }
 
     @Override
+    public SuccessfulCompilationClause compilesAs(JavaFileObject first, JavaFileObject... rest) {
+      return expectParseResults(
+          result,
+          JavacCompilation.parse(Lists.asList(first, rest)));
+    }
+
+    @Override
     public SuccessfulCompilationClause generatesSources(JavaFileObject first,
         JavaFileObject... rest) {
-
-      final Compilation.ParseResult actualResult = Compilation.parse(result.generatedSources());
-      final Compilation.ParseResult expectedResult = Compilation.parse(Lists.asList(first, rest));
+      return expectParseResults(
+          JavacCompilation.parse(result.generatedSources()), 
+          JavacCompilation.parse(Lists.asList(first, rest)));
+    }
+    
+    private SuccessfulCompilationClause expectParseResults(
+        final JavacCompilation.ParseResult actualResult, final JavacCompilation.ParseResult expectedResult) {
       final FluentIterable<? extends CompilationUnitTree> actualTrees = FluentIterable.from(
           actualResult.compilationUnits());
       final FluentIterable<? extends CompilationUnitTree> expectedTrees = FluentIterable.from(
@@ -439,7 +451,7 @@ public final class JavaSourcesSubject
       return this;
     }
 
-    boolean wasGenerated(Compilation.Result result, JavaFileObject expected) {
+    boolean wasGenerated(JavacCompilation.Result result, JavaFileObject expected) {
       ByteSource expectedByteSource = JavaFileObjects.asByteSource(expected);
       for (JavaFileObject generated : result.generatedFilesByKind().get(expected.getKind())) {
         try {

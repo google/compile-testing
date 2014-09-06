@@ -79,7 +79,9 @@ public interface CompileTester {
   }
 
   /** The clause in the fluent API for further tests on successful compilations. */
-  public interface SuccessfulCompilationClause extends ChainingClause<GeneratedPredicateClause> {}
+  public interface SuccessfulCompilationClause extends ChainingClause<GeneratedPredicateClause> {
+    SuccessfulCompilationClause compilesAs(JavaFileObject first, JavaFileObject... rest);
+  }
 
   /** The clause in the fluent API for further tests on unsuccessful compilations. */
   public interface UnsuccessfulCompilationClause {

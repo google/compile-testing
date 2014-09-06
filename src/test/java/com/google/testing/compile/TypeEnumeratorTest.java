@@ -15,7 +15,7 @@
  */
 package com.google.testing.compile;
 
-import static com.google.common.truth.Truth.ASSERT;
+import static com.google.common.truth.Truth.assertThat;
 
 import com.sun.source.tree.CompilationUnitTree;
 
@@ -40,7 +40,7 @@ public class TypeEnumeratorTest {
         "  }",
         "}");
 
-    ASSERT.that(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
+    assertThat(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
         "path.to.test.HelloWorld");
   }
 
@@ -58,7 +58,7 @@ public class TypeEnumeratorTest {
         "",
         "final class HelperWorld {}");
 
-    ASSERT.that(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
+    assertThat(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
         "path.to.test.HelloWorld", "path.to.test.HelperWorld");
   }
 
@@ -73,7 +73,7 @@ public class TypeEnumeratorTest {
         "  }",
         "}");
 
-    ASSERT.that(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
+    assertThat(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
         "HelloWorld");
   }
 
@@ -90,7 +90,7 @@ public class TypeEnumeratorTest {
         "",
         "final class HelperWorld {}");
 
-    ASSERT.that(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
+    assertThat(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
         "HelloWorld", "HelperWorld");
   }
 
@@ -102,7 +102,7 @@ public class TypeEnumeratorTest {
         "",
         "public @interface HelloWorld {}");
 
-    ASSERT.that(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
+    assertThat(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
         "path.to.test.HelloWorld");
   }
 
@@ -117,7 +117,7 @@ public class TypeEnumeratorTest {
         "  WORLD;",
         "}");
 
-    ASSERT.that(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
+    assertThat(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
         "path.to.test.HelloWorld");
   }
 
@@ -131,12 +131,12 @@ public class TypeEnumeratorTest {
         "  public String getSalutation();",
         "}");
 
-    ASSERT.that(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
+    assertThat(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
         "path.to.test.HelloWorld");
   }
 
   @Test
   public void getTopLevelTypes_worksForNull() {
-    ASSERT.that(TypeEnumerator.getTopLevelTypes(null)).isEmpty();
+    assertThat(TypeEnumerator.getTopLevelTypes(null)).isEmpty();
   }
 }

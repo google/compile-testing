@@ -15,7 +15,7 @@
  */
 package com.google.testing.compile;
 
-import static com.google.common.truth.Truth.ASSERT;
+import static com.google.common.truth.Truth.assertThat;
 
 import com.google.common.collect.ImmutableList;
 
@@ -94,7 +94,7 @@ public class TreeDifferTest {
   @Test
   public void scan_differingCompilationUnits() {
     TreeDifference diff = TreeDiffer.diffCompilationUnits(EXPECTED_TREE, ACTUAL_TREE);
-    ASSERT.that(diff.isEmpty()).isFalse();
+    assertThat(diff.isEmpty()).isFalse();
 
     ImmutableList<SimplifiedDiff> extraNodesExpected = ImmutableList.of(
         new SimplifiedDiff(Tree.Kind.INT_LITERAL, ""),
@@ -109,49 +109,49 @@ public class TreeDifferTest {
             "Expected identifier to be <numbers> but was <numberz>."),
         new SimplifiedDiff(Tree.Kind.IDENTIFIER,
             "Expected identifier to be <IllegalStateException> but was <RuntimeException>."));
-    ASSERT.that(diff.getExtraExpectedNodes().isEmpty()).isTrue();
-    ASSERT.that(diff.getExtraActualNodes().size()).isEqualTo(extraNodesExpected.size());
+    assertThat(diff.getExtraExpectedNodes().isEmpty()).isTrue();
+    assertThat(diff.getExtraActualNodes().size()).isEqualTo(extraNodesExpected.size());
 
     ImmutableList.Builder<SimplifiedDiff> extraNodesFound =
         new ImmutableList.Builder<SimplifiedDiff>();
     for (TreeDifference.OneWayDiff extraNode : diff.getExtraActualNodes()) {
       extraNodesFound.add(SimplifiedDiff.create(extraNode));
     }
-    ASSERT.that(extraNodesExpected).iteratesAs(extraNodesFound.build());
+    assertThat(extraNodesExpected).iteratesAs(extraNodesFound.build());
     ImmutableList.Builder<SimplifiedDiff> differingNodesFound =
         new ImmutableList.Builder<SimplifiedDiff>();
     for (TreeDifference.TwoWayDiff differingNode : diff.getDifferingNodes()) {
       differingNodesFound.add(SimplifiedDiff.create(differingNode));
     }
-    ASSERT.that(differingNodesExpected).iteratesAs(differingNodesFound.build());
+    assertThat(differingNodesExpected).iteratesAs(differingNodesFound.build());
   }
 
   @Test
   public void scan_testExtraFields() {
     TreeDifference diff =
         TreeDiffer.diffCompilationUnits(ASSERT_TREE_WITH_MESSAGE, ASSERT_TREE_WITHOUT_MESSAGE);
-    ASSERT.that(diff.isEmpty()).isFalse();
+    assertThat(diff.isEmpty()).isFalse();
     diff = TreeDiffer.diffCompilationUnits(ASSERT_TREE_WITHOUT_MESSAGE, ASSERT_TREE_WITH_MESSAGE);
-    ASSERT.that(diff.isEmpty()).isFalse();
+    assertThat(diff.isEmpty()).isFalse();
   }
 
   @Test
   public void scan_sameCompilationUnit() {
-    ASSERT.that(TreeDiffer.diffCompilationUnits(EXPECTED_TREE, EXPECTED_TREE).isEmpty()).isTrue();
+    assertThat(TreeDiffer.diffCompilationUnits(EXPECTED_TREE, EXPECTED_TREE).isEmpty()).isTrue();
   }
 
   @Test
   public void scan_identicalMethods() {
-    ASSERT.that(TreeDiffer.diffSubtrees(baseToStringTree(), diffToStringTree())
+    assertThat(TreeDiffer.diffSubtrees(baseToStringTree(), diffToStringTree())
         .isEmpty()).isTrue();
   }
 
   @Test
   public void scan_differentTypes() {
     TreeDifference diff = TreeDiffer.diffSubtrees(asPath(EXPECTED_TREE), diffToStringTree());
-    ASSERT.that(diff.isEmpty()).isFalse();
+    assertThat(diff.isEmpty()).isFalse();
     for (TreeDifference.TwoWayDiff differingNode : diff.getDifferingNodes()) {
-      ASSERT.that(differingNode.getDetails()).contains("Expected node kind to be");
+      assertThat(differingNode.getDetails()).contains("Expected node kind to be");
     }
   }
 

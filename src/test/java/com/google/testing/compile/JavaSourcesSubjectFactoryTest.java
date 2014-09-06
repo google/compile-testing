@@ -15,7 +15,8 @@
  */
 package com.google.testing.compile;
 
-import static com.google.common.truth.Truth.ASSERT;
+import static com.google.common.truth.Truth.assertThat;
+import static com.google.common.truth.Truth.assert_;
 import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
 import static org.junit.Assert.fail;
 
@@ -60,10 +61,10 @@ public class JavaSourcesSubjectFactoryTest {
 
   @Test
   public void compilesWithoutError() {
-    ASSERT.about(javaSource())
+    assert_().about(javaSource())
         .that(JavaFileObjects.forResource(Resources.getResource("HelloWorld.java")))
         .compilesWithoutError();
-    ASSERT.about(javaSource())
+    assert_().about(javaSource())
         .that(JavaFileObjects.forSourceLines("test.HelloWorld",
             "package test;",
             "",
@@ -84,9 +85,9 @@ public class JavaSourcesSubjectFactoryTest {
           .compilesWithoutError();
       fail();
     } catch (VerificationException expected) {
-      ASSERT.that(expected.getMessage()).contains("Compilation produced the following errors:\n");
-      ASSERT.that(expected.getMessage()).contains(FailingGeneratingProcessor.GENERATED_CLASS_NAME);
-      ASSERT.that(expected.getMessage()).contains(FailingGeneratingProcessor.GENERATED_SOURCE);
+      assertThat(expected.getMessage()).contains("Compilation produced the following errors:\n");
+      assertThat(expected.getMessage()).contains(FailingGeneratingProcessor.GENERATED_CLASS_NAME);
+      assertThat(expected.getMessage()).contains(FailingGeneratingProcessor.GENERATED_SOURCE);
     }
   }
 
@@ -98,8 +99,8 @@ public class JavaSourcesSubjectFactoryTest {
           .compilesWithoutError();
       fail();
     } catch (VerificationException expected) {
-      ASSERT.that(expected.getMessage()).startsWith("Compilation produced the following errors:\n");
-      ASSERT.that(expected.getMessage()).contains("No files were generated.");
+      assertThat(expected.getMessage()).startsWith("Compilation produced the following errors:\n");
+      assertThat(expected.getMessage()).contains("No files were generated.");
     }
   }
 
@@ -127,7 +128,7 @@ public class JavaSourcesSubjectFactoryTest {
       // some old javacs don't pass through exceptions, so we create one
     } catch (RuntimeException expected) {
       // newer jdks throw a runtime exception whose cause is the original exception
-      ASSERT.that(expected.getCause()).isEqualTo(e);
+      assertThat(expected.getCause()).isEqualTo(e);
     }
   }
 
@@ -139,9 +140,9 @@ public class JavaSourcesSubjectFactoryTest {
           .failsToCompile();
       fail();
     } catch (VerificationException expected) {
-      ASSERT.that(expected.getMessage()).startsWith(
+      assertThat(expected.getMessage()).startsWith(
           "Compilation was expected to fail, but contained no errors");
-      ASSERT.that(expected.getMessage()).contains("No files were generated.");
+      assertThat(expected.getMessage()).contains("No files were generated.");
     }
   }
 
@@ -154,10 +155,10 @@ public class JavaSourcesSubjectFactoryTest {
           .failsToCompile().withErrorContaining("some error");
       fail();
     } catch (VerificationException expected) {
-      ASSERT.that(expected.getMessage()).startsWith(
+      assertThat(expected.getMessage()).startsWith(
           "Expected an error containing \"some error\", but only found [\"");
       // some versions of javac wedge the file and position in the middle
-      ASSERT.that(expected.getMessage()).endsWith("expected error!\"]");
+      assertThat(expected.getMessage()).endsWith("expected error!\"]");
     }
   }
 
@@ -173,9 +174,9 @@ public class JavaSourcesSubjectFactoryTest {
               .in(otherFileObject);
       fail();
     } catch (VerificationException expected) {
-      ASSERT.that(expected.getMessage())
+      assertThat(expected.getMessage())
           .contains(String.format("Expected an error in %s", otherFileObject.getName()));
-      ASSERT.that(expected.getMessage()).contains(fileObject.getName());
+      assertThat(expected.getMessage()).contains(fileObject.getName());
       //                  "(no associated file)")));
     }
   }
@@ -192,9 +193,9 @@ public class JavaSourcesSubjectFactoryTest {
       fail();
     } catch (VerificationException expected) {
       int actualErrorLine = 18;
-      ASSERT.that(expected.getMessage())
+      assertThat(expected.getMessage())
           .contains(String.format("Expected an error on line 1 of %s", fileObject.getName()));
-      ASSERT.that(expected.getMessage()).contains("" + actualErrorLine);
+      assertThat(expected.getMessage()).contains("" + actualErrorLine);
     }
   }
 
@@ -210,22 +211,22 @@ public class JavaSourcesSubjectFactoryTest {
       fail();
     } catch (VerificationException expected) {
       int actualErrorCol = 8;
-      ASSERT.that(expected.getMessage())
+      assertThat(expected.getMessage())
           .contains(String.format("Expected an error at 18:1 of %s", fileObject.getName()));
-      ASSERT.that(expected.getMessage()).contains("" + actualErrorCol);
+      assertThat(expected.getMessage()).contains("" + actualErrorCol);
     }
   }
 
   @Test
   public void failsToCompile() {
     JavaFileObject brokenFileObject = JavaFileObjects.forResource("HelloWorld-broken.java");
-    ASSERT.about(javaSource())
+    assert_().about(javaSource())
         .that(brokenFileObject)
         .failsToCompile()
         .withErrorContaining("not a statement").in(brokenFileObject).onLine(23).atColumn(5);
 
     JavaFileObject happyFileObject = JavaFileObjects.forResource("HelloWorld.java");
-    ASSERT.about(javaSource())
+    assert_().about(javaSource())
         .that(happyFileObject)
         .processedWith(new ErrorProcessor())
         .failsToCompile()
@@ -234,7 +235,7 @@ public class JavaSourcesSubjectFactoryTest {
 
   @Test
   public void generatesSources() {
-    ASSERT.about(javaSource())
+    assert_().about(javaSource())
         .that(JavaFileObjects.forResource("HelloWorld.java"))
         .processedWith(new GeneratingProcessor())
         .compilesWithoutError()
@@ -256,9 +257,9 @@ public class JavaSourcesSubjectFactoryTest {
               failingExpectationSource));
       fail();
     } catch (VerificationException expected) {
-      ASSERT.that(expected.getMessage()).contains("didn't match exactly");
-      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
-      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_SOURCE);
+      assertThat(expected.getMessage()).contains("didn't match exactly");
+      assertThat(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
+      assertThat(expected.getMessage()).contains(GeneratingProcessor.GENERATED_SOURCE);
     }
   }
 
@@ -277,10 +278,10 @@ public class JavaSourcesSubjectFactoryTest {
               "}"));
       fail();
     } catch (VerificationException expected) {
-      ASSERT.that(expected.getMessage()).contains("didn't match exactly");
-      ASSERT.that(expected.getMessage()).contains("unmatched nodes in the expected tree");
-      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
-      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_SOURCE);
+      assertThat(expected.getMessage()).contains("didn't match exactly");
+      assertThat(expected.getMessage()).contains("unmatched nodes in the expected tree");
+      assertThat(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
+      assertThat(expected.getMessage()).contains(GeneratingProcessor.GENERATED_SOURCE);
     }
   }
 
@@ -298,10 +299,10 @@ public class JavaSourcesSubjectFactoryTest {
               "}"));
       fail();
     } catch (VerificationException expected) {
-      ASSERT.that(expected.getMessage()).contains("didn't match exactly");
-      ASSERT.that(expected.getMessage()).contains("unmatched nodes in the actual tree");
-      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
-      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_SOURCE);
+      assertThat(expected.getMessage()).contains("didn't match exactly");
+      assertThat(expected.getMessage()).contains("unmatched nodes in the actual tree");
+      assertThat(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
+      assertThat(expected.getMessage()).contains(GeneratingProcessor.GENERATED_SOURCE);
     }
   }
 
@@ -318,9 +319,9 @@ public class JavaSourcesSubjectFactoryTest {
               failingExpectationName,
               failingExpectationSource));
     } catch (VerificationException expected) {
-      ASSERT.that(expected.getMessage()).contains("top-level types that were not generated");
-      ASSERT.that(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
-      ASSERT.that(expected.getMessage()).contains(failingExpectationName);
+      assertThat(expected.getMessage()).contains("top-level types that were not generated");
+      assertThat(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
+      assertThat(expected.getMessage()).contains(failingExpectationName);
     }
   }
 
@@ -328,28 +329,28 @@ public class JavaSourcesSubjectFactoryTest {
   public void invokesMultipleProcesors() {
     NoOpProcessor noopProcessor1 = new NoOpProcessor();
     NoOpProcessor noopProcessor2 = new NoOpProcessor();
-    ASSERT.that(noopProcessor1.invoked).isFalse();
-    ASSERT.that(noopProcessor2.invoked).isFalse();
-    ASSERT.about(javaSource())
+    assertThat(noopProcessor1.invoked).isFalse();
+    assertThat(noopProcessor2.invoked).isFalse();
+    assert_().about(javaSource())
         .that(JavaFileObjects.forResource("HelloWorld.java"))
         .processedWith(noopProcessor1, noopProcessor2)
         .compilesWithoutError();
-    ASSERT.that(noopProcessor1.invoked).isTrue();
-    ASSERT.that(noopProcessor2.invoked).isTrue();
+    assertThat(noopProcessor1.invoked).isTrue();
+    assertThat(noopProcessor2.invoked).isTrue();
   }
 
   @Test
   public void invokesMultipleProcesors_asIterable() {
     NoOpProcessor noopProcessor1 = new NoOpProcessor();
     NoOpProcessor noopProcessor2 = new NoOpProcessor();
-    ASSERT.that(noopProcessor1.invoked).isFalse();
-    ASSERT.that(noopProcessor2.invoked).isFalse();
-    ASSERT.about(javaSource())
+    assertThat(noopProcessor1.invoked).isFalse();
+    assertThat(noopProcessor2.invoked).isFalse();
+    assert_().about(javaSource())
         .that(JavaFileObjects.forResource("HelloWorld.java"))
         .processedWith(Arrays.asList(noopProcessor1, noopProcessor2))
         .compilesWithoutError();
-    ASSERT.that(noopProcessor1.invoked).isTrue();
-    ASSERT.that(noopProcessor2.invoked).isTrue();
+    assertThat(noopProcessor1.invoked).isTrue();
+    assertThat(noopProcessor2.invoked).isTrue();
   }
 
 

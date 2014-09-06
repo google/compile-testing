@@ -15,7 +15,7 @@
  */
 package com.google.testing.compile;
 
-import static com.google.common.truth.Truth.ASSERT;
+import static com.google.common.truth.Truth.assertThat;
 
 import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.ExpressionTree;
@@ -42,9 +42,9 @@ public class EqualityScannerTest {
     LiteralTree nullLiteral = new SimpleLiteralTree(null, Kind.NULL_LITERAL);
     LiteralTree valueLiteral = new SimpleLiteralTree("Hi", Kind.STRING_LITERAL);
 
-    ASSERT.that(scanner.visitLiteral(nullLiteral, nullLiteral)).isTrue();
-    ASSERT.that(scanner.visitLiteral(nullLiteral, valueLiteral)).isFalse();
-    ASSERT.that(scanner.visitLiteral(valueLiteral, nullLiteral)).isFalse();
+    assertThat(scanner.visitLiteral(nullLiteral, nullLiteral)).isTrue();
+    assertThat(scanner.visitLiteral(nullLiteral, valueLiteral)).isFalse();
+    assertThat(scanner.visitLiteral(valueLiteral, nullLiteral)).isFalse();
   }
 
   @Test
@@ -59,7 +59,7 @@ public class EqualityScannerTest {
 
     // Declare a new ArrayTree with size 1, but no initialisation.
     NewArrayTree newArrayTree = new SimpleNewArrayTree(Arrays.asList(simpleLiteralTree), null);
-    ASSERT.that(scanner.visitNewArray(newArrayTree, newArrayTree)).isTrue();
+    assertThat(scanner.visitNewArray(newArrayTree, newArrayTree)).isTrue();
   }
 
   // TODO(gak): replace this with a CompilationRule and actual trees from javac

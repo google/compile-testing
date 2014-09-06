@@ -15,7 +15,7 @@
  */
 package com.google.testing.compile;
 
-import static com.google.common.truth.Truth.ASSERT;
+import static com.google.common.truth.Truth.assertThat;
 import static javax.tools.JavaFileObject.Kind.CLASS;
 
 import com.google.common.io.Resources;
@@ -39,11 +39,11 @@ import javax.tools.JavaFileObject;
 public class JavaFileObjectsTest {
   @Test public void forResource_inJarFile() throws URISyntaxException, IOException {
     JavaFileObject resourceInJar = JavaFileObjects.forResource("java/lang/Object.class");
-    ASSERT.that(resourceInJar.getKind()).isEqualTo(CLASS);
-    ASSERT.that(resourceInJar.toUri()).isEqualTo(URI.create("/java/lang/Object.class"));
-    ASSERT.that(resourceInJar.getName())
+    assertThat(resourceInJar.getKind()).isEqualTo(CLASS);
+    assertThat(resourceInJar.toUri()).isEqualTo(URI.create("/java/lang/Object.class"));
+    assertThat(resourceInJar.getName())
         .isEqualTo(Resources.getResource("java/lang/Object.class").toString());
-    ASSERT.that(resourceInJar.isNameCompatible("Object", CLASS)).isTrue();
+    assertThat(resourceInJar.isNameCompatible("Object", CLASS)).isTrue();
   }
 
   @Test public void forSourceLines() throws IOException {
@@ -55,7 +55,7 @@ public class JavaFileObjectsTest {
         "    System.out.println(\"hello!\");",
         "  }",
         "}");
-    ASSERT.that(fileObject.getCharContent(false)).isEqualTo(
+    assertThat(fileObject.getCharContent(false)).isEqualTo(
         "package example;\n"
             + "\n"
             + "final class HelloWorld {\n"

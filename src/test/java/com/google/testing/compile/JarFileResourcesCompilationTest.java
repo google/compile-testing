@@ -15,7 +15,7 @@
  */
 package com.google.testing.compile;
 
-import static com.google.common.truth.Truth.ASSERT;
+import static com.google.common.truth.Truth.assert_;
 import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
 
 import com.google.common.io.Resources;
@@ -58,7 +58,7 @@ public class JarFileResourcesCompilationTest {
 
   @Test
   public void compilesResourcesInJarFiles() throws IOException {
-    ASSERT.about(javaSource())
+    assert_().about(javaSource())
       .that(JavaFileObjects.forResource(
           new URL("jar:" + jarFile.toURI() + "!/test/HelloWorld.java")))
       .compilesWithoutError();

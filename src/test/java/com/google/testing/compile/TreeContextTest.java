@@ -15,7 +15,7 @@
  */
 package com.google.testing.compile;
 
-import static com.google.common.truth.Truth.ASSERT;
+import static com.google.common.truth.Truth.assertThat;
 
 import com.google.common.collect.ImmutableList;
 
@@ -64,11 +64,11 @@ public class TreeContextTest {
 
   @Test
   public void getPositionInfo() {
-    ASSERT.that(treeContext().getNodeStartLine(compilationSubtree())).isEqualTo(subtreeStartLine());
-    ASSERT.that(treeContext().getNodeEndLine(compilationSubtree())).isEqualTo(subtreeEndLine());
-    ASSERT.that(treeContext().getNodeStartColumn(compilationSubtree()))
+    assertThat(treeContext().getNodeStartLine(compilationSubtree())).isEqualTo(subtreeStartLine());
+    assertThat(treeContext().getNodeEndLine(compilationSubtree())).isEqualTo(subtreeEndLine());
+    assertThat(treeContext().getNodeStartColumn(compilationSubtree()))
         .isEqualTo(subtreeStartColumn());
-    ASSERT.that(treeContext().getNodeEndColumn(compilationSubtree())).isEqualTo(subtreeEndColumn());
+    assertThat(treeContext().getNodeEndColumn(compilationSubtree())).isEqualTo(subtreeEndColumn());
   }
 
   @Test
@@ -85,7 +85,7 @@ public class TreeContextTest {
 
   @Test
   public void getNodePath() {
-    ASSERT.that(treeContext().getNodePath(compilationSubtree()).getCompilationUnit())
+    assertThat(treeContext().getNodePath(compilationSubtree()).getCompilationUnit())
         .isEqualTo(COMPILATION_UNIT);
   }
 

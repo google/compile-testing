@@ -30,7 +30,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.ByteSource;
-import com.google.common.io.ByteStreams;
 import com.google.common.truth.FailureStrategy;
 import com.google.common.truth.Subject;
 import com.google.testing.compile.Compilation.Result;
@@ -38,7 +37,6 @@ import com.google.testing.compile.Compilation.Result;
 import com.sun.source.tree.CompilationUnitTree;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Map;
 
 import javax.annotation.processing.Processor;
@@ -100,8 +98,7 @@ public final class JavaSourcesSubject
             new StringBuilder().append(String.format("\n%s:\n", generatedFile.toUri().getPath()));
         if (generatedFile.getKind().equals(CLASS)) {
           entry.append(String.format("[generated class file (%s bytes)]",
-                  ByteSource.wrap(ByteStreams.toByteArray(generatedFile.openInputStream()))
-                  .size()));
+                  JavaFileObjects.asByteSource(generatedFile).size()));
         } else {
           entry.append(generatedFile.getCharContent(true));
         }
@@ -443,11 +440,11 @@ public final class JavaSourcesSubject
     }
 
     boolean wasGenerated(Compilation.Result result, JavaFileObject expected) {
+      ByteSource expectedByteSource = JavaFileObjects.asByteSource(expected);
       for (JavaFileObject generated : result.generatedFilesByKind().get(expected.getKind())) {
         try {
-          if (Arrays.equals(
-              ByteStreams.toByteArray(expected.openInputStream()),
-              ByteStreams.toByteArray(generated.openInputStream()))) {
+          ByteSource generatedByteSource = JavaFileObjects.asByteSource(generated);
+          if (expectedByteSource.contentEquals(generatedByteSource)) {
             return true;
           }
         } catch (IOException e) {

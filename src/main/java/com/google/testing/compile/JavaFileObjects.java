@@ -167,6 +167,14 @@ public final class JavaFileObjects {
     return Kind.OTHER;
   }
 
+  static ByteSource asByteSource(final JavaFileObject javaFileObject) {
+    return new ByteSource() {
+      @Override public InputStream openStream() throws IOException {
+        return javaFileObject.openInputStream();
+      }
+    };
+  }
+
   private static final class JarFileJavaFileObject
       extends ForwardingJavaFileObject<ResourceSourceJavaFileObject> {
     final String name;

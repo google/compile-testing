@@ -91,6 +91,25 @@ public class TreeDifferTest {
           "   }",
           "}");
 
+  // These are used to test null tree iterators.
+  // getInitializers() on NewArrayTrees will return null if the array is dimension-defined.
+  private static final CompilationUnitTree NEW_ARRAY_SIZE_THREE =
+      MoreTrees.parseLinesToTree("package test;",
+          "final class TestClass {",
+          "  private static final int[] myArray = new int[3];",
+          "}");
+
+  private static final CompilationUnitTree NEW_ARRAY_SIZE_FOUR =
+      MoreTrees.parseLinesToTree("package test;",
+          "final class TestClass {",
+          "  private static final int[] myArray = new int[4];",
+          "}");
+
+  private static final CompilationUnitTree NEW_ARRAY_STATIC_INITIALIZER =
+      MoreTrees.parseLinesToTree("package test;",
+          "final class TestClass {",
+          "  private static final int[] myArray = {1, 2, 3};",
+          "}");
   @Test
   public void scan_differingCompilationUnits() {
     TreeDifference diff = TreeDiffer.diffCompilationUnits(EXPECTED_TREE, ACTUAL_TREE);
@@ -153,6 +172,31 @@ public class TreeDifferTest {
     for (TreeDifference.TwoWayDiff differingNode : diff.getDifferingNodes()) {
       assertThat(differingNode.getDetails()).contains("Expected node kind to be");
     }
+  }
+
+  @Test
+  public void scan_testTwoNullIterableTrees() {
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(NEW_ARRAY_SIZE_THREE, NEW_ARRAY_SIZE_FOUR);
+    assertThat(diff.isEmpty()).isFalse();
+    for (TreeDifference.TwoWayDiff differingNode : diff.getDifferingNodes()) {
+      assertThat(differingNode.getDetails())
+          .contains("Expected literal value to be <3> but was <4>");
+    }
+  }
+
+  @Test
+  public void scan_testExpectedNullIterableTree() {
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(NEW_ARRAY_SIZE_THREE, NEW_ARRAY_STATIC_INITIALIZER);
+    assertThat(diff.isEmpty()).isFalse();
+  }
+
+  @Test
+  public void scan_testActualNullIterableTree() {
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(NEW_ARRAY_STATIC_INITIALIZER, NEW_ARRAY_SIZE_FOUR);
+    assertThat(diff.isEmpty()).isFalse();
   }
 
   private TreePath asPath(CompilationUnitTree compilationUnit) {

@@ -37,6 +37,8 @@ import java.util.Locale;
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
 import javax.tools.DiagnosticCollector;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaCompiler.CompilationTask;
 import javax.tools.JavaFileObject;
 import javax.tools.ToolProvider;
 
@@ -45,8 +47,8 @@ import javax.tools.ToolProvider;
  *
  * @author Gregory Kick
  */
-final class JavacCompilation {
-  private JavacCompilation() {}
+final class Compilation {
+  private Compilation() {}
 
   /**
    * Compile {@code sources} using {@code processors}.
@@ -55,12 +57,12 @@ final class JavacCompilation {
    */
   static Result compile(Iterable<? extends Processor> processors,
       Iterable<? extends JavaFileObject> sources) {
-    JavacTool compiler = (JavacTool) ToolProvider.getSystemJavaCompiler();
+    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
     DiagnosticCollector<JavaFileObject> diagnosticCollector =
         new DiagnosticCollector<JavaFileObject>();
     InMemoryJavaFileManager fileManager = new InMemoryJavaFileManager(
         compiler.getStandardFileManager(diagnosticCollector, Locale.getDefault(), UTF_8));
-    JavacTask task = compiler.getTask(
+    CompilationTask task = compiler.getTask(
         null, // explicitly use the default because old versions of javac log some output on stderr
         fileManager,
         diagnosticCollector,
@@ -68,23 +70,9 @@ final class JavacCompilation {
         ImmutableSet.<String>of(),
         sources);
     task.setProcessors(processors);
-    try {
-      Iterable<? extends CompilationUnitTree> parsedCompilationUnits = task.parse();
-      Trees trees = Trees.instance(task);
-      task.generate();
-      List<Diagnostic<? extends JavaFileObject>> diagnostics = diagnosticCollector.getDiagnostics();
-      
-      boolean successful = true;
-      for (Diagnostic<?> diagnostic : diagnostics) {
-        if (Diagnostic.Kind.ERROR == diagnostic.getKind()) {
-          successful = false;
-        }
-      }
-      return new Result(successful, sortDiagnosticsByKind(diagnostics), 
-          parsedCompilationUnits, trees, fileManager.getOutputFiles());
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    boolean successful = task.call();
+    return new Result(successful, sortDiagnosticsByKind(diagnosticCollector.getDiagnostics()),
+        fileManager.getOutputFiles());
   }
 
   /**
@@ -92,12 +80,12 @@ final class JavacCompilation {
    * <b>does not</b> compile the sources.
    */
   static ParseResult parse(Iterable<? extends JavaFileObject> sources) {
-    JavacTool compiler = (JavacTool) ToolProvider.getSystemJavaCompiler();
+    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
     DiagnosticCollector<JavaFileObject> diagnosticCollector =
         new DiagnosticCollector<JavaFileObject>();
     InMemoryJavaFileManager fileManager = new InMemoryJavaFileManager(
         compiler.getStandardFileManager(diagnosticCollector, Locale.getDefault(), UTF_8));
-    JavacTask task = compiler.getTask(
+    JavacTask task = ((JavacTool) compiler).getTask(
         null, // explicitly use the default because old versions of javac log some output on stderr
         fileManager,
         diagnosticCollector,
@@ -140,7 +128,7 @@ final class JavacCompilation {
    * implementation detail that could cause unexpected behavior when making calls to methods in
    * {@link Trees}.
    */
-  static class ParseResult {
+  static final class ParseResult {
     private final ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>>
         diagnostics;
     private final ImmutableList<? extends CompilationUnitTree> compilationUnits;
@@ -169,18 +157,18 @@ final class JavacCompilation {
   }
 
   /** The diagnostic and file output of a compilation. */
-  static final class Result extends ParseResult {
+  static final class Result {
     private final boolean successful;
+    private final ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>>
+        diagnostics;
     private final ImmutableListMultimap<JavaFileObject.Kind, JavaFileObject> generatedFilesByKind;
 
     Result(boolean successful,
         ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>> diagnostics,
-        Iterable<? extends CompilationUnitTree> compilationUnits, Trees trees,
-        Iterable<? extends JavaFileObject> generatedFiles) {
-      super(diagnostics, compilationUnits, trees);
+        Iterable<JavaFileObject> generatedFiles) {
       this.successful = successful;
-      this.generatedFilesByKind = Multimaps.index(
-          ImmutableList.copyOf(generatedFiles),
+      this.diagnostics = diagnostics;
+      this.generatedFilesByKind = Multimaps.index(generatedFiles,
           new Function<JavaFileObject, JavaFileObject.Kind>() {
             @Override public JavaFileObject.Kind apply(JavaFileObject input) {
               return input.getKind();
@@ -195,6 +183,11 @@ final class JavacCompilation {
       return successful;
     }
 
+    ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>>
+        diagnosticsByKind() {
+      return diagnostics;
+    }
+
     ImmutableListMultimap<JavaFileObject.Kind, JavaFileObject> generatedFilesByKind() {
       return generatedFilesByKind;
     }
@@ -207,7 +200,7 @@ final class JavacCompilation {
     public String toString() {
       return Objects.toStringHelper(this)
           .add("successful", successful)
-          .add("diagnostics", diagnosticsByKind())
+          .add("diagnostics", diagnostics)
           .toString();
     }
   }

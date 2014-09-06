@@ -19,7 +19,7 @@ import static com.google.common.base.Preconditions.checkState;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.google.testing.compile.JavacCompilation.Result;
+import com.google.testing.compile.Compilation.Result;
 
 import org.junit.Rule;
 import org.junit.rules.TestRule;
@@ -56,7 +56,7 @@ public final class CompilationRule implements TestRule {
     return new Statement() {
       @Override public void evaluate() throws Throwable {
         final AtomicReference<Throwable> thrown = new AtomicReference<Throwable>();
-        Result result = JavacCompilation.compile(ImmutableList.of(new AbstractProcessor() {
+        Result result = Compilation.compile(ImmutableList.of(new AbstractProcessor() {
           @Override
           public SourceVersion getSupportedSourceVersion() {
             return SourceVersion.latest();

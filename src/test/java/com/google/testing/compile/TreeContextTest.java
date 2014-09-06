@@ -55,7 +55,7 @@ public class TreeContextTest {
       "    }",
       "}");
 
-  private static final JavacCompilation.ParseResult PARSE_RESULTS =
+  private static final Compilation.ParseResult PARSE_RESULTS =
       MoreTrees.parseLines(baseTreeSource);
   private static final CompilationUnitTree COMPILATION_UNIT =
       PARSE_RESULTS.compilationUnits().iterator().next();

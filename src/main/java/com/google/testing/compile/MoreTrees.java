@@ -52,19 +52,19 @@ final class MoreTrees {
 
   /** Parses the source given into a {@link CompilationUnitTree}. */
   static CompilationUnitTree parseLinesToTree(Iterable<String> source) {
-    Iterable<? extends CompilationUnitTree> parseResults = JavacCompilation.parse(ImmutableList.of(
+    Iterable<? extends CompilationUnitTree> parseResults = Compilation.parse(ImmutableList.of(
         JavaFileObjects.forSourceLines("", source))).compilationUnits();
     return Iterables.getOnlyElement(parseResults);
   }
 
-  /** Parses the source given and produces a {@link JavacCompilation.ParseResult}. */
-  static JavacCompilation.ParseResult parseLines(String... source) {
+  /** Parses the source given and produces a {@link Compilation.ParseResult}. */
+  static Compilation.ParseResult parseLines(String... source) {
     return parseLines(Arrays.asList(source));
   }
 
-  /** Parses the source given and produces a {@link JavacCompilation.ParseResult}. */
-  static JavacCompilation.ParseResult parseLines(Iterable<String> source) {
-    return JavacCompilation.parse(ImmutableList.of(JavaFileObjects.forSourceLines("", source)));
+  /** Parses the source given and produces a {@link Compilation.ParseResult}. */
+  static Compilation.ParseResult parseLines(Iterable<String> source) {
+    return Compilation.parse(ImmutableList.of(JavaFileObjects.forSourceLines("", source)));
   }
 
   /**

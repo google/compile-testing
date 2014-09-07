@@ -15,7 +15,7 @@
  */
 package com.google.testing.compile;
 
-import static com.google.common.truth.Truth.ASSERT;
+import static com.google.common.truth.Truth.assertThat;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -44,17 +44,17 @@ public class CompilationRuleTest {
   private final AtomicInteger executions = new AtomicInteger();
 
   @Test public void testMethodsExecuteExactlyOnce() {
-    ASSERT.that(executions.getAndIncrement()).is(0);
+    assertThat(executions.getAndIncrement()).is(0);
   }
 
   @Before /* we also make sure that getElements works in a @Before method */
   @Test public void getElements() {
-    ASSERT.that(compilationRule.getElements()).isNotNull();
+    assertThat(compilationRule.getElements()).isNotNull();
   }
 
   @Before /* we also make sure that getTypes works in a @Before method */
   @Test public void getTypes() {
-    ASSERT.that(compilationRule.getTypes()).isNotNull();
+    assertThat(compilationRule.getTypes()).isNotNull();
   }
 
   /**
@@ -64,7 +64,7 @@ public class CompilationRuleTest {
   @Test public void elementsAreValidAndWorking() {
     Elements elements = compilationRule.getElements();
     TypeElement stringElement = elements.getTypeElement(String.class.getName());
-    ASSERT.that(stringElement.getEnclosingElement())
+    assertThat(stringElement.getEnclosingElement())
         .isEqualTo(elements.getPackageElement("java.lang"));
   }
 
@@ -81,6 +81,6 @@ public class CompilationRuleTest {
     DeclaredType listOfExtendsObjectType = types.getDeclaredType(
         elements.getTypeElement(List.class.getName()),
         types.getWildcardType(elements.getTypeElement(Object.class.getName()).asType(), null));
-    ASSERT.that(types.isAssignable(arrayListOfString, listOfExtendsObjectType)).isTrue();
+    assertThat(types.isAssignable(arrayListOfString, listOfExtendsObjectType)).isTrue();
   }
 }

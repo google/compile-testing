@@ -15,7 +15,7 @@
  */
 
 /**
- * This package contains two {@link org.truth0.Truth} subjects
+ * This package contains two {@link com.google.common.truth.Truth} subjects
  * ({@link JavaSourceSubjectFactory#javaSource} and {@link JavaSourcesSubjectFactory#javaSources})
  * that facilitate testing {@code javac} compilation. Particularly, this enables quick, small tests
  * of {@linkplain javax.annotation.processing.Processor annotation processors} without forking
@@ -23,7 +23,7 @@
  *
  * <p>The simplest invocation looks like this: <pre>   {@code
  *
- *   ASSERT.about(javaSource())
+ *   assert_().about(javaSource())
  *       .that(JavaFileObjects.forSourceString("HelloWorld", "final class HelloWorld {}"))
  *       .compilesWithoutError();
  * }</pre>
@@ -33,7 +33,7 @@
  * of {@linkplain javax.annotation.processing.Processor annotation processors}. Here is the same
  * example with a processor: <pre>   {@code
  *
- *   ASSERT.about(javaSource())
+ *   assert_().about(javaSource())
  *       .that(JavaFileObjects.forSourceString("HelloWorld", "final class HelloWorld {}"))
  *       .processedWith(new MyAnnotationProcessor())
  *       .compilesWithoutError();
@@ -47,7 +47,7 @@
  * snippet tests that a file (a class path resource) processed with an annotation processor
  * generates a source file equivalent to a golden file: <pre>   {@code
  *
- *   ASSERT.about(javaSource())
+ *   assert_().about(javaSource())
  *       .that(JavaFileObjects.forResource("HelloWorld.java"))
  *       .processedWith(new MyAnnotationProcessor())
  *       .compilesWithoutError()
@@ -58,7 +58,7 @@
  * error to a source file: <pre>   {@code
  *
  *   JavaFileObject fileObject = JavaFileObjects.forResource("HelloWorld.java");
- *   ASSERT.about(javaSource())
+ *   assert_().about(javaSource())
  *       .that(fileObject)
  *       .processedWith(new NoHelloWorld())
  *       .failsToCompile()

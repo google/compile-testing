@@ -15,7 +15,7 @@
  */
 package com.google.testing.compile;
 
-import static com.google.common.truth.Truth.ASSERT;
+import static com.google.common.truth.Truth.assertThat;
 
 import com.google.common.collect.Iterables;
 
@@ -57,79 +57,79 @@ public class TreeDifferenceTest {
 
   @Test
   public void isEmpty() {
-    ASSERT.that(emptyDiff().isEmpty()).isTrue();
-    ASSERT.that(onlyExpectedDiffs().isEmpty()).isFalse();
-    ASSERT.that(onlyActualDiffs().isEmpty()).isFalse();
-    ASSERT.that(twoWayDiffs().isEmpty()).isFalse();
-    ASSERT.that(multiDiffs().isEmpty()).isFalse();
+    assertThat(emptyDiff().isEmpty()).isTrue();
+    assertThat(onlyExpectedDiffs().isEmpty()).isFalse();
+    assertThat(onlyActualDiffs().isEmpty()).isFalse();
+    assertThat(twoWayDiffs().isEmpty()).isFalse();
+    assertThat(multiDiffs().isEmpty()).isFalse();
   }
 
   @Test
   public void getExtraExpectedNodes() {
-    ASSERT.that(emptyDiff().getExtraExpectedNodes().size()).isEqualTo(0);
-    ASSERT.that(onlyExpectedDiffs().getExtraExpectedNodes().size()).isEqualTo(2);
-    ASSERT.that(onlyActualDiffs().getExtraExpectedNodes().size()).isEqualTo(0);
-    ASSERT.that(twoWayDiffs().getExtraExpectedNodes().size()).isEqualTo(0);
-    ASSERT.that(multiDiffs().getExtraExpectedNodes().size()).isEqualTo(1);
+    assertThat(emptyDiff().getExtraExpectedNodes().size()).isEqualTo(0);
+    assertThat(onlyExpectedDiffs().getExtraExpectedNodes().size()).isEqualTo(2);
+    assertThat(onlyActualDiffs().getExtraExpectedNodes().size()).isEqualTo(0);
+    assertThat(twoWayDiffs().getExtraExpectedNodes().size()).isEqualTo(0);
+    assertThat(multiDiffs().getExtraExpectedNodes().size()).isEqualTo(1);
   }
 
   @Test
   public void getExtraActualNodes() {
-    ASSERT.that(emptyDiff().getExtraActualNodes().size()).isEqualTo(0);
-    ASSERT.that(onlyExpectedDiffs().getExtraActualNodes().size()).isEqualTo(0);
-    ASSERT.that(onlyActualDiffs().getExtraActualNodes().size()).isEqualTo(2);
-    ASSERT.that(twoWayDiffs().getExtraActualNodes().size()).isEqualTo(0);
-    ASSERT.that(multiDiffs().getExtraActualNodes().size()).isEqualTo(1);
+    assertThat(emptyDiff().getExtraActualNodes().size()).isEqualTo(0);
+    assertThat(onlyExpectedDiffs().getExtraActualNodes().size()).isEqualTo(0);
+    assertThat(onlyActualDiffs().getExtraActualNodes().size()).isEqualTo(2);
+    assertThat(twoWayDiffs().getExtraActualNodes().size()).isEqualTo(0);
+    assertThat(multiDiffs().getExtraActualNodes().size()).isEqualTo(1);
   }
 
   @Test
   public void getDifferingNodes() {
-    ASSERT.that(emptyDiff().getDifferingNodes().size()).isEqualTo(0);
-    ASSERT.that(onlyExpectedDiffs().getDifferingNodes().size()).isEqualTo(0);
-    ASSERT.that(onlyActualDiffs().getDifferingNodes().size()).isEqualTo(0);
-    ASSERT.that(twoWayDiffs().getDifferingNodes().size()).isEqualTo(2);
-    ASSERT.that(multiDiffs().getDifferingNodes().size()).isEqualTo(1);
+    assertThat(emptyDiff().getDifferingNodes().size()).isEqualTo(0);
+    assertThat(onlyExpectedDiffs().getDifferingNodes().size()).isEqualTo(0);
+    assertThat(onlyActualDiffs().getDifferingNodes().size()).isEqualTo(0);
+    assertThat(twoWayDiffs().getDifferingNodes().size()).isEqualTo(2);
+    assertThat(multiDiffs().getDifferingNodes().size()).isEqualTo(1);
   }
 
   @Test
   public void getDiffReport_NoContext() {
-    ASSERT.that(emptyDiff().getDiffReport() != null).isTrue();
-    ASSERT.that(onlyExpectedDiffs().getDiffReport())
+    assertThat(emptyDiff().getDiffReport() != null).isTrue();
+    assertThat(onlyExpectedDiffs().getDiffReport())
         .contains("unmatched nodes in the expected tree");
-    ASSERT.that(onlyExpectedDiffs().getDiffReport()).contains(expectedDiffMessage());
-    ASSERT.that(onlyActualDiffs().getDiffReport()).contains("unmatched nodes in the actual tree");
-    ASSERT.that(onlyActualDiffs().getDiffReport()).contains(actualDiffMessage());
-    ASSERT.that(twoWayDiffs().getDiffReport()).contains("differed in expected and actual");
-    ASSERT.that(twoWayDiffs().getDiffReport()).contains(twoWayDiffMessage());
-    ASSERT.that(multiDiffs().getDiffReport()).contains(expectedDiffMessage());
-    ASSERT.that(multiDiffs().getDiffReport()).contains(actualDiffMessage());
-    ASSERT.that(multiDiffs().getDiffReport()).contains(twoWayDiffMessage());
+    assertThat(onlyExpectedDiffs().getDiffReport()).contains(expectedDiffMessage());
+    assertThat(onlyActualDiffs().getDiffReport()).contains("unmatched nodes in the actual tree");
+    assertThat(onlyActualDiffs().getDiffReport()).contains(actualDiffMessage());
+    assertThat(twoWayDiffs().getDiffReport()).contains("differed in expected and actual");
+    assertThat(twoWayDiffs().getDiffReport()).contains(twoWayDiffMessage());
+    assertThat(multiDiffs().getDiffReport()).contains(expectedDiffMessage());
+    assertThat(multiDiffs().getDiffReport()).contains(actualDiffMessage());
+    assertThat(multiDiffs().getDiffReport()).contains(twoWayDiffMessage());
   }
 
   @Test
   public void getDiffReport_WithContext() {
-    ASSERT.that(emptyDiff().getDiffReport(treeContext(), treeContext()) != null).isTrue();
-    ASSERT.that(onlyExpectedDiffs().getDiffReport(treeContext(), treeContext()))
+    assertThat(emptyDiff().getDiffReport(treeContext(), treeContext()) != null).isTrue();
+    assertThat(onlyExpectedDiffs().getDiffReport(treeContext(), treeContext()))
         .contains(expectedDiffMessage());
-    ASSERT.that(onlyExpectedDiffs().getDiffReport(treeContext(), treeContext()))
+    assertThat(onlyExpectedDiffs().getDiffReport(treeContext(), treeContext()))
         .contains(expectedDiffContextStr());
-    ASSERT.that(onlyActualDiffs().getDiffReport(treeContext(), treeContext()))
+    assertThat(onlyActualDiffs().getDiffReport(treeContext(), treeContext()))
         .contains(actualDiffMessage());
-    ASSERT.that(onlyActualDiffs().getDiffReport(treeContext(), treeContext()))
+    assertThat(onlyActualDiffs().getDiffReport(treeContext(), treeContext()))
         .contains(actualDiffContextStr());
-    ASSERT.that(twoWayDiffs().getDiffReport(treeContext(), treeContext()))
+    assertThat(twoWayDiffs().getDiffReport(treeContext(), treeContext()))
         .contains(twoWayDiffMessage());
-    ASSERT.that(twoWayDiffs().getDiffReport(treeContext(), treeContext()))
+    assertThat(twoWayDiffs().getDiffReport(treeContext(), treeContext()))
         .contains(twoWayDiffContextStr());
-    ASSERT.that(multiDiffs().getDiffReport(treeContext(), treeContext()))
+    assertThat(multiDiffs().getDiffReport(treeContext(), treeContext()))
         .contains(expectedDiffContextStr());
-    ASSERT.that(multiDiffs().getDiffReport(treeContext(), treeContext()))
+    assertThat(multiDiffs().getDiffReport(treeContext(), treeContext()))
         .contains(actualDiffMessage());
-    ASSERT.that(multiDiffs().getDiffReport(treeContext(), treeContext()))
+    assertThat(multiDiffs().getDiffReport(treeContext(), treeContext()))
         .contains(actualDiffContextStr());
-    ASSERT.that(multiDiffs().getDiffReport(treeContext(), treeContext()))
+    assertThat(multiDiffs().getDiffReport(treeContext(), treeContext()))
         .contains(twoWayDiffMessage());
-    ASSERT.that(multiDiffs().getDiffReport(treeContext(), treeContext()))
+    assertThat(multiDiffs().getDiffReport(treeContext(), treeContext()))
         .contains(twoWayDiffContextStr());
   }
 
@@ -147,11 +147,11 @@ public class TreeDifferenceTest {
           "}");
     TreeDifference diff =
         TreeDiffer.diffCompilationUnits(modifiersPresent, modifiersAbsent);
-    ASSERT.that(
+    assertThat(
         diff.getDiffReport(treeContext(modifiersPresent), treeContext(modifiersAbsent))
         .isEmpty()).isFalse();
     diff = TreeDiffer.diffCompilationUnits(modifiersAbsent, modifiersPresent);
-    ASSERT.that(
+    assertThat(
         diff.getDiffReport(treeContext(modifiersAbsent), treeContext(modifiersPresent))
         .isEmpty()).isFalse();
   }

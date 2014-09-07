@@ -224,12 +224,16 @@ final class TreeDiffer {
         } else if (expectedsIterator.hasNext() && !actualsIterator.hasNext()) {
           diffBuilder.addExtraExpectedNode(expectedPathPlus(expectedsIterator.next()));
         }
-      } else if (expecteds == null && actuals.iterator().hasNext()) {
+      } else if (expecteds == null && !isEmptyOrNull(actuals)) {
         diffBuilder.addExtraActualNode(actualPathPlus(actuals.iterator().next()));
-      } else if (actuals == null && expecteds.iterator().hasNext()) {
+      } else if (actuals == null && !isEmptyOrNull(expecteds)) {
         diffBuilder.addExtraExpectedNode(expectedPathPlus(expecteds.iterator().next()));
       }
       return null;
+    }
+
+    private boolean isEmptyOrNull(Iterable<?> iterable) {
+      return iterable == null || !iterable.iterator().hasNext();
     }
 
     @Override

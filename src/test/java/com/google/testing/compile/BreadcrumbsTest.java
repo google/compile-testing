@@ -15,7 +15,7 @@
  */
 package com.google.testing.compile;
 
-import static com.google.common.truth.Truth.ASSERT;
+import static com.google.common.truth.Truth.assertThat;
 
 import com.google.testing.compile.Breadcrumbs.BreadcrumbVisitor;
 
@@ -44,43 +44,43 @@ public class BreadcrumbsTest {
 
   @Test
   public void describeTreePath() {
-    ASSERT.that(Breadcrumbs.describeTreePath(treePath()))
+    assertThat(Breadcrumbs.describeTreePath(treePath()))
         .contains(classTree().getSimpleName().toString());
   }
 
   @Test
   public void getDescriptor_method() {
-    ASSERT.that(methodTree().accept(BREADCRUMBS, null)).contains(methodTree().getKind().toString());
-    ASSERT.that(methodTree().accept(BREADCRUMBS, null)).contains(methodTree().getName().toString());
+    assertThat(methodTree().accept(BREADCRUMBS, null)).contains(methodTree().getKind().toString());
+    assertThat(methodTree().accept(BREADCRUMBS, null)).contains(methodTree().getName().toString());
   }
 
   @Test
   public void getDescriptor_literal() {
-    ASSERT.that(literalTree().accept(BREADCRUMBS, null))
+    assertThat(literalTree().accept(BREADCRUMBS, null))
         .contains(literalTree().getKind().toString());
-    ASSERT.that(literalTree().accept(BREADCRUMBS, null))
+    assertThat(literalTree().accept(BREADCRUMBS, null))
         .contains(literalTree().getValue().toString());
   }
 
   @Test
   public void getDescriptor_class() {
-    ASSERT.that(classTree().accept(BREADCRUMBS, null)).contains(classTree().getKind().toString());
-    ASSERT.that(classTree().accept(BREADCRUMBS, null))
+    assertThat(classTree().accept(BREADCRUMBS, null)).contains(classTree().getKind().toString());
+    assertThat(classTree().accept(BREADCRUMBS, null))
         .contains(classTree().getSimpleName().toString());
   }
 
   @Test
   public void getDescriptor_variable() {
-    ASSERT.that(variableTree().accept(BREADCRUMBS, null))
+    assertThat(variableTree().accept(BREADCRUMBS, null))
         .contains(variableTree().getKind().toString());
-    ASSERT.that(variableTree().accept(BREADCRUMBS, null))
+    assertThat(variableTree().accept(BREADCRUMBS, null))
         .contains(variableTree().getName().toString());
   }
 
   @Test
   public void getDescriptor_others() {
     for (Tree tree : treePath()) {
-      ASSERT.that(tree.accept(BREADCRUMBS, null)).contains(tree.getKind().toString());
+      assertThat(tree.accept(BREADCRUMBS, null)).contains(tree.getKind().toString());
     }
   }
 

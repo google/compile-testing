@@ -47,10 +47,11 @@ public class TreeDifferTest {
           "",
           "    public void nonsense() {",
           "        int[] numbers = {0, 1, 2, 3, 4};",
-          "        for (int x : numbers) {",
+          "        loop: for (int x : numbers) {",
           "            if (x % 2 == 0) {",
           "                throw new IllegalStateException();",
           "            }",
+          "            break loop;",
           "        }",
           "    }",
           "}");
@@ -66,10 +67,11 @@ public class TreeDifferTest {
           "",
           "    public void nonsense() {",
           "        int[] numberz = {0, 1, 2, 3, 4, 5};",
-          "        for (int x : numberz) {",
+          "        loop: for (int x : numberz) {",
           "            if (x % 2 == 0) {",
           "                throw new RuntimeException();",
           "            }",
+          "            break;",
           "        }",
           "    }",
           "    public int extraNonsense() {",
@@ -127,7 +129,9 @@ public class TreeDifferTest {
         new SimplifiedDiff(Tree.Kind.IDENTIFIER,
             "Expected identifier to be <numbers> but was <numberz>."),
         new SimplifiedDiff(Tree.Kind.IDENTIFIER,
-            "Expected identifier to be <IllegalStateException> but was <RuntimeException>."));
+            "Expected identifier to be <IllegalStateException> but was <RuntimeException>."),
+        new SimplifiedDiff(Tree.Kind.BREAK,
+            "Expected label on break statement to be <loop> but was <null>."));
     assertThat(diff.getExtraExpectedNodes().isEmpty()).isTrue();
     assertThat(diff.getExtraActualNodes().size()).isEqualTo(extraNodesExpected.size());
 

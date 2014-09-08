@@ -163,7 +163,7 @@ final class MoreTrees {
      * and kind sought.
      */
     private boolean isMatch(Tree node, Object idValue) {
-      return isMatch(node, Optional.of(idValue));
+      return isMatch(node, Optional.fromNullable(idValue));
     }
 
     /** Returns a TreePath that includes the current path plus the node provided */

@@ -75,6 +75,7 @@ import com.sun.source.util.TreePath;
 import java.util.Iterator;
 
 import javax.annotation.Nullable;
+import javax.lang.model.element.Name;
 
 /**
  * A class for determining how two compilation {@code Tree}s differ from each other.
@@ -198,6 +199,12 @@ final class TreeDiffer {
         expectedPath = prevExpectedPath;
         actualPath = prevActualPath;
       }
+    }
+    
+    private boolean namesEqual(@Nullable Name expected, @Nullable Name actual) {
+      return (expected == null)
+          ? actual == null
+          : (actual != null && expected.contentEquals(actual));
     }
 
     public Void scan(@Nullable Tree expected, @Nullable Tree actual) {
@@ -339,7 +346,7 @@ final class TreeDiffer {
         return null;
       }
 
-      checkForDiff(expected.getLabel().contentEquals(other.get().getLabel()),
+      checkForDiff(namesEqual(expected.getLabel(), other.get().getLabel()),
           "Expected label on break statement to be <%s> but was <%s>.",
           expected.getLabel(), other.get().getLabel());
       return null;
@@ -413,7 +420,7 @@ final class TreeDiffer {
         return null;
       }
 
-      checkForDiff(expected.getLabel().contentEquals(other.get().getLabel()),
+      checkForDiff(namesEqual(expected.getLabel(), other.get().getLabel()),
           "Expected label on continue statement to be <%s> but was <%s>.",
           expected.getLabel(), other.get().getLabel());
       return null;

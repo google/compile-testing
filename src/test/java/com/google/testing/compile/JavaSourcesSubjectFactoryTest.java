@@ -133,6 +133,44 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
+  public void parsesAs() {
+    assert_().about(javaSource())
+        .that(JavaFileObjects.forResource(Resources.getResource("HelloWorld.java")))
+        .parsesAs(JavaFileObjects.forSourceLines("test.HelloWorld",
+            "package test;",
+            "",
+            "public class HelloWorld {",
+            "  public static void main(String[] args) {",
+            "    System.out.println(\"Hello World!\");",
+            "  }",
+            "}"));
+  }
+
+  @Test
+  public void parsesAs_expectedFileFailsToParse() {
+    try {
+      VERIFY.about(javaSource())
+          .that(JavaFileObjects.forResource(Resources.getResource("HelloWorld.java")))
+          .parsesAs(JavaFileObjects.forResource("HelloWorld-broken.java"));
+      fail();
+    } catch (IllegalStateException expected) {
+      assertThat(expected.getMessage()).startsWith("error while parsing:");
+    }
+  }
+
+  @Test
+  public void parsesAs_actualFileFailsToParse() {
+    try {
+      VERIFY.about(javaSource())
+          .that(JavaFileObjects.forResource("HelloWorld-broken.java"))
+          .parsesAs(JavaFileObjects.forResource(Resources.getResource("HelloWorld.java")));
+      fail();
+    } catch (IllegalStateException expected) {
+      assertThat(expected.getMessage()).startsWith("error while parsing:");
+    }
+  }
+
+  @Test
   public void failsToCompile_throws() {
     try {
       VERIFY.about(javaSource())
@@ -319,7 +357,7 @@ public class JavaSourcesSubjectFactoryTest {
               failingExpectationName,
               failingExpectationSource));
     } catch (VerificationException expected) {
-      assertThat(expected.getMessage()).contains("top-level types that were not generated");
+      assertThat(expected.getMessage()).contains("top-level types that were not present");
       assertThat(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
       assertThat(expected.getMessage()).contains(failingExpectationName);
     }

@@ -70,6 +70,11 @@ public final class JavaSourcesSubject
   }
 
   @Override
+  public void parsesAs(JavaFileObject first, JavaFileObject... rest) {
+    new CompilationClause().parsesAs(first, rest);
+  }
+
+  @Override
   public SuccessfulCompilationClause compilesWithoutError() {
     return new CompilationClause().compilesWithoutError();
   }
@@ -126,6 +131,130 @@ public final class JavaSourcesSubject
           message.append(reportFileGenerated(generatedFile));
         }
         return message.toString();
+      }
+    }
+    
+    @Override
+    public void parsesAs(JavaFileObject first, JavaFileObject... rest) {
+      Compilation.ParseResult actualResult = Compilation.parse(getSubject());
+      ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
+          actualResult.diagnosticsByKind().get(Kind.ERROR);
+      if (!errors.isEmpty()) {
+        StringBuilder message = new StringBuilder("Parsing produced the following errors:\n");
+        for (Diagnostic<? extends JavaFileObject> error : errors) {
+          message.append('\n');
+          message.append(error);
+        }
+        failureStrategy.fail(message.toString());
+      }
+      final Compilation.ParseResult expectedResult = Compilation.parse(Lists.asList(first, rest));
+      final FluentIterable<? extends CompilationUnitTree> actualTrees = FluentIterable.from(
+          actualResult.compilationUnits());
+      final FluentIterable<? extends CompilationUnitTree> expectedTrees = FluentIterable.from(
+          expectedResult.compilationUnits());
+
+      Function<? super CompilationUnitTree, ImmutableSet<String>> getTypesFunction =
+          new Function<CompilationUnitTree, ImmutableSet<String>>() {
+        @Override public ImmutableSet<String> apply(CompilationUnitTree compilationUnit) {
+          return TypeEnumerator.getTopLevelTypes(compilationUnit);
+        }
+      };
+
+      final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> expectedTreeTypes =
+          Maps.toMap(expectedTrees, getTypesFunction);
+      final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> actualTreeTypes =
+          Maps.toMap(actualTrees, getTypesFunction);
+      final ImmutableMap<? extends CompilationUnitTree, Optional<? extends CompilationUnitTree>>
+      matchedTrees = Maps.toMap(expectedTrees,
+          new Function<CompilationUnitTree, Optional<? extends CompilationUnitTree>>() {
+        @Override public Optional<? extends CompilationUnitTree> apply(
+            final CompilationUnitTree expectedTree) {
+          return Iterables.tryFind(actualTrees,
+              new Predicate<CompilationUnitTree>() {
+            @Override public boolean apply(CompilationUnitTree actualTree) {
+              return expectedTreeTypes.get(expectedTree).equals(
+                  actualTreeTypes.get(actualTree));
+            }
+          });
+        }
+      });
+
+      for (Map.Entry<? extends CompilationUnitTree, Optional<? extends CompilationUnitTree>>
+      matchedTreePair : matchedTrees.entrySet()) {
+        final CompilationUnitTree expectedTree = matchedTreePair.getKey();
+        if (!matchedTreePair.getValue().isPresent()) {
+          failNoCandidates(expectedTreeTypes.get(expectedTree), expectedTree,
+              actualTreeTypes, actualTrees);
+        } else {
+          CompilationUnitTree actualTree = matchedTreePair.getValue().get();
+          TreeDifference treeDifference = TreeDiffer.diffCompilationUnits(expectedTree, actualTree);
+          if (!treeDifference.isEmpty()) {
+            String diffReport = treeDifference.getDiffReport(
+                new TreeContext(expectedTree, expectedResult.trees()),
+                new TreeContext(actualTree, actualResult.trees()));
+            failWithCandidate(expectedTree.getSourceFile(), actualTree.getSourceFile(), diffReport);
+          }
+        }
+      }
+    }
+
+    /** Called when the {@code generatesSources()} verb fails with no diff candidates. */
+    private void failNoCandidates(ImmutableSet<String> expectedTypes,
+        CompilationUnitTree expectedTree,
+        final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> actualTypes,
+        FluentIterable<? extends CompilationUnitTree> actualTrees) {
+      String generatedTypesReport = Joiner.on('\n').join(
+          actualTrees.transform(new Function<CompilationUnitTree, String>() {
+                @Override public String apply(CompilationUnitTree generated) {
+                  return String.format("- %s in <%s>",
+                      actualTypes.get(generated),
+                      generated.getSourceFile().toUri().getPath());
+                }
+              })
+          .toList());
+      failureStrategy.fail(Joiner.on('\n').join(
+          "",
+          "An expected source declared one or more top-level types that were not present.",
+          "",
+          String.format("Expected top-level types: <%s>", expectedTypes),
+          String.format("Declared by expected file: <%s>",
+              expectedTree.getSourceFile().toUri().getPath()),
+          "",
+          "The top-level types that were present are as follows: ",
+          "",
+          generatedTypesReport,
+          ""));
+    }
+
+    /** Called when the {@code generatesSources()} verb fails with a diff candidate. */
+    private void failWithCandidate(JavaFileObject expectedSource,
+        JavaFileObject actualSource, String diffReport) {
+      try {
+        failureStrategy.fail(Joiner.on('\n').join(
+            "",
+            "Source declared the same top-level types of an expected source, but",
+            "didn't match exactly.",
+            "",
+            String.format("Expected file: <%s>", expectedSource.toUri().getPath()),
+            String.format("Actual file: <%s>", actualSource.toUri().getPath()),
+            "",
+            "Diffs:",
+            "======",
+            "",
+            diffReport,
+            "",
+            "Expected Source: ",
+            "================",
+            "",
+            expectedSource.getCharContent(false).toString(),
+            "",
+            "Actual Source:",
+            "=================",
+            "",
+            actualSource.getCharContent(false).toString()));
+      } catch (IOException e) {
+        throw new IllegalStateException("Couldn't read from JavaFileObject when it was already "
+            + "in memory.", e);
       }
     }
 
@@ -312,120 +441,10 @@ public final class JavaSourcesSubject
     @Override
     public SuccessfulCompilationClause generatesSources(JavaFileObject first,
         JavaFileObject... rest) {
-
-      final Compilation.ParseResult actualResult = Compilation.parse(result.generatedSources());
-      final Compilation.ParseResult expectedResult = Compilation.parse(Lists.asList(first, rest));
-      final FluentIterable<? extends CompilationUnitTree> actualTrees = FluentIterable.from(
-          actualResult.compilationUnits());
-      final FluentIterable<? extends CompilationUnitTree> expectedTrees = FluentIterable.from(
-          expectedResult.compilationUnits());
-
-      Function<? super CompilationUnitTree, ImmutableSet<String>> getTypesFunction =
-          new Function<CompilationUnitTree, ImmutableSet<String>>() {
-            @Override public ImmutableSet<String> apply(CompilationUnitTree compilationUnit) {
-              return TypeEnumerator.getTopLevelTypes(compilationUnit);
-            }
-      };
-
-      final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> expectedTreeTypes =
-          Maps.toMap(expectedTrees, getTypesFunction);
-      final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> actualTreeTypes =
-          Maps.toMap(actualTrees, getTypesFunction);
-      final ImmutableMap<? extends CompilationUnitTree, Optional<? extends CompilationUnitTree>>
-          matchedTrees = Maps.toMap(expectedTrees,
-              new Function<CompilationUnitTree, Optional<? extends CompilationUnitTree>>() {
-                @Override public Optional<? extends CompilationUnitTree> apply(
-                    final CompilationUnitTree expectedTree) {
-                  return Iterables.tryFind(actualTrees,
-                      new Predicate<CompilationUnitTree>() {
-                        @Override public boolean apply(CompilationUnitTree actualTree) {
-                          return expectedTreeTypes.get(expectedTree).equals(
-                              actualTreeTypes.get(actualTree));
-                        }
-                      });
-                }
-              });
-
-      for (Map.Entry<? extends CompilationUnitTree, Optional<? extends CompilationUnitTree>>
-               matchedTreePair : matchedTrees.entrySet()) {
-        final CompilationUnitTree expectedTree = matchedTreePair.getKey();
-        if (!matchedTreePair.getValue().isPresent()) {
-          failNoCandidates(expectedTreeTypes.get(expectedTree), expectedTree,
-              actualTreeTypes, actualTrees);
-        } else {
-          CompilationUnitTree actualTree = matchedTreePair.getValue().get();
-          TreeDifference treeDifference = TreeDiffer.diffCompilationUnits(expectedTree, actualTree);
-          if (!treeDifference.isEmpty()) {
-            String diffReport = treeDifference.getDiffReport(
-                new TreeContext(expectedTree, expectedResult.trees()),
-                new TreeContext(actualTree, actualResult.trees()));
-            failWithCandidate(expectedTree.getSourceFile(), actualTree.getSourceFile(), diffReport);
-          }
-        }
-      }
+      new JavaSourcesSubject(failureStrategy, result.generatedSources())
+          .parsesAs(first, rest);
       return this;
     }
-
-    /** Called when the {@code generatesSources()} verb fails with no diff candidates. */
-    private void failNoCandidates(ImmutableSet<String> expectedTypes,
-        CompilationUnitTree expectedTree,
-        final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> actualTypes,
-        FluentIterable<? extends CompilationUnitTree> actualTrees) {
-      String generatedTypesReport = Joiner.on('\n').join(
-          actualTrees.transform(new Function<CompilationUnitTree, String>() {
-                @Override public String apply(CompilationUnitTree generated) {
-                  return String.format("- %s in <%s>",
-                      actualTypes.get(generated),
-                      generated.getSourceFile().toUri().getPath());
-                }
-              })
-          .toList());
-      failureStrategy.fail(Joiner.on('\n').join(
-          "",
-          "An expected source declared one or more top-level types that were not generated.",
-          "",
-          String.format("Expected top-level types: <%s>", expectedTypes),
-          String.format("Declared by expected file: <%s>",
-              expectedTree.getSourceFile().toUri().getPath()),
-          "",
-          "The top-level types that were generated are as follows: ",
-          "",
-          generatedTypesReport,
-          ""));
-    }
-
-    /** Called when the {@code generatesSources()} verb fails with a diff candidate. */
-    private void failWithCandidate(JavaFileObject expectedSource,
-        JavaFileObject actualSource, String diffReport) {
-      try {
-        failureStrategy.fail(Joiner.on('\n').join(
-            "",
-            "A generated source declared the same top-level types of an expected source, but",
-            "didn't match exactly.",
-            "",
-            String.format("Expected file: <%s>", expectedSource.toUri().getPath()),
-            String.format("Generated file: <%s>", actualSource.toUri().getPath()),
-            "",
-            "Diffs:",
-            "======",
-            "",
-            diffReport,
-            "",
-            "Expected Source: ",
-            "================",
-            "",
-            expectedSource.getCharContent(false).toString(),
-            "",
-            "Actual Source:",
-            "=================",
-            "",
-            actualSource.getCharContent(false).toString()));
-      } catch (IOException e) {
-        throw new IllegalStateException("Couldn't read from JavaFileObject when it was already "
-            + "in memory.", e);
-      }
-    }
-
 
     @Override
     public SuccessfulCompilationClause generatesFiles(JavaFileObject first,
@@ -484,6 +503,11 @@ public final class JavaSourcesSubject
     @Override
     public UnsuccessfulCompilationClause failsToCompile() {
       return delegate.failsToCompile();
+    }
+
+    @Override
+    public void parsesAs(JavaFileObject first, JavaFileObject... rest) {
+      delegate.parsesAs(first, rest);
     }
   }
 }

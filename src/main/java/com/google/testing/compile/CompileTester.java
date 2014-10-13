@@ -27,6 +27,12 @@ import javax.tools.JavaFileObject;
  * @author Gregory Kick
  */
 public interface CompileTester {
+  /** 
+   * The clause in the fluent API that tests that the code parses equivalently to the specified 
+   * code.
+   */
+  void parsesAs(JavaFileObject first, JavaFileObject... rest);
+  
   /** The clause in the fluent API that tests for successful compilation. */
   SuccessfulCompilationClause compilesWithoutError();
 

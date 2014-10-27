@@ -40,8 +40,8 @@ public class TypeEnumeratorTest {
         "  }",
         "}");
 
-    assertThat(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
-        "path.to.test.HelloWorld");
+    assertThat(TypeEnumerator.getTopLevelTypes(compilation))
+        .containsExactly("path.to.test.HelloWorld");
   }
 
   @Test
@@ -73,8 +73,7 @@ public class TypeEnumeratorTest {
         "  }",
         "}");
 
-    assertThat(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
-        "HelloWorld");
+    assertThat(TypeEnumerator.getTopLevelTypes(compilation)).containsExactly("HelloWorld");
   }
 
   @Test
@@ -102,8 +101,8 @@ public class TypeEnumeratorTest {
         "",
         "public @interface HelloWorld {}");
 
-    assertThat(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
-        "path.to.test.HelloWorld");
+    assertThat(TypeEnumerator.getTopLevelTypes(compilation))
+        .containsExactly("path.to.test.HelloWorld");
   }
 
   @Test
@@ -117,8 +116,8 @@ public class TypeEnumeratorTest {
         "  WORLD;",
         "}");
 
-    assertThat(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
-        "path.to.test.HelloWorld");
+    assertThat(TypeEnumerator.getTopLevelTypes(compilation))
+        .containsExactly("path.to.test.HelloWorld");
   }
 
   @Test
@@ -131,8 +130,8 @@ public class TypeEnumeratorTest {
         "  public String getSalutation();",
         "}");
 
-    assertThat(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
-        "path.to.test.HelloWorld");
+    assertThat(TypeEnumerator.getTopLevelTypes(compilation))
+        .containsExactly("path.to.test.HelloWorld");
   }
 
   @Test

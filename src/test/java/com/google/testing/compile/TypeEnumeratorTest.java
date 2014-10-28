@@ -58,7 +58,7 @@ public class TypeEnumeratorTest {
         "",
         "final class HelperWorld {}");
 
-    assertThat(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
+    assertThat(TypeEnumerator.getTopLevelTypes(compilation)).containsExactly(
         "path.to.test.HelloWorld", "path.to.test.HelperWorld");
   }
 
@@ -89,7 +89,7 @@ public class TypeEnumeratorTest {
         "",
         "final class HelperWorld {}");
 
-    assertThat(TypeEnumerator.getTopLevelTypes(compilation)).has().exactly(
+    assertThat(TypeEnumerator.getTopLevelTypes(compilation)).containsExactly(
         "HelloWorld", "HelperWorld");
   }
 

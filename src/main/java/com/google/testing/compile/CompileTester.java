@@ -15,7 +15,10 @@
  */
 package com.google.testing.compile;
 
+import com.google.common.io.ByteSource;
+
 import javax.tools.Diagnostic;
+import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
 
 /**
@@ -78,10 +81,25 @@ public interface CompileTester {
     SuccessfulCompilationClause generatesSources(JavaFileObject first, JavaFileObject... rest);
 
     /**
-     * Checks that a file with equivalent path and content was generated for each of the given
+     * Checks that a file with equivalent kind and content was generated for each of the given
      * {@linkplain JavaFileObject files}.
      */
     SuccessfulCompilationClause generatesFiles(JavaFileObject first, JavaFileObject... rest);
+
+    /**
+     * Checks that a file with the specified location, package, and filename was generated.
+     */
+    SuccessfulFileClause generatesFileNamed(
+        JavaFileManager.Location location, String packageName, String relativeName);
+  }
+
+  /** The clause in the fluent API that checks that a generated file has the specified contents. */
+  public interface SuccessfulFileClause extends ChainingClause<GeneratedPredicateClause> {
+    /**
+     * Checks that the contents of the generated file match the contents of the specified
+     * {@link ByteSource}.
+     */
+    SuccessfulFileClause withContents(ByteSource expectedByteSource);
   }
 
   /** The clause in the fluent API for further tests on successful compilations. */

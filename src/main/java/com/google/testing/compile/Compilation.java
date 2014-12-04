@@ -58,8 +58,9 @@ final class Compilation {
   static Result compile(Iterable<? extends Processor> processors,
       Iterable<? extends JavaFileObject> sources) {
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-    if(compiler == null)
+    if (compiler == null) {
       throw new CompilerNotFoundException();
+    }
     DiagnosticCollector<JavaFileObject> diagnosticCollector =
         new DiagnosticCollector<JavaFileObject>();
     InMemoryJavaFileManager fileManager = new InMemoryJavaFileManager(

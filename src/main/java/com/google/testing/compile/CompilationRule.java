@@ -88,6 +88,7 @@ public final class CompilationRule implements TestRule {
             return false;
           }
         }),
+        ImmutableSet.<String>of(),
         // just compile _something_
         ImmutableList.of(JavaFileObjects.forSourceLines("Dummy", "final class Dummy {}")));
         checkState(result.successful(), result);

@@ -29,6 +29,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import com.google.common.io.ByteSource;
 import com.google.common.truth.FailureStrategy;
 import com.google.common.truth.Subject;
@@ -37,7 +38,9 @@ import com.google.testing.compile.Compilation.Result;
 import com.sun.source.tree.CompilationUnitTree;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
 
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
@@ -56,8 +59,22 @@ import javax.tools.JavaFileObject;
 public final class JavaSourcesSubject
     extends Subject<JavaSourcesSubject, Iterable<? extends JavaFileObject>>
     implements CompileTester, ProcessedCompileTesterFactory {
+  private final Set<String> options = Sets.newHashSet();
+  
   JavaSourcesSubject(FailureStrategy failureStrategy, Iterable<? extends JavaFileObject> subject) {
     super(failureStrategy, subject);
+  }
+  
+  @Override
+  public ProcessedCompileTesterFactory withCompilerOptions(Iterable<String> options) {
+    Iterables.addAll(this.options, options);
+    return this;
+  }
+  
+  @Override
+  public ProcessedCompileTesterFactory withCompilerOptions(String... options) {
+    this.options.addAll(Arrays.asList(options));
+    return this;
   }
 
   @Override
@@ -261,7 +278,8 @@ public final class JavaSourcesSubject
 
     @Override
     public SuccessfulCompilationClause compilesWithoutError() {
-      Compilation.Result result = Compilation.compile(processors, getSubject());
+      Compilation.Result result =
+          Compilation.compile(processors, ImmutableSet.copyOf(options), getSubject());
       if (!result.successful()) {
         ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
             result.diagnosticsByKind().get(Kind.ERROR);
@@ -279,7 +297,7 @@ public final class JavaSourcesSubject
 
     @Override
     public UnsuccessfulCompilationClause failsToCompile() {
-      Result result = Compilation.compile(processors, getSubject());
+      Result result = Compilation.compile(processors, ImmutableSet.copyOf(options), getSubject());
       if (result.successful()) {
         String message = Joiner.on('\n').join(
             "Compilation was expected to fail, but contained no errors.",
@@ -543,6 +561,16 @@ public final class JavaSourcesSubject
       this.delegate =
           new JavaSourcesSubject(failureStrategy, ImmutableList.of(subject));
     }
+    
+    @Override
+    public ProcessedCompileTesterFactory withCompilerOptions(Iterable<String> options) {
+      return delegate.withCompilerOptions(options);
+    }
+    
+    @Override
+    public ProcessedCompileTesterFactory withCompilerOptions(String... options) {
+      return delegate.withCompilerOptions(options);
+    }    
 
     @Override
     public CompileTester processedWith(Processor first, Processor... rest) {

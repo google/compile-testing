@@ -43,6 +43,7 @@ import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
+import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
 
 /**
@@ -471,6 +472,64 @@ public final class JavaSourcesSubject
         }
       }
       return false;
+    }
+
+    @Override
+    public SuccessfulFileClause generatesFileNamed(
+        JavaFileManager.Location location, String packageName, String relativeName) {
+      // TODO(gak): Validate that these inputs aren't null, location is an output location, and
+      // packageName is a valid package name.
+      // We're relying on the implementation of location.getName() to be equivalent to the path of
+      // the location.
+      String expectedFilename = new StringBuilder(location.getName()).append('/')
+          .append(packageName.replace('.', '/')).append('/').append(relativeName).toString();
+
+      for (JavaFileObject generated : result.generatedFilesByKind().values()) {
+        if (generated.toUri().getPath().endsWith(expectedFilename)) {
+          return new SuccessfulFileBuilder(this, generated.toUri().getPath(),
+              JavaFileObjects.asByteSource(generated));
+        }
+      }
+      StringBuilder encounteredFiles = new StringBuilder();
+      for (JavaFileObject generated : result.generatedFilesByKind().values()) {
+        if (generated.toUri().getPath().contains(location.getName())) {
+          encounteredFiles.append("  ").append(generated.toUri().getPath()).append('\n');
+        }
+      }
+      failureStrategy.fail("Did not find a generated file corresponding to " + relativeName
+          + " in package " + packageName + "; Found: " + encounteredFiles.toString());
+      return new SuccessfulFileBuilder(this, null, null);
+    }
+  }
+
+  private final class SuccessfulFileBuilder implements SuccessfulFileClause {
+    private final SuccessfulCompilationBuilder compilationClause;
+    private final String generatedFilePath;
+    private final ByteSource generatedByteSource;
+
+    SuccessfulFileBuilder(SuccessfulCompilationBuilder compilationClause, String generatedFilePath,
+        ByteSource generatedByteSource) {
+      this.compilationClause = compilationClause;
+      this.generatedFilePath = generatedFilePath;
+      this.generatedByteSource = generatedByteSource;
+    }
+
+    @Override
+    public GeneratedPredicateClause and() {
+      return compilationClause;
+    }
+
+    @Override
+    public SuccessfulFileClause withContents(ByteSource expectedByteSource) {
+      try {
+        if (!expectedByteSource.contentEquals(generatedByteSource)) {
+          failureStrategy.fail("The contents in " + generatedFilePath
+              + " did not match the expected contents");
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      return this;
     }
   }
 

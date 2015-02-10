@@ -44,7 +44,7 @@ public class CompilationRuleTest {
   private final AtomicInteger executions = new AtomicInteger();
 
   @Test public void testMethodsExecuteExactlyOnce() {
-    assertThat(executions.getAndIncrement()).is(0);
+    assertThat(executions.getAndIncrement()).isEqualTo(0);
   }
 
   @Before /* we also make sure that getElements works in a @Before method */

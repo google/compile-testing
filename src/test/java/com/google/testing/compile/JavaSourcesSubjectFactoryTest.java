@@ -15,20 +15,19 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.base.Charsets.UTF_8;
 import static com.google.common.truth.Truth.assertAbout;
 import static com.google.common.truth.Truth.assertThat;
-import static com.google.common.truth.Truth.assert_;
 import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
-import static org.junit.Assert.fail;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static javax.tools.StandardLocation.CLASS_OUTPUT;
+import static org.junit.Assert.fail;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.ByteSource;
 import com.google.common.io.Resources;
 import com.google.common.truth.FailureStrategy;
 import com.google.common.truth.TestVerb;
-import com.google.common.truth.Truth;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -67,10 +66,10 @@ public class JavaSourcesSubjectFactoryTest {
 
   @Test
   public void compilesWithoutError() {
-    assert_().about(javaSource())
+    assertAbout(javaSource())
         .that(JavaFileObjects.forResource(Resources.getResource("HelloWorld.java")))
         .compilesWithoutError();
-    assert_().about(javaSource())
+    assertAbout(javaSource())
         .that(JavaFileObjects.forSourceLines("test.HelloWorld",
             "package test;",
             "",
@@ -140,7 +139,7 @@ public class JavaSourcesSubjectFactoryTest {
 
   @Test
   public void parsesAs() {
-    assert_().about(javaSource())
+    assertAbout(javaSource())
         .that(JavaFileObjects.forResource(Resources.getResource("HelloWorld.java")))
         .parsesAs(JavaFileObjects.forSourceLines("test.HelloWorld",
             "package test;",
@@ -264,13 +263,13 @@ public class JavaSourcesSubjectFactoryTest {
   @Test
   public void failsToCompile() {
     JavaFileObject brokenFileObject = JavaFileObjects.forResource("HelloWorld-broken.java");
-    assert_().about(javaSource())
+    assertAbout(javaSource())
         .that(brokenFileObject)
         .failsToCompile()
         .withErrorContaining("not a statement").in(brokenFileObject).onLine(23).atColumn(5);
 
     JavaFileObject happyFileObject = JavaFileObjects.forResource("HelloWorld.java");
-    assert_().about(javaSource())
+    assertAbout(javaSource())
         .that(happyFileObject)
         .processedWith(new ErrorProcessor())
         .failsToCompile()
@@ -279,7 +278,7 @@ public class JavaSourcesSubjectFactoryTest {
 
   @Test
   public void generatesSources() {
-    assert_().about(javaSource())
+    assertAbout(javaSource())
         .that(JavaFileObjects.forResource("HelloWorld.java"))
         .processedWith(new GeneratingProcessor())
         .compilesWithoutError()
@@ -371,7 +370,7 @@ public class JavaSourcesSubjectFactoryTest {
 
   @Test
   public void generatesFileNamed() {
-    assert_().about(javaSource())
+    assertAbout(javaSource())
         .that(JavaFileObjects.forResource("HelloWorld.java"))
         .processedWith(new GeneratingProcessor())
         .compilesWithoutError()
@@ -412,6 +411,21 @@ public class JavaSourcesSubjectFactoryTest {
       assertThat(expected.getMessage()).contains(" did not match the expected contents");
     }
   }
+  
+  @Test
+  public void passesOptions() {
+    NoOpProcessor processor = new NoOpProcessor();
+    assertAbout(javaSource())
+        .that(JavaFileObjects.forResource("HelloWorld.java"))
+        .withCompilerOptions("-Aa=1")
+        .withCompilerOptions(ImmutableList.of("-Ab=2", "-Ac=3"))
+        .processedWith(processor)
+        .compilesWithoutError();
+    assertThat(processor.options).containsEntry("a", "1");
+    assertThat(processor.options).containsEntry("b", "2");
+    assertThat(processor.options).containsEntry("c", "3");
+    assertThat(processor.options).hasSize(3);
+  }
 
   @Test
   public void invokesMultipleProcesors() {
@@ -419,7 +433,7 @@ public class JavaSourcesSubjectFactoryTest {
     NoOpProcessor noopProcessor2 = new NoOpProcessor();
     assertThat(noopProcessor1.invoked).isFalse();
     assertThat(noopProcessor2.invoked).isFalse();
-    assert_().about(javaSource())
+    assertAbout(javaSource())
         .that(JavaFileObjects.forResource("HelloWorld.java"))
         .processedWith(noopProcessor1, noopProcessor2)
         .compilesWithoutError();
@@ -433,7 +447,7 @@ public class JavaSourcesSubjectFactoryTest {
     NoOpProcessor noopProcessor2 = new NoOpProcessor();
     assertThat(noopProcessor1.invoked).isFalse();
     assertThat(noopProcessor2.invoked).isFalse();
-    assert_().about(javaSource())
+    assertAbout(javaSource())
         .that(JavaFileObjects.forResource("HelloWorld.java"))
         .processedWith(Arrays.asList(noopProcessor1, noopProcessor2))
         .compilesWithoutError();

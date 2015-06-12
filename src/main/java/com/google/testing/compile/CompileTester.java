@@ -112,5 +112,11 @@ public interface CompileTester {
      * {@linkplain Diagnostic#getMessage(java.util.Locale) diagnostic message}.
      */
     FileClause withErrorContaining(String messageFragment);
+
+    /**
+     * Checks that the total error count in all files matches the given amount. This only counts
+     * diagnostics of the kind {@link Diagnostic.Kind#ERROR} and not (for example) warnings.
+     */
+    UnsuccessfulCompilationClause withErrorCount(int errorCount);
   }
 }

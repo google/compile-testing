@@ -288,6 +288,16 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
+  public void generatesSourcesWithWarnings() {
+    assertAbout(javaSource())
+        .that(JavaFileObjects.forResource("HelloWorldWarnings.java"))
+        .withCompilerOptions("-Xlint:all")
+        .processedWith(new GeneratingProcessor())
+        .compilesWithoutError()
+        .and().withDiagnosticContaining(Kind.WARNING, "redundant cast");
+  }
+
+  @Test
   public void generatesSources_failOnUnexpected() {
     String failingExpectationSource = "abstract class Blah {}";
     try {

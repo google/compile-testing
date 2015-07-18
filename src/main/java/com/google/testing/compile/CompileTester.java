@@ -47,32 +47,8 @@ public interface CompileTester {
     T and();
   }
 
-  /**
-   * The clause in the fluent API that checks that an error is associated with a particular
-   * {@link JavaFileObject}.
-   */
-  public interface FileClause extends ChainingClause<UnsuccessfulCompilationClause> {
-    LineClause in(JavaFileObject file);
-  }
-
-  /**
-   * The clause in the fluent API that checks that an error is on a particular
-   * {@linkplain Diagnostic#getLineNumber() line}.
-   */
-  public interface LineClause extends ChainingClause<UnsuccessfulCompilationClause> {
-    ColumnClause onLine(long lineNumber);
-  }
-
-  /**
-   * The clause in the fluent API that checks that an error starts at a particular
-   * {@linkplain Diagnostic#getColumnNumber() column}.
-   */
-  public interface ColumnClause extends ChainingClause<UnsuccessfulCompilationClause> {
-    ChainingClause<UnsuccessfulCompilationClause> atColumn(long columnNumber);
-  }
-
   /** The clause in the fluent API that checks that files were generated. */
-  public interface GeneratedPredicateClause {
+  public interface GeneratedPredicateClause extends CompilationClause<SuccessfulCompilationClause> {
     /**
      * Checks that a source file with an equivalent
      * <a href="http://en.wikipedia.org/wiki/Abstract_syntax_tree">AST</a> was generated for each of
@@ -106,11 +82,46 @@ public interface CompileTester {
   public interface SuccessfulCompilationClause extends ChainingClause<GeneratedPredicateClause> {}
 
   /** The clause in the fluent API for further tests on unsuccessful compilations. */
-  public interface UnsuccessfulCompilationClause {
+  public interface UnsuccessfulCompilationClause extends
+    CompilationClause<UnsuccessfulCompilationClause> {
     /**
      * Checks that an error exists that contains the given fragment in the
      * {@linkplain Diagnostic#getMessage(java.util.Locale) diagnostic message}.
      */
-    FileClause withErrorContaining(String messageFragment);
+    CompilationFileClause<UnsuccessfulCompilationClause>
+        withErrorContaining(String messageFragment);
+  }
+
+  public interface CompilationClause<CLAUSE> {
+      /**
+       * Checks that an error exists that contains the given fragment in the
+       * {@linkplain Diagnostic#getMessage(java.util.Locale) diagnostic message}.
+       */
+    CompilationFileClause<CLAUSE> withDiagnosticContaining(Diagnostic.Kind diagnosticKind,
+      final String messageFragment);
+  }
+
+  /**
+   * The clause in the fluent API that checks that an error is associated with a particular
+   * {@link JavaFileObject}.
+   */
+  public interface CompilationFileClause<CLAUSE> extends ChainingClause<CLAUSE> {
+    CompilationLineClause<CLAUSE> in(JavaFileObject file);
+  }
+
+  /**
+   * The clause in the fluent API that checks that an error is on a particular
+   * {@linkplain Diagnostic#getLineNumber() line}.
+   */
+  public interface CompilationLineClause<CLAUSE> extends ChainingClause<CLAUSE> {
+    CompilationColumnClause<CLAUSE> onLine(long lineNumber);
+  }
+
+  /**
+   * The clause in the fluent API that checks that an error starts at a particular
+   * {@linkplain Diagnostic#getColumnNumber() column}.
+   */
+  public interface CompilationColumnClause<CLAUSE> extends ChainingClause<CLAUSE> {
+    ChainingClause<CLAUSE> atColumn(long columnNumber);
   }
 }

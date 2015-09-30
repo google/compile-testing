@@ -199,9 +199,9 @@ public class JavaSourcesSubjectFactoryTest {
       fail();
     } catch (VerificationException expected) {
       assertThat(expected.getMessage()).startsWith(
-          "Expected an error containing \"some error\", but only found [\"");
+          "Expected an error containing \"some error\", but only found:\n");
       // some versions of javac wedge the file and position in the middle
-      assertThat(expected.getMessage()).endsWith("expected error!\"]");
+      assertThat(expected.getMessage()).endsWith("expected error!\n");
     }
   }
 
@@ -261,12 +261,30 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
+  public void failsToCompile_wrongErrorCount() {
+    JavaFileObject fileObject = JavaFileObjects.forResource("HelloWorld.java");
+    try {
+      VERIFY.about(javaSource())
+          .that(fileObject)
+          .processedWith(new ErrorProcessor())
+          .failsToCompile()
+          .withErrorCount(42);
+      fail();
+    } catch (VerificationException expected) {
+      assertThat(expected.getMessage())
+          .contains("Expected 42 error(s), but found the following 2 error(s):\n");
+    }
+  }
+
+  @Test
   public void failsToCompile() {
     JavaFileObject brokenFileObject = JavaFileObjects.forResource("HelloWorld-broken.java");
     assertAbout(javaSource())
         .that(brokenFileObject)
         .failsToCompile()
-        .withErrorContaining("not a statement").in(brokenFileObject).onLine(23).atColumn(5);
+        .withErrorContaining("not a statement").in(brokenFileObject).onLine(23).atColumn(5)
+        .and()
+        .withErrorCount(4);
 
     JavaFileObject happyFileObject = JavaFileObjects.forResource("HelloWorld.java");
     assertAbout(javaSource())

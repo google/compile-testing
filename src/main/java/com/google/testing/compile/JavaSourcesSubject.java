@@ -39,6 +39,7 @@ import com.sun.source.tree.CompilationUnitTree;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -317,12 +318,35 @@ public final class JavaSourcesSubject
     return new CompilationClause(processors);
   }
 
+  private static String messageListing(Iterable<? extends Diagnostic<?>> diagnostics,
+      String headingFormat, Object... formatArgs) {
+    StringBuilder listing = new StringBuilder(String.format(headingFormat, formatArgs))
+        .append('\n');
+    for (Diagnostic<?> diagnostic : diagnostics) {
+      listing.append(diagnostic.getMessage(null)).append('\n');
+    }
+    return listing.toString();
+  }
+
   private final class UnsuccessfulCompilationBuilder implements UnsuccessfulCompilationClause {
     private final Compilation.Result result;
 
     UnsuccessfulCompilationBuilder(Compilation.Result result) {
       checkArgument(!result.successful());
       this.result = result;
+    }
+
+    @Override
+    public UnsuccessfulCompilationClause withErrorCount(int errorCount) {
+      List<Diagnostic<? extends JavaFileObject>> errors =
+          result.diagnosticsByKind().get(Diagnostic.Kind.ERROR);
+      if (errors.size() != errorCount) {
+        failureStrategy.fail(messageListing(
+            errors,
+            "Expected %d error(s), but found the following %d error(s):",
+            errorCount, errors.size()));
+      }
+      return this;
     }
 
     @Override
@@ -337,14 +361,8 @@ public final class JavaSourcesSubject
             }
           });
       if (diagnosticsWithMessage.isEmpty()) {
-        failureStrategy.fail(String.format(
-            "Expected an error containing \"%s\", but only found %s", messageFragment,
-            diagnostics.transform(
-              new Function<Diagnostic<?>, String>() {
-                @Override public String apply(Diagnostic<?> input) {
-                  return "\"" + input.getMessage(null) + "\"";
-                }
-              })));
+        failureStrategy.fail(messageListing(
+            diagnostics, "Expected an error containing \"%s\", but only found:", messageFragment));
       }
       return new FileClause() {
         @Override

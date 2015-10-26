@@ -429,7 +429,18 @@ public class JavaSourcesSubjectFactoryTest {
       assertThat(expected.getMessage()).contains(" did not match the expected contents");
     }
   }
-  
+
+  @Test
+  public void withStringContents() {
+    assertAbout(javaSource())
+        .that(JavaFileObjects.forResource("HelloWorld.java"))
+        .processedWith(new GeneratingProcessor())
+        .compilesWithoutError()
+        .and()
+        .generatesFileNamed(CLASS_OUTPUT, "com.google.testing.compile", "Foo")
+        .withStringContents(UTF_8, "Bar");
+  }
+
   @Test
   public void passesOptions() {
     NoOpProcessor processor = new NoOpProcessor();

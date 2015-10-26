@@ -38,6 +38,7 @@ import com.google.testing.compile.Compilation.Result;
 import com.sun.source.tree.CompilationUnitTree;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -561,6 +562,22 @@ public final class JavaSourcesSubject
         if (!expectedByteSource.contentEquals(generatedByteSource)) {
           failureStrategy.fail("The contents in " + generatedFilePath
               + " did not match the expected contents");
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
+      return this;
+    }
+
+    @Override
+    public SuccessfulFileClause withStringContents(Charset charset, String expectedString) {
+      try {
+        String generatedString = generatedByteSource.asCharSource(charset).read();
+        if (!generatedString.equals(expectedString)) {
+          failureStrategy.failComparing(
+              "The contents in " + generatedFilePath + " did not match the expected string",
+              expectedString,
+              generatedString);
         }
       } catch (IOException e) {
         throw new RuntimeException(e);

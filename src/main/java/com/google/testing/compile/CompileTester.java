@@ -17,6 +17,8 @@ package com.google.testing.compile;
 
 import com.google.common.io.ByteSource;
 
+import java.nio.charset.Charset;
+
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
@@ -100,6 +102,12 @@ public interface CompileTester {
      * {@link ByteSource}.
      */
     SuccessfulFileClause withContents(ByteSource expectedByteSource);
+
+    /**
+     * Checks that the contents of the generated file are equal to the specified string in the given
+     * charset.
+     */
+    SuccessfulFileClause withStringContents(Charset charset, String expectedString);
   }
 
   /** The clause in the fluent API for further tests on successful compilations. */

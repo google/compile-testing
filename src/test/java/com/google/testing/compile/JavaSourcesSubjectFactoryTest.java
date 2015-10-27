@@ -379,6 +379,7 @@ public class JavaSourcesSubjectFactoryTest {
           .and().generatesSources(JavaFileObjects.forSourceString(
               failingExpectationName,
               failingExpectationSource));
+      fail();
     } catch (VerificationException expected) {
       assertThat(expected.getMessage()).contains("top-level types that were not present");
       assertThat(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
@@ -407,6 +408,7 @@ public class JavaSourcesSubjectFactoryTest {
           .and()
           .generatesFileNamed(CLASS_OUTPUT, "com.google.testing.compile", "Bogus")
           .withContents(ByteSource.wrap("Bar".getBytes(UTF_8)));
+      fail();
     } catch (VerificationException expected) {
       assertThat(expected.getMessage())
           .contains("Did not find a generated file corresponding to Bogus");
@@ -424,6 +426,7 @@ public class JavaSourcesSubjectFactoryTest {
           .and()
           .generatesFileNamed(CLASS_OUTPUT, "com.google.testing.compile", "Foo")
           .withContents(ByteSource.wrap("Bogus".getBytes(UTF_8)));
+      fail();
     } catch (VerificationException expected) {
       assertThat(expected.getMessage()).contains("Foo");
       assertThat(expected.getMessage()).contains(" did not match the expected contents");
@@ -570,7 +573,7 @@ public class JavaSourcesSubjectFactoryTest {
       super.init(processingEnv);
       options = processingEnv.getOptions();
     }
-    
+
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
       invoked = true;

@@ -15,6 +15,15 @@
  */
 package com.google.testing.compile;
 
+import com.google.common.base.CharMatcher;
+import com.google.common.base.MoreObjects;
+import com.google.common.base.Optional;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.collect.ImmutableList;
+import com.google.common.io.ByteSource;
+
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -34,15 +43,6 @@ import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
 import javax.tools.SimpleJavaFileObject;
 import javax.tools.StandardLocation;
-
-import com.google.common.base.CharMatcher;
-import com.google.common.base.Objects;
-import com.google.common.base.Optional;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import com.google.common.collect.ImmutableList;
-import com.google.common.io.ByteSource;
 
 /**
  * A file manager implementation that stores all output in memory.
@@ -214,7 +214,7 @@ final class InMemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileMa
 
     @Override
     public String toString() {
-      return Objects.toStringHelper(this)
+      return MoreObjects.toStringHelper(this)
           .add("uri", toUri())
           .add("kind", kind)
           .toString();

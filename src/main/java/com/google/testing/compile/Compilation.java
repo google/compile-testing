@@ -19,7 +19,7 @@ import static com.google.common.base.Charsets.UTF_8;
 import static javax.tools.JavaFileObject.Kind.SOURCE;
 
 import com.google.common.base.Function;
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableSet;
@@ -202,7 +202,7 @@ final class Compilation {
 
     @Override
     public String toString() {
-      return Objects.toStringHelper(this)
+      return MoreObjects.toStringHelper(this)
           .add("successful", successful)
           .add("diagnostics", diagnostics)
           .toString();

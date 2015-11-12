@@ -39,6 +39,9 @@ public interface CompileTester {
   /** The clause in the fluent API that tests for successful compilation. */
   SuccessfulCompilationClause compilesWithoutError();
 
+  /** The clause in the fluent API that tests for successful compilation, free from warnings. */
+  SuccessfulCompilationClause compilesWithoutWarning();
+
   /** The clause in the fluent API that tests for unsuccessful compilation. */
   UnsuccessfulCompilationClause failsToCompile();
 

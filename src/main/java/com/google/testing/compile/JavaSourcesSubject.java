@@ -99,6 +99,11 @@ public final class JavaSourcesSubject
   }
 
   @Override
+  public SuccessfulCompilationClause compilesWithoutWarning() {
+    return new CompilationClause().compilesWithoutWarning();
+  }
+
+  @Override
   public UnsuccessfulCompilationClause failsToCompile() {
     return new CompilationClause().failsToCompile();
   }
@@ -288,6 +293,29 @@ public final class JavaSourcesSubject
         for (Diagnostic<? extends JavaFileObject> error : errors) {
           message.append('\n');
           message.append(error);
+        }
+        message.append('\n');
+        message.append(reportFilesGenerated(result));
+        failureStrategy.fail(message.toString());
+      }
+      return new SuccessfulCompilationBuilder(result);
+    }
+
+    @Override
+    public SuccessfulCompilationClause compilesWithoutWarning() {
+      Compilation.Result result =
+          Compilation.compile(processors, ImmutableSet.copyOf(options), getSubject());
+      if (!result.successful()) {
+        failureStrategy.fail("Compilation failed.");
+      }
+
+      ImmutableList<Diagnostic<? extends JavaFileObject>> warnings =
+          result.diagnosticsByKind().get(Kind.WARNING);
+      if (!warnings.isEmpty()) {
+        StringBuilder message = new StringBuilder("Compilation produced the following warnings:\n");
+        for (Diagnostic<? extends JavaFileObject> warning : warnings) {
+          message.append('\n');
+          message.append(warning);
         }
         message.append('\n');
         message.append(reportFilesGenerated(result));
@@ -603,6 +631,11 @@ public final class JavaSourcesSubject
     @Override
     public SuccessfulCompilationClause compilesWithoutError() {
       return delegate.compilesWithoutError();
+    }
+
+    @Override
+    public SuccessfulCompilationClause compilesWithoutWarning() {
+      return delegate.compilesWithoutWarning();
     }
 
     @Override

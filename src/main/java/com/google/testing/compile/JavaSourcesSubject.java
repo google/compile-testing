@@ -48,8 +48,10 @@ import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
+import javax.tools.JavaCompiler;
 import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
+import javax.tools.ToolProvider;
 
 /**
  * A <a href="https://github.com/truth0/truth">Truth</a> {@link Subject} that evaluates the result
@@ -60,11 +62,18 @@ import javax.tools.JavaFileObject;
 @SuppressWarnings("restriction") // Sun APIs usage intended
 public final class JavaSourcesSubject
     extends Subject<JavaSourcesSubject, Iterable<? extends JavaFileObject>>
-    implements CompileTester, ProcessedCompileTesterFactory {
+    implements ProcessedCompileTesterFactory {
   private final List<String> options = new ArrayList<String>(Arrays.asList("-Xlint"));
+  private JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
   
   JavaSourcesSubject(FailureStrategy failureStrategy, Iterable<? extends JavaFileObject> subject) {
     super(failureStrategy, subject);
+  }
+
+  @Override
+  public JavaSourcesSubject withCompiler(JavaCompiler javaCompiler) {
+      this.compiler = javaCompiler;
+      return this;
   }
   
   @Override
@@ -161,7 +170,7 @@ public final class JavaSourcesSubject
     
     @Override
     public void parsesAs(JavaFileObject first, JavaFileObject... rest) {
-      Compilation.ParseResult actualResult = Compilation.parse(getSubject());
+      Compilation.ParseResult actualResult = Compilation.parse(compiler, getSubject());
       ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
           actualResult.diagnosticsByKind().get(Kind.ERROR);
       if (!errors.isEmpty()) {
@@ -172,7 +181,7 @@ public final class JavaSourcesSubject
         }
         failureStrategy.fail(message.toString());
       }
-      final Compilation.ParseResult expectedResult = Compilation.parse(Lists.asList(first, rest));
+      final Compilation.ParseResult expectedResult = Compilation.parse(compiler, Lists.asList(first, rest));
       final FluentIterable<? extends CompilationUnitTree> actualTrees = FluentIterable.from(
           actualResult.compilationUnits());
       final FluentIterable<? extends CompilationUnitTree> expectedTrees = FluentIterable.from(
@@ -295,7 +304,7 @@ public final class JavaSourcesSubject
 
     private Compilation.Result successfulCompilationResult() {
       Compilation.Result result =
-          Compilation.compile(processors, options, getSubject());
+          Compilation.compile(compiler, processors, options, getSubject());
       if (!result.successful()) {
         ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
             result.diagnosticsByKind().get(Kind.ERROR);
@@ -313,7 +322,7 @@ public final class JavaSourcesSubject
 
     @Override
     public UnsuccessfulCompilationClause failsToCompile() {
-      Result result = Compilation.compile(processors, options, getSubject());
+      Result result = Compilation.compile(compiler, processors, options, getSubject());
       if (result.successful()) {
         String message = Joiner.on('\n').join(
             "Compilation was expected to fail, but contained no errors.",
@@ -748,13 +757,17 @@ public final class JavaSourcesSubject
 
   public static final class SingleSourceAdapter
       extends Subject<SingleSourceAdapter, JavaFileObject>
-      implements CompileTester, ProcessedCompileTesterFactory {
+      implements ProcessedCompileTesterFactory {
     private final JavaSourcesSubject delegate;
 
     SingleSourceAdapter(FailureStrategy failureStrategy, JavaFileObject subject) {
       super(failureStrategy, subject);
       this.delegate =
           new JavaSourcesSubject(failureStrategy, ImmutableList.of(subject));
+    }
+
+    public JavaSourcesSubject withCompiler(JavaCompiler javaCompiler) {
+      return this.delegate.withCompiler(javaCompiler);
     }
     
     @Override

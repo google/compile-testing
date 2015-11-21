@@ -87,37 +87,37 @@ public final class CompilationRule implements TestRule {
         CompilationTask task = compiler.getTask(null, fileManager, diagnosticCollector, null,
             ImmutableSet.of(CompilationRule.class.getCanonicalName()), null);
         task.setProcessors(ImmutableList.of(new AbstractProcessor() {
-          @Override
-          public SourceVersion getSupportedSourceVersion() {
-            return SourceVersion.latest();
-          }
-
-          @Override
-          public Set<String> getSupportedAnnotationTypes() {
-            return ImmutableSet.of("*");
-          }
-
-          @Override
-          public synchronized void init(ProcessingEnvironment processingEnv) {
-            super.init(processingEnv);
-            elements = processingEnv.getElementUtils();
-            types = processingEnv.getTypeUtils();
-          }
-
-          @Override
-          public boolean process(Set<? extends TypeElement> annotations,
-              RoundEnvironment roundEnv) {
-            // just run the test on the last round after compilation is over
-            if (roundEnv.processingOver()) {
-              try {
-                base.evaluate();
-              } catch (Throwable e) {
-                thrown.set(e);
+              @Override
+              public SourceVersion getSupportedSourceVersion() {
+                return SourceVersion.latest();
               }
-            }
-            return false;
-          }
-        }));
+
+              @Override
+              public Set<String> getSupportedAnnotationTypes() {
+                return ImmutableSet.of("*");
+              }
+
+              @Override
+              public synchronized void init(ProcessingEnvironment processingEnv) {
+                super.init(processingEnv);
+                elements = processingEnv.getElementUtils();
+                types = processingEnv.getTypeUtils();
+              }
+
+              @Override
+              public boolean process(Set<? extends TypeElement> annotations,
+                  RoundEnvironment roundEnv) {
+                // just run the test on the last round after compilation is over
+                if (roundEnv.processingOver()) {
+                  try {
+                    base.evaluate();
+                  } catch (Throwable e) {
+                    thrown.set(e);
+                  }
+                }
+                return false;
+              }
+            }));
         boolean successful = task.call();
         checkState(successful);
         Throwable t = thrown.get();

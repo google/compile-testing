@@ -29,6 +29,7 @@ import com.google.common.io.Resources;
 import com.google.common.truth.FailureStrategy;
 import com.google.common.truth.TestVerb;
 
+import org.eclipse.jdt.internal.compiler.tool.EclipseCompiler;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -104,6 +105,15 @@ public class JavaSourcesSubjectFactoryTest {
             "    System.out.println(\"Hello World!\");",
             "  }",
             "}"))
+        .compilesWithoutError();
+  }
+
+  @Test
+  public void compilesWithoutErrorWithEclipseCompiler() {
+    assertAbout(javaSource())
+        .that(JavaFileObjects.forResource(Resources.getResource("HelloWorld.java")))
+        .withCompiler(new EclipseCompiler())
+        .withCompilerOptions("-nowarn", "-1.6")
         .compilesWithoutError();
   }
 

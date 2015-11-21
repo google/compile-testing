@@ -38,6 +38,7 @@ import com.sun.source.util.TreePathScanner;
 import java.util.Arrays;
 
 import javax.annotation.Nullable;
+import javax.tools.ToolProvider;
 
 /**
  * A class containing methods which are useful for gaining access to {@code Tree} instances from
@@ -52,8 +53,8 @@ final class MoreTrees {
 
   /** Parses the source given into a {@link CompilationUnitTree}. */
   static CompilationUnitTree parseLinesToTree(Iterable<String> source) {
-    Iterable<? extends CompilationUnitTree> parseResults = Compilation.parse(ImmutableList.of(
-        JavaFileObjects.forSourceLines("", source))).compilationUnits();
+    Iterable<? extends CompilationUnitTree> parseResults = Compilation.parse(ToolProvider.getSystemJavaCompiler(),
+      ImmutableList.of(JavaFileObjects.forSourceLines("", source))).compilationUnits();
     return Iterables.getOnlyElement(parseResults);
   }
 
@@ -64,7 +65,8 @@ final class MoreTrees {
 
   /** Parses the source given and produces a {@link Compilation.ParseResult}. */
   static Compilation.ParseResult parseLines(Iterable<String> source) {
-    return Compilation.parse(ImmutableList.of(JavaFileObjects.forSourceLines("", source)));
+    return Compilation.parse(ToolProvider.getSystemJavaCompiler(),
+      ImmutableList.of(JavaFileObjects.forSourceLines("", source)));
   }
 
   /**

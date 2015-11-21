@@ -29,6 +29,7 @@ import com.google.common.io.Resources;
 import com.google.common.truth.FailureStrategy;
 import com.google.common.truth.TestVerb;
 
+import org.eclipse.jdt.internal.compiler.tool.EclipseCompiler;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -82,6 +83,15 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
+  public void compilesWithoutErrorWithEclipseCompiler() {
+    assertAbout(javaSource())
+        .that(JavaFileObjects.forResource(Resources.getResource("HelloWorld.java")))
+        .withCompiler(new EclipseCompiler())
+        .withCompilerOptions("-nowarn", "-1.6")
+        .compilesWithoutError();
+  }
+
+  @Test
   public void compilesWithoutError_failureReportsFiles() {
     try {
       VERIFY.about(javaSource())
@@ -116,16 +126,16 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY.about(javaSource())
           .that(JavaFileObjects.forResource("HelloWorld.java"))
           .processedWith(new AbstractProcessor() {
-            @Override
-            public Set<String> getSupportedAnnotationTypes() {
-              return ImmutableSet.of("*");
-            }
+              @Override
+              public Set<String> getSupportedAnnotationTypes() {
+                  return ImmutableSet.of("*");
+              }
 
-            @Override
-            public boolean process(Set<? extends TypeElement> annotations,
-                RoundEnvironment roundEnv) {
-              throw e;
-            }
+              @Override
+              public boolean process(Set<? extends TypeElement> annotations,
+                                     RoundEnvironment roundEnv) {
+                  throw e;
+              }
           })
           .compilesWithoutError();
       fail();

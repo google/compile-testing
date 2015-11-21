@@ -17,6 +17,7 @@ package com.google.testing.compile;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.processing.Processor;
+import javax.tools.JavaCompiler;
 
 /**
  * Creates {@link CompileTester} instances that test compilation with provided {@link Processor}
@@ -24,7 +25,11 @@ import javax.annotation.processing.Processor;
  *
  * @author Gregory Kick
  */
-public interface ProcessedCompileTesterFactory {
+public interface ProcessedCompileTesterFactory extends CompileTester{
+
+  /** Specify compiler (Javac, Eclipse ECJ, ...) **/
+  @CheckReturnValue
+  ProcessedCompileTesterFactory withCompiler(JavaCompiler var1);
 
   /** Adds options that will be passed to the compiler. */
   @CheckReturnValue ProcessedCompileTesterFactory withCompilerOptions(Iterable<String> options);

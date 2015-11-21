@@ -37,6 +37,7 @@ import javax.lang.model.SourceVersion;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+import javax.tools.ToolProvider;
 
 /**
  * A {@link JUnit4} {@link Rule} that executes tests such that a instances of {@link Elements} and
@@ -56,7 +57,8 @@ public final class CompilationRule implements TestRule {
     return new Statement() {
       @Override public void evaluate() throws Throwable {
         final AtomicReference<Throwable> thrown = new AtomicReference<Throwable>();
-        Result result = Compilation.compile(ImmutableList.of(new AbstractProcessor() {
+        Result result = Compilation.compile(ToolProvider.getSystemJavaCompiler(),
+          ImmutableList.of(new AbstractProcessor() {
           @Override
           public SourceVersion getSupportedSourceVersion() {
             return SourceVersion.latest();

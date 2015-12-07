@@ -81,7 +81,7 @@ import javax.lang.model.element.Name;
  * A class for determining how two compilation {@code Tree}s differ from each other.
  *
  * <p>This class takes source ordering into account. That is, two isomorphic
- * {@code CompilationUnitTrees} will have {@code TreeDifference} entires if their child
+ * {@code CompilationUnitTrees} will have {@code TreeDifference} entries if their child
  * nodes do not appear in the same order. However, the ordering of the {@code TreeDifference}
  * entries that this class produces is always unspecified.
  *

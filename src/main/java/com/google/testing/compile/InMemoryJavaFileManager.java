@@ -80,6 +80,8 @@ final class InMemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileMa
     if (a instanceof InMemoryJavaFileObject) {
       if (b instanceof InMemoryJavaFileObject) {
         return ((InMemoryJavaFileObject) a).toUri().equals(((InMemoryJavaFileObject) b).toUri());
+      } else {
+        return false;
       }
     }
     if (b instanceof InMemoryJavaFileObject) {

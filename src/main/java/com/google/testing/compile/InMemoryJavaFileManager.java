@@ -77,12 +77,12 @@ final class InMemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileMa
 
   @Override
   public boolean isSameFile(FileObject a, FileObject b) {
-    if (a instanceof InMemoryJavaFileObject) {
-      if (b instanceof InMemoryJavaFileObject) {
-        return ((InMemoryJavaFileObject) a).toUri().equals(((InMemoryJavaFileObject) b).toUri());
+    if (a instanceof SimpleJavaFileObject) {
+      if (b instanceof SimpleJavaFileObject) {
+        return ((SimpleJavaFileObject) a).toUri().equals(((SimpleJavaFileObject) b).toUri());
       }
     }
-    if (b instanceof InMemoryJavaFileObject) {
+    if (b instanceof SimpleJavaFileObject) {
       return false;
     }
     return super.isSameFile(a, b);

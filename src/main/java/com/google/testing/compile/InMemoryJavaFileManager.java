@@ -77,15 +77,11 @@ final class InMemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileMa
 
   @Override
   public boolean isSameFile(FileObject a, FileObject b) {
-    if (a instanceof SimpleJavaFileObject) {
-      if (b instanceof SimpleJavaFileObject) {
-        return ((SimpleJavaFileObject) a).toUri().equals(((SimpleJavaFileObject) b).toUri());
-      }
-    }
-    if (b instanceof SimpleJavaFileObject) {
-      return false;
-    }
-    return super.isSameFile(a, b);
+    /* This check is less strict than what is typically done by the normal compiler file managers
+     * (e.g. JavacFileManager), but is actually the moral equivalent of what most of the
+     * implementations do anyway. We use this check rather than just delegating to the compiler's
+     * file manager because file objects for tests generally cause IllegalArgumentExceptions. */
+    return a.toUri().equals(b.toUri());
   }
 
   @Override

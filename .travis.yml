@@ -1,6 +1,6 @@
 language: java
-install: mvn -U install clean --fail-never --quiet -DskipTests=true -Dinvoker.skip=true
-script: mvn verify
+install: mvn -B -U install clean --fail-never --quiet -DskipTests=true -Dinvoker.skip=true
+script: mvn -B verify
 
 jdk:
   - openjdk7

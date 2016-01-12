@@ -46,6 +46,7 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
+import javax.tools.Diagnostic;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.JavaFileObject;
 
@@ -63,6 +64,31 @@ public class JavaSourcesSubjectFactoryTest {
       throw new VerificationException(message);
     }
   });
+  
+  private static final JavaFileObject HELLO_WORLD =
+      JavaFileObjects.forSourceLines(
+          "test.HelloWorld",
+          "package test;",
+          "",
+          "import " + DiagnosticMessage.class.getCanonicalName() + ";",
+          "",
+          "@DiagnosticMessage",
+          "public class HelloWorld {",
+          "  @DiagnosticMessage Object foo;",
+          "}");
+
+  private static final JavaFileObject HELLO_WORLD_BROKEN =
+      JavaFileObjects.forSourceLines(
+          "test.HelloWorld",
+          "package test;",
+          "",
+          "import " + DiagnosticMessage.class.getCanonicalName() + ";",
+          "",
+          "@DiagnosticMessage",
+          "public class HelloWorld {",
+          "  @DiagnosticMessage Object foo;",
+          "  Bar noSuchClass;",
+          "}");
 
   @Test
   public void compilesWithoutError() {
@@ -79,6 +105,251 @@ public class JavaSourcesSubjectFactoryTest {
             "  }",
             "}"))
         .compilesWithoutError();
+  }
+
+  @Test
+  public void compilesWithoutWarnings() {
+    assertAbout(javaSource()).that(HELLO_WORLD).compilesWithoutWarnings();
+  }
+
+  @Test
+  public void compilesWithoutError_warnings() {
+    assertAbout(javaSource())
+        .that(HELLO_WORLD)
+        .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+        .compilesWithoutError()
+        .withWarningContaining("this is a message")
+        .in(HELLO_WORLD)
+        .onLine(6)
+        .atColumn(8)
+        .and()
+        .withWarningContaining("this is a message")
+        .in(HELLO_WORLD)
+        .onLine(7)
+        .atColumn(29);
+  }
+
+  @Test
+  public void compilesWithoutWarnings_failsWithWarnings() {
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .compilesWithoutWarnings();
+      fail();
+    } catch (VerificationException expected) {
+      assertThat(expected.getMessage())
+          .contains("Expected 0 warnings, but found the following 2 warnings:\n");
+    }
+  }
+
+  @Test
+  public void compilesWithoutError_noWarning() {
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .compilesWithoutError()
+          .withWarningContaining("what is it?");
+      fail();
+    } catch (VerificationException expected) {
+      assertThat(expected.getMessage())
+          .startsWith("Expected a warning containing \"what is it?\", but only found:\n");
+      // some versions of javac wedge the file and position in the middle
+      assertThat(expected.getMessage()).endsWith("this is a message\n");
+    }
+  }
+
+  @Test
+  public void compilesWithoutError_warningNotInFile() {
+    JavaFileObject otherSource = JavaFileObjects.forResource("HelloWorld.java");
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .compilesWithoutError()
+          .withWarningContaining("this is a message")
+          .in(otherSource);
+      fail();
+    } catch (VerificationException expected) {
+      assertThat(expected.getMessage())
+          .contains(String.format("Expected a warning in %s", otherSource.getName()));
+      assertThat(expected.getMessage()).contains(HELLO_WORLD.getName());
+    }
+  }
+
+  @Test
+  public void compilesWithoutError_warningNotOnLine() {
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .compilesWithoutError()
+          .withWarningContaining("this is a message")
+          .in(HELLO_WORLD)
+          .onLine(1);
+      fail();
+    } catch (VerificationException expected) {
+      int actualErrorLine = 6;
+      assertThat(expected.getMessage())
+          .contains(String.format("Expected a warning on line 1 of %s", HELLO_WORLD.getName()));
+      assertThat(expected.getMessage()).contains("" + actualErrorLine);
+    }
+  }
+
+  @Test
+  public void compilesWithoutError_warningNotAtColumn() {
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .compilesWithoutError()
+          .withWarningContaining("this is a message")
+          .in(HELLO_WORLD)
+          .onLine(6)
+          .atColumn(1);
+      fail();
+    } catch (VerificationException expected) {
+      int actualErrorCol = 8;
+      assertThat(expected.getMessage())
+          .contains(String.format("Expected a warning at 6:1 of %s", HELLO_WORLD.getName()));
+      assertThat(expected.getMessage()).contains("[" + actualErrorCol + "]");
+    }
+  }
+
+  @Test
+  public void compilesWithoutError_wrongWarningCount() {
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .compilesWithoutError()
+          .withWarningCount(42);
+      fail();
+    } catch (VerificationException expected) {
+      assertThat(expected.getMessage())
+          .contains("Expected 42 warnings, but found the following 2 warnings:\n");
+    }
+  }
+
+  @Test
+  public void compilesWithoutError_notes() {
+    assertAbout(javaSource())
+        .that(HELLO_WORLD)
+        .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+        .compilesWithoutError()
+        .withNoteContaining("this is a message")
+        .in(HELLO_WORLD)
+        .onLine(6)
+        .atColumn(8)
+        .and()
+        .withNoteContaining("this is a message")
+        .in(HELLO_WORLD)
+        .onLine(7)
+        .atColumn(29)
+        .and()
+        .withNoteCount(2);
+  }
+
+  @Test
+  public void compilesWithoutError_noNote() {
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .compilesWithoutError()
+          .withNoteContaining("what is it?");
+      fail();
+    } catch (VerificationException expected) {
+      assertThat(expected.getMessage())
+          .startsWith("Expected a note containing \"what is it?\", but only found:\n");
+      // some versions of javac wedge the file and position in the middle
+      assertThat(expected.getMessage()).endsWith("this is a message\n");
+    }
+  }
+
+  @Test
+  public void compilesWithoutError_noteNotInFile() {
+    JavaFileObject otherSource = JavaFileObjects.forResource("HelloWorld.java");
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .compilesWithoutError()
+          .withNoteContaining("this is a message")
+          .in(otherSource);
+      fail();
+    } catch (VerificationException expected) {
+      assertThat(expected.getMessage())
+          .contains(String.format("Expected a note in %s", otherSource.getName()));
+      assertThat(expected.getMessage()).contains(HELLO_WORLD.getName());
+    }
+  }
+
+  @Test
+  public void compilesWithoutError_noteNotOnLine() {
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .compilesWithoutError()
+          .withNoteContaining("this is a message")
+          .in(HELLO_WORLD)
+          .onLine(1);
+      fail();
+    } catch (VerificationException expected) {
+      int actualErrorLine = 6;
+      assertThat(expected.getMessage())
+          .contains(String.format("Expected a note on line 1 of %s", HELLO_WORLD.getName()));
+      assertThat(expected.getMessage()).contains("" + actualErrorLine);
+    }
+  }
+
+  @Test
+  public void compilesWithoutError_noteNotAtColumn() {
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .compilesWithoutError()
+          .withNoteContaining("this is a message")
+          .in(HELLO_WORLD)
+          .onLine(6)
+          .atColumn(1);
+      fail();
+    } catch (VerificationException expected) {
+      int actualErrorCol = 8;
+      assertThat(expected.getMessage())
+          .contains(String.format("Expected a note at 6:1 of %s", HELLO_WORLD.getName()));
+      assertThat(expected.getMessage()).contains("[" + actualErrorCol + "]");
+    }
+  }
+
+  @Test
+  public void compilesWithoutError_wrongNoteCount() {
+    JavaFileObject fileObject = HELLO_WORLD;
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(fileObject)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .compilesWithoutError()
+          .withNoteCount(42);
+      fail();
+    } catch (VerificationException expected) {
+      assertThat(expected.getMessage())
+          .contains("Expected 42 notes, but found the following 2 notes:\n");
+    }
   }
 
   @Test
@@ -272,10 +543,199 @@ public class JavaSourcesSubjectFactoryTest {
       fail();
     } catch (VerificationException expected) {
       assertThat(expected.getMessage())
-          .contains("Expected 42 error(s), but found the following 2 error(s):\n");
+          .contains("Expected 42 errors, but found the following 2 errors:\n");
     }
   }
 
+  @Test
+  public void failsToCompile_noWarning() {
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD_BROKEN)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .failsToCompile()
+          .withWarningContaining("what is it?");
+      fail();
+    } catch (VerificationException expected) {
+      assertThat(expected.getMessage())
+          .startsWith("Expected a warning containing \"what is it?\", but only found:\n");
+      // some versions of javac wedge the file and position in the middle
+      assertThat(expected.getMessage()).endsWith("this is a message\n");
+    }
+  }
+
+  @Test
+  public void failsToCompile_warningNotInFile() {
+    JavaFileObject otherSource = JavaFileObjects.forResource("HelloWorld.java");
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD_BROKEN)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .failsToCompile()
+          .withWarningContaining("this is a message")
+          .in(otherSource);
+      fail();
+    } catch (VerificationException expected) {
+      assertThat(expected.getMessage())
+          .contains(String.format("Expected a warning in %s", otherSource.getName()));
+      assertThat(expected.getMessage()).contains(HELLO_WORLD_BROKEN.getName());
+    }
+  }
+
+  @Test
+  public void failsToCompile_warningNotOnLine() {
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD_BROKEN)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .failsToCompile()
+          .withWarningContaining("this is a message")
+          .in(HELLO_WORLD_BROKEN)
+          .onLine(1);
+      fail();
+    } catch (VerificationException expected) {
+      int actualErrorLine = 6;
+      assertThat(expected.getMessage())
+          .contains(
+              String.format("Expected a warning on line 1 of %s", HELLO_WORLD_BROKEN.getName()));
+      assertThat(expected.getMessage()).contains("" + actualErrorLine);
+    }
+  }
+
+  @Test
+  public void failsToCompile_warningNotAtColumn() {
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD_BROKEN)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .failsToCompile()
+          .withWarningContaining("this is a message")
+          .in(HELLO_WORLD_BROKEN)
+          .onLine(6)
+          .atColumn(1);
+      fail();
+    } catch (VerificationException expected) {
+      int actualErrorCol = 8;
+      assertThat(expected.getMessage())
+          .contains(String.format("Expected a warning at 6:1 of %s", HELLO_WORLD_BROKEN.getName()));
+      assertThat(expected.getMessage()).contains("[" + actualErrorCol + "]");
+    }
+  }
+
+  @Test
+  public void failsToCompile_wrongWarningCount() {
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD_BROKEN)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .failsToCompile()
+          .withWarningCount(42);
+      fail();
+    } catch (VerificationException expected) {
+      assertThat(expected.getMessage())
+          .contains("Expected 42 warnings, but found the following 2 warnings:\n");
+    }
+  }
+
+  @Test
+  public void failsToCompile_noNote() {
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD_BROKEN)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .failsToCompile()
+          .withNoteContaining("what is it?");
+      fail();
+    } catch (VerificationException expected) {
+      assertThat(expected.getMessage())
+          .startsWith("Expected a note containing \"what is it?\", but only found:\n");
+      // some versions of javac wedge the file and position in the middle
+      assertThat(expected.getMessage()).endsWith("this is a message\n");
+    }
+  }
+
+  @Test
+  public void failsToCompile_noteNotInFile() {
+    JavaFileObject otherSource = JavaFileObjects.forResource("HelloWorld.java");
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD_BROKEN)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .failsToCompile()
+          .withNoteContaining("this is a message")
+          .in(otherSource);
+      fail();
+    } catch (VerificationException expected) {
+      assertThat(expected.getMessage())
+          .contains(String.format("Expected a note in %s", otherSource.getName()));
+      assertThat(expected.getMessage()).contains(HELLO_WORLD_BROKEN.getName());
+    }
+  }
+
+  @Test
+  public void failsToCompile_noteNotOnLine() {
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD_BROKEN)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .failsToCompile()
+          .withNoteContaining("this is a message")
+          .in(HELLO_WORLD_BROKEN)
+          .onLine(1);
+      fail();
+    } catch (VerificationException expected) {
+      int actualErrorLine = 6;
+      assertThat(expected.getMessage())
+          .contains(String.format("Expected a note on line 1 of %s", HELLO_WORLD_BROKEN.getName()));
+      assertThat(expected.getMessage()).contains("" + actualErrorLine);
+    }
+  }
+
+  @Test
+  public void failsToCompile_noteNotAtColumn() {
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD_BROKEN)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .failsToCompile()
+          .withNoteContaining("this is a message")
+          .in(HELLO_WORLD_BROKEN)
+          .onLine(6)
+          .atColumn(1);
+      fail();
+    } catch (VerificationException expected) {
+      int actualErrorCol = 8;
+      assertThat(expected.getMessage())
+          .contains(String.format("Expected a note at 6:1 of %s", HELLO_WORLD_BROKEN.getName()));
+      assertThat(expected.getMessage()).contains("[" + actualErrorCol + "]");
+    }
+  }
+
+  @Test
+  public void failsToCompile_wrongNoteCount() {
+    try {
+      VERIFY
+          .about(javaSource())
+          .that(HELLO_WORLD_BROKEN)
+          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .failsToCompile()
+          .withNoteCount(42);
+      fail();
+    } catch (VerificationException expected) {
+      assertThat(expected.getMessage())
+          .contains("Expected 42 notes, but found the following 2 notes:\n");
+    }
+  }
+  
   @Test
   public void failsToCompile() {
     JavaFileObject brokenFileObject = JavaFileObjects.forResource("HelloWorld-broken.java");
@@ -485,6 +945,44 @@ public class JavaSourcesSubjectFactoryTest {
         .compilesWithoutError();
     assertThat(noopProcessor1.invoked).isTrue();
     assertThat(noopProcessor2.invoked).isTrue();
+  }
+
+
+  /**
+   * Annotated elements will have a diagnostic message whose {@linkplain Kind kind} is determined by
+   * a parameter on {@link DiagnosticMessageProcessor}.
+   */
+  public @interface DiagnosticMessage {}
+
+  /**
+   * Adds diagnostic messages of a specified {@linkplain Kind kind} to elements annotated with
+   * {@link DiagnosticMessage}.
+   */
+  private static final class DiagnosticMessageProcessor extends AbstractProcessor {
+
+    private final Diagnostic.Kind kind;
+
+    DiagnosticMessageProcessor(Diagnostic.Kind kind) {
+      this.kind = kind;
+    }
+
+    @Override
+    public SourceVersion getSupportedSourceVersion() {
+      return SourceVersion.latest();
+    }
+
+    @Override
+    public Set<String> getSupportedAnnotationTypes() {
+      return ImmutableSet.of(DiagnosticMessage.class.getCanonicalName());
+    }
+
+    @Override
+    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+      for (Element element : roundEnv.getElementsAnnotatedWith(DiagnosticMessage.class)) {
+        processingEnv.getMessager().printMessage(kind, "this is a message", element);
+      }
+      return true;
+    }
   }
 
 

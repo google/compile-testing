@@ -26,10 +26,16 @@ import javax.annotation.processing.Processor;
  */
 public interface ProcessedCompileTesterFactory {
 
-  /** Adds options that will be passed to the compiler. */
+  /**
+   * Adds options that will be passed to the compiler. {@code -Xlint} is the first option, by
+   * default.
+   */
   @CheckReturnValue ProcessedCompileTesterFactory withCompilerOptions(Iterable<String> options);
   
-  /** Adds options that will be passed to the compiler. */
+  /**
+   * Adds options that will be passed to the compiler. {@code -Xlint} is the first option, by
+   * default.
+   */
   @CheckReturnValue ProcessedCompileTesterFactory withCompilerOptions(String... options);
   
   /** Adds {@linkplain Processor annotation processors} to the compilation being tested.  */

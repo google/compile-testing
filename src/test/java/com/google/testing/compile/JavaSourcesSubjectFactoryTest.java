@@ -20,6 +20,7 @@ import static com.google.common.truth.Truth.assertAbout;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
 import static javax.tools.StandardLocation.CLASS_OUTPUT;
+import static javax.tools.StandardLocation.SOURCE_OUTPUT;
 import static org.junit.Assert.fail;
 
 import com.google.common.collect.ImmutableList;
@@ -386,6 +387,19 @@ public class JavaSourcesSubjectFactoryTest {
     }
   }
 
+  
+  @Test
+  public void generatesClassNamed() {
+    assertAbout(javaSource())
+        .that(JavaFileObjects.forResource("HelloWorld.java"))
+        .processedWith(new GeneratingProcessor())
+        .compilesWithoutError()
+        .and()
+        .generatesFileNamed(SOURCE_OUTPUT, "", "Blah.java")
+        .and()
+        .generatesFileNamed(CLASS_OUTPUT, "", "Blah.class");
+  }
+  
   @Test
   public void generatesFileNamed() {
     assertAbout(javaSource())

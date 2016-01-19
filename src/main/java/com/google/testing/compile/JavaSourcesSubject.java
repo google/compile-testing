@@ -16,6 +16,8 @@
 package com.google.testing.compile;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.truth.Truth.assertAbout;
+import static com.google.testing.compile.JavaSourcesSubjectFactory.javaSources;
 import static javax.tools.JavaFileObject.Kind.CLASS;
 
 import com.google.common.base.Function;
@@ -738,6 +740,10 @@ public final class JavaSourcesSubject
       }
       return this;
     }
+  }
+
+  public static JavaSourcesSubject assertThat(JavaFileObject... javaFileObjects) {
+    return assertAbout(javaSources()).that(ImmutableList.copyOf(javaFileObjects));
   }
 
   public static final class SingleSourceAdapter

@@ -19,7 +19,7 @@ import static com.google.common.base.Charsets.UTF_8;
 import static javax.tools.JavaFileObject.Kind.SOURCE;
 
 import com.google.common.base.Function;
-import com.google.common.base.Objects;
+import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableSet;
@@ -32,7 +32,6 @@ import com.sun.tools.javac.api.JavacTool;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
@@ -56,7 +55,7 @@ final class Compilation {
    * @throws RuntimeException if compilation fails.
    */
   static Result compile(Iterable<? extends Processor> processors,
-      Set<String> options, Iterable<? extends JavaFileObject> sources) {
+      Iterable<String> options, Iterable<? extends JavaFileObject> sources) {
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
     if (compiler == null) {
       throw new IllegalStateException("Java Compiler is not present. "
@@ -70,7 +69,7 @@ final class Compilation {
         null, // explicitly use the default because old versions of javac log some output on stderr
         fileManager,
         diagnosticCollector,
-        ImmutableSet.copyOf(options),
+        ImmutableList.copyOf(options),
         ImmutableSet.<String>of(),
         sources);
     task.setProcessors(processors);
@@ -202,7 +201,7 @@ final class Compilation {
 
     @Override
     public String toString() {
-      return Objects.toStringHelper(this)
+      return MoreObjects.toStringHelper(this)
           .add("successful", successful)
           .add("diagnostics", diagnostics)
           .toString();

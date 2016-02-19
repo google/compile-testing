@@ -15,8 +15,9 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.base.MoreObjects.firstNonNull;
+
 import com.google.common.base.Function;
-import com.google.common.base.Objects;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
@@ -56,7 +57,7 @@ final class TypeEnumerator {
   static final class TypeScanner extends TreeScanner<Set<String>, Void> {
     @Override
     public Set<String> scan(Tree node, Void v) {
-      return Objects.firstNonNull(super.scan(node, v), ImmutableSet.<String>of());
+      return firstNonNull(super.scan(node, v), ImmutableSet.<String>of());
     }
 
     @Override

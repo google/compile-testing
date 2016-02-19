@@ -17,8 +17,10 @@ package com.google.testing.compile;
 
 import static com.google.common.truth.Truth.assertThat;
 import static javax.tools.JavaFileObject.Kind.CLASS;
+import static org.junit.Assert.fail;
 
 import com.google.common.io.Resources;
+
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -63,5 +65,19 @@ public class JavaFileObjectsTest {
             + "    System.out.println(\"hello!\");\n"
             + "  }\n"
             + "}");
+  }
+
+  @Test public void forSourceLinesWithoutName() {
+    try {
+      JavaFileObjects.forSourceLines(
+          "package example;",
+          "",
+          "final class HelloWorld {",
+          "  void sayHello() {",
+          "    System.out.println(\"hello!\");",
+          "  }",
+          "}");
+      fail("An exception should have been thrown.");
+    } catch (IllegalArgumentException expected) {}
   }
 }

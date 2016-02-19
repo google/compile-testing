@@ -60,7 +60,13 @@ public final class JavaFileObjects {
    * source and compilation errors may result if they do not match.
    */
   public static JavaFileObject forSourceString(String fullyQualifiedName, String source) {
-    return new StringSourceJavaFileObject(checkNotNull(fullyQualifiedName), checkNotNull(source));
+    checkNotNull(fullyQualifiedName);
+    if (fullyQualifiedName.startsWith("package ")) {
+      throw new IllegalArgumentException(
+          String.format("fullyQualifiedName starts with \"package\" (%s). Did you forget to "
+              + "specify the name and specify just the source text?",  fullyQualifiedName));
+    }
+    return new StringSourceJavaFileObject(fullyQualifiedName, checkNotNull(source));
   }
 
   private static final Joiner LINE_JOINER = Joiner.on('\n');

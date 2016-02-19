@@ -15,6 +15,15 @@
  */
 package com.google.testing.compile;
 
+import com.google.common.base.CharMatcher;
+import com.google.common.base.MoreObjects;
+import com.google.common.base.Optional;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+import com.google.common.collect.ImmutableList;
+import com.google.common.io.ByteSource;
+
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -34,15 +43,6 @@ import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
 import javax.tools.SimpleJavaFileObject;
 import javax.tools.StandardLocation;
-
-import com.google.common.base.CharMatcher;
-import com.google.common.base.Objects;
-import com.google.common.base.Optional;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
-import com.google.common.collect.ImmutableList;
-import com.google.common.io.ByteSource;
 
 /**
  * A file manager implementation that stores all output in memory.
@@ -77,15 +77,11 @@ final class InMemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileMa
 
   @Override
   public boolean isSameFile(FileObject a, FileObject b) {
-    if (a instanceof InMemoryJavaFileObject) {
-      if (b instanceof InMemoryJavaFileObject) {
-        return ((InMemoryJavaFileObject) a).toUri().equals(((InMemoryJavaFileObject) b).toUri());
-      }
-    }
-    if (b instanceof InMemoryJavaFileObject) {
-      return false;
-    }
-    return super.isSameFile(a, b);
+    /* This check is less strict than what is typically done by the normal compiler file managers
+     * (e.g. JavacFileManager), but is actually the moral equivalent of what most of the
+     * implementations do anyway. We use this check rather than just delegating to the compiler's
+     * file manager because file objects for tests generally cause IllegalArgumentExceptions. */
+    return a.toUri().equals(b.toUri());
   }
 
   @Override
@@ -214,7 +210,7 @@ final class InMemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileMa
 
     @Override
     public String toString() {
-      return Objects.toStringHelper(this)
+      return MoreObjects.toStringHelper(this)
           .add("uri", toUri())
           .add("kind", kind)
           .toString();

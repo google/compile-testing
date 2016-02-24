@@ -15,10 +15,33 @@
  */
 package com.google.testing.compile;
 
+import static com.sun.source.tree.Tree.Kind.ANNOTATION_TYPE;
+import static com.sun.source.tree.Tree.Kind.BOOLEAN_LITERAL;
+import static com.sun.source.tree.Tree.Kind.BREAK;
+import static com.sun.source.tree.Tree.Kind.CHAR_LITERAL;
+import static com.sun.source.tree.Tree.Kind.CLASS;
+import static com.sun.source.tree.Tree.Kind.CONTINUE;
+import static com.sun.source.tree.Tree.Kind.DOUBLE_LITERAL;
+import static com.sun.source.tree.Tree.Kind.ENUM;
+import static com.sun.source.tree.Tree.Kind.FLOAT_LITERAL;
+import static com.sun.source.tree.Tree.Kind.IDENTIFIER;
+import static com.sun.source.tree.Tree.Kind.INTERFACE;
+import static com.sun.source.tree.Tree.Kind.INT_LITERAL;
+import static com.sun.source.tree.Tree.Kind.LABELED_STATEMENT;
+import static com.sun.source.tree.Tree.Kind.LONG_LITERAL;
+import static com.sun.source.tree.Tree.Kind.MEMBER_SELECT;
+import static com.sun.source.tree.Tree.Kind.METHOD;
+import static com.sun.source.tree.Tree.Kind.NULL_LITERAL;
+import static com.sun.source.tree.Tree.Kind.STRING_LITERAL;
+import static com.sun.source.tree.Tree.Kind.TYPE_PARAMETER;
+import static com.sun.source.tree.Tree.Kind.VARIABLE;
+
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Sets;
 
 import com.sun.source.tree.BreakTree;
 import com.sun.source.tree.ClassTree;
@@ -43,6 +66,7 @@ import javax.annotation.Nullable;
  * A class containing methods which are useful for gaining access to {@code Tree} instances from
  * within unit tests.
  */
+@SuppressWarnings("restriction") // Sun APIs usage intended
 final class MoreTrees {
 
   /** Parses the source given into a {@link CompilationUnitTree}. */

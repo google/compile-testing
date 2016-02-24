@@ -57,10 +57,6 @@ final class Compilation {
   static Result compile(Iterable<? extends Processor> processors,
       Iterable<String> options, Iterable<? extends JavaFileObject> sources) {
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-    if (compiler == null) {
-      throw new IllegalStateException("Java Compiler is not present. "
-          + "May be, you need to include tools.jar on your dependency list.");
-    }
     DiagnosticCollector<JavaFileObject> diagnosticCollector =
         new DiagnosticCollector<JavaFileObject>();
     InMemoryJavaFileManager fileManager = new InMemoryJavaFileManager(

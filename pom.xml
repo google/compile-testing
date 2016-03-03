@@ -14,6 +14,13 @@
   <name>Compile Testing</name>
   <description>Utilities for testing compilation.</description>
 
+  <properties>
+    <guava.version>19.0</guava.version>
+    <truth.version>0.28</truth.version>
+    <junit.version>4.12</junit.version>
+    <jsr305.version>3.0.1</jsr305.version>
+  </properties>
+
   <url>http://github.com/google/compile-testing</url>
   <issueManagement>
     <system>GitHub</system>
@@ -28,7 +35,7 @@
     </license>
   </licenses>
   <prerequisites>
-    <maven>3.0.3</maven>
+    <maven>3.1.1</maven>
   </prerequisites>
   <scm>
     <connection>scm:git:http://github.com/google/compile-testing</connection>
@@ -40,17 +47,17 @@
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>4.11</version>
+      <version>${junit.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.truth</groupId>
       <artifactId>truth</artifactId>
-      <version>0.25</version>
+      <version>${truth.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
       <artifactId>guava</artifactId>
-      <version>18.0</version>
+      <version>${guava.version}</version>
     </dependency>
     <dependency>
       <groupId>com.sun</groupId>
@@ -62,14 +69,13 @@
     <dependency>
       <groupId>com.google.code.findbugs</groupId>
       <artifactId>jsr305</artifactId>
-      <version>1.3.9</version>
+      <version>${jsr305.version}</version>
       <optional>true</optional>
     </dependency>
   </dependencies>
   <build>
     <plugins>
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
         <version>3.1</version>
         <configuration>
@@ -87,6 +93,10 @@
           <releaseProfiles>release</releaseProfiles>
           <goals>deploy</goals>
         </configuration>
+      </plugin>
+      <plugin>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>2.5</version>
       </plugin>
     </plugins>
   </build>

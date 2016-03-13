@@ -54,9 +54,8 @@ final class Compilation {
    *
    * @throws RuntimeException if compilation fails.
    */
-  static Result compile(Iterable<? extends Processor> processors,
+  static Result compile(JavaCompiler compiler, Iterable<? extends Processor> processors,
       Iterable<String> options, Iterable<? extends JavaFileObject> sources) {
-    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
     if (compiler == null) {
       throw new IllegalStateException("Java Compiler is not present. "
           + "May be, you need to include tools.jar on your dependency list.");
@@ -70,7 +69,7 @@ final class Compilation {
         fileManager,
         diagnosticCollector,
         ImmutableList.copyOf(options),
-        ImmutableSet.<String>of(),
+        null, // explicitly use the default behaviour because Eclipse compiler fails with empty Set
         sources);
     task.setProcessors(processors);
     boolean successful = task.call();
@@ -82,8 +81,7 @@ final class Compilation {
    * Parse {@code sources} into {@linkplain CompilationUnitTree compilation units}.  This method
    * <b>does not</b> compile the sources.
    */
-  static ParseResult parse(Iterable<? extends JavaFileObject> sources) {
-    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+  static ParseResult parse(JavaCompiler compiler, Iterable<? extends JavaFileObject> sources) {
     DiagnosticCollector<JavaFileObject> diagnosticCollector =
         new DiagnosticCollector<JavaFileObject>();
     InMemoryJavaFileManager fileManager = new InMemoryJavaFileManager(
@@ -93,7 +91,7 @@ final class Compilation {
         fileManager,
         diagnosticCollector,
         ImmutableSet.<String>of(),
-        ImmutableSet.<String>of(),
+        null, // explicitly use the default behaviour because Eclipse compiler fails with empty Set
         sources);
     try {
       Iterable<? extends CompilationUnitTree> parsedCompilationUnits = task.parse();

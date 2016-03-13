@@ -17,9 +17,10 @@ package com.google.testing.compile;
 
 import static com.google.common.base.Preconditions.checkState;
 
+import com.google.common.base.Charsets;
+import com.google.common.base.Supplier;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.google.testing.compile.Compilation.Result;
 
 import org.junit.Rule;
 import org.junit.rules.TestRule;
@@ -37,61 +38,88 @@ import javax.lang.model.SourceVersion;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
+import javax.tools.DiagnosticCollector;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaCompiler.CompilationTask;
+import javax.tools.JavaFileManager;
+import javax.tools.JavaFileObject;
+import javax.tools.ToolProvider;
 
 /**
- * A {@link JUnit4} {@link Rule} that executes tests such that a instances of {@link Elements} and
+ * A {@link JUnit4} {@link Rule} that executes tests such that instances of {@link Elements} and
  * {@link Types} are available during execution.
  *
  * <p>To use this rule in a test, just add the following field: <pre><code>
  *   {@code @Rule} public CompilationRule compilationRule = new CompilationRule();</code></pre>
  *
+ * <p>This rule uses {@link ToolProvider#getSystemJavaCompiler() javac} by default, but you can
+ * also pass a supplier of {@link JavaCompiler} to use other compilers, such as Eclipse ECJ.
+ *
  * @author Gregory Kick
  */
 public final class CompilationRule implements TestRule {
+  private final Supplier<JavaCompiler> compilerSupplier;
+
   private Elements elements;
   private Types types;
+
+  public CompilationRule() {
+    this(new Supplier<JavaCompiler>() {
+      @Override
+      public JavaCompiler get() {
+        return ToolProvider.getSystemJavaCompiler();
+      }
+    });
+  }
+
+  public CompilationRule(Supplier<JavaCompiler> compilerSupplier) {
+    this.compilerSupplier = compilerSupplier;
+  }
 
   @Override
   public Statement apply(final Statement base, Description description) {
     return new Statement() {
       @Override public void evaluate() throws Throwable {
         final AtomicReference<Throwable> thrown = new AtomicReference<Throwable>();
-        Result result = Compilation.compile(ImmutableList.of(new AbstractProcessor() {
-          @Override
-          public SourceVersion getSupportedSourceVersion() {
-            return SourceVersion.latest();
-          }
-
-          @Override
-          public Set<String> getSupportedAnnotationTypes() {
-            return ImmutableSet.of("*");
-          }
-
-          @Override
-          public synchronized void init(ProcessingEnvironment processingEnv) {
-            super.init(processingEnv);
-            elements = processingEnv.getElementUtils();
-            types = processingEnv.getTypeUtils();
-          }
-
-          @Override
-          public boolean process(Set<? extends TypeElement> annotations,
-              RoundEnvironment roundEnv) {
-            // just run the test on the last round after compilation is over
-            if (roundEnv.processingOver()) {
-              try {
-                base.evaluate();
-              } catch (Throwable e) {
-                thrown.set(e);
+        JavaCompiler compiler = compilerSupplier.get();
+        DiagnosticCollector<JavaFileObject> diagnosticCollector = new DiagnosticCollector<JavaFileObject>();
+        JavaFileManager fileManager = compiler.getStandardFileManager(diagnosticCollector, null, Charsets.UTF_8);
+        CompilationTask task = compiler.getTask(null, fileManager, diagnosticCollector, null,
+            ImmutableSet.of(CompilationRule.class.getCanonicalName()), null);
+        task.setProcessors(ImmutableList.of(new AbstractProcessor() {
+              @Override
+              public SourceVersion getSupportedSourceVersion() {
+                return SourceVersion.latest();
               }
-            }
-            return false;
-          }
-        }),
-        ImmutableSet.<String>of(),
-        // just compile _something_
-        ImmutableList.of(JavaFileObjects.forSourceLines("Dummy", "final class Dummy {}")));
-        checkState(result.successful(), result);
+
+              @Override
+              public Set<String> getSupportedAnnotationTypes() {
+                return ImmutableSet.of("*");
+              }
+
+              @Override
+              public synchronized void init(ProcessingEnvironment processingEnv) {
+                super.init(processingEnv);
+                elements = processingEnv.getElementUtils();
+                types = processingEnv.getTypeUtils();
+              }
+
+              @Override
+              public boolean process(Set<? extends TypeElement> annotations,
+                  RoundEnvironment roundEnv) {
+                // just run the test on the last round after compilation is over
+                if (roundEnv.processingOver()) {
+                  try {
+                    base.evaluate();
+                  } catch (Throwable e) {
+                    thrown.set(e);
+                  }
+                }
+                return false;
+              }
+            }));
+        boolean successful = task.call();
+        checkState(successful);
         Throwable t = thrown.get();
         if (t != null) {
           throw t;

@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -585,6 +586,59 @@ public final class JavaSourcesSubject
 
     protected GeneratedCompilationBuilder(Result result) {
       super(result);
+    }
+
+    @Override
+    public GenerationClause<T> generatesSources() {
+      return withCompilationResultsOfKind(JavaFileObject.Kind.SOURCE);
+    }
+
+    @Override
+    public GenerationClause<T> generatesClasses() {
+      return withCompilationResultsOfKind(JavaFileObject.Kind.CLASS);
+    }
+
+    protected GenerationClause<T> withCompilationResultsOfKind(final JavaFileObject.Kind kind) {
+      return new GenerationClause<T>() {
+        private static final String SOURCE_OUTPUT = "/SOURCE_OUTPUT/";
+        private static final String CLASS_OUTPUT = "/CLASS_OUTPUT/";
+        @Override
+        public T forEachOfWhich(CompilationResultConsumer consumer) {
+          if (consumer != null) {
+            for (JavaFileObject generatedJavaFileObject : result.generatedFilesByKind().get(kind)) {
+              consumer.accept(cleanPath(generatedJavaFileObject.getName()), generatedJavaFileObject);
+            }
+          }
+          return thisObject();
+        }
+
+        @Override
+        public T forAllOfWhich(CompilationResultsConsumer consumer) {
+          if (consumer != null) {
+            Map<String, JavaFileObject> generatedJavaFileObjects = new HashMap<String, JavaFileObject>();
+            for (JavaFileObject generatedJavaFileObject : result.generatedFilesByKind().get(kind)) {
+              generatedJavaFileObjects.put(cleanPath(generatedJavaFileObject.getName()), generatedJavaFileObject);
+            }
+            consumer.accept(generatedJavaFileObjects);
+          }
+          return thisObject();
+        }
+
+        private final String cleanPath(String filePath) {
+          if (filePath == null) {
+            return filePath;
+          }
+          else if (filePath.startsWith(SOURCE_OUTPUT)) {
+            return filePath.substring(SOURCE_OUTPUT.length());
+          }
+          else if (filePath.startsWith(CLASS_OUTPUT)) {
+            return filePath.substring(CLASS_OUTPUT.length());
+          }
+          else {
+            return filePath;
+          }
+        }
+      };
     }
 
     @Override

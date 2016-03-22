@@ -18,6 +18,7 @@ package com.google.testing.compile;
 import com.google.common.io.ByteSource;
 
 import java.nio.charset.Charset;
+import java.util.Map;
 
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileManager;
@@ -128,12 +129,57 @@ public interface CompileTester {
     ChainingClause<T> atColumn(long columnNumber);
   }
 
+  public interface BiConsumer<T, U> {
+    void accept(T t, U u);
+  }
+
+  public interface Consumer<T> {
+    void accept(T t);
+  }
+
+  public interface CompilationResultConsumer extends BiConsumer<String, JavaFileObject> {}
+
+  public interface CompilationResultsConsumer extends Consumer<Map<String, JavaFileObject>> {}
+
+  /**
+   * The clause in the fluent API that allows to operate on the generated source or class files
+   * by supplying a consumer function. The consumer function will be invoked with the generated
+   * file names and {@linkplain JavaFileObject} objects.
+   *
+   * @param T the non-generic clause type implementing this interface
+   */
+  public interface GenerationClause<T> {
+
+    T forEachOfWhich(CompilationResultConsumer consumer);
+
+    T forAllOfWhich(CompilationResultsConsumer consumer);
+  }
+
+  /**
+   * The clause in the fluent API that allows to operate directly on the generated source files
+   * and compiled class files.
+   *
+   * @param T the non-generic clause type implementing this interface
+   */
+  public interface CompilationWithResultsClause<T> {
+
+    /**
+     * Returns a container that allows operating on generated source files
+     */
+    GenerationClause<T> generatesSources();
+
+    /**
+     * Returns a container that allows operating on generated class files
+     */
+    GenerationClause<T> generatesClasses();
+  }
+
   /**
    * The clause in the fluent API that checks that files were generated.
    *
    * @param T the non-generic clause type implementing this interface
    */
-  public interface GeneratedPredicateClause<T> {
+  public interface GeneratedPredicateClause<T> extends CompilationWithResultsClause<T> {
     /**
      * Checks that a source file with an equivalent
      * <a href="http://en.wikipedia.org/wiki/Abstract_syntax_tree">AST</a> was generated for each of

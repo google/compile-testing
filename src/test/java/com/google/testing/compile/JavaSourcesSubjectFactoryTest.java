@@ -28,6 +28,7 @@ import com.google.common.io.ByteSource;
 import com.google.common.io.Resources;
 import com.google.common.truth.FailureStrategy;
 import com.google.common.truth.TestVerb;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -64,7 +65,7 @@ public class JavaSourcesSubjectFactoryTest {
       throw new VerificationException(message);
     }
   });
-  
+
   private static final JavaFileObject HELLO_WORLD =
       JavaFileObjects.forSourceLines(
           "test.HelloWorld",
@@ -735,7 +736,7 @@ public class JavaSourcesSubjectFactoryTest {
           .contains("Expected 42 notes, but found the following 2 notes:\n");
     }
   }
-  
+
   @Test
   public void failsToCompile() {
     JavaFileObject brokenFileObject = JavaFileObjects.forResource("HelloWorld-broken.java");
@@ -1015,6 +1016,7 @@ public class JavaSourcesSubjectFactoryTest {
       }
     }
 
+    @CanIgnoreReturnValue
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
       return false;

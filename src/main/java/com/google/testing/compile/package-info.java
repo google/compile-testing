@@ -65,4 +65,8 @@
  *       .withErrorContaining("No types named HelloWorld!").in(fileObject).onLine(23).atColumn(5);
  * }</pre>
  */
+
+@CheckReturnValue
 package com.google.testing.compile;
+
+import javax.annotation.CheckReturnValue;

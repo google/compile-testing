@@ -19,6 +19,7 @@ import static javax.tools.Diagnostic.NOPOS;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
@@ -180,23 +181,27 @@ final class TreeDifference {
     }
 
     /** Logs an extra node on the expected tree in the {@code TreeDifference} being built. */
+    @CanIgnoreReturnValue
     Builder addExtraExpectedNode(TreePath extraNode) {
       return addExtraExpectedNode(extraNode, "");
     }
 
     /** Logs an extra node on the expected tree in the {@code TreeDifference} being built. */
+    @CanIgnoreReturnValue
     Builder addExtraExpectedNode(TreePath extraNode, String message) {
       extraExpectedNodesBuilder.add(new OneWayDiff(extraNode, message));
       return this;
     }
 
     /** Logs an extra node on the actual tree in the {@code TreeDifference} being built. */
+    @CanIgnoreReturnValue
     Builder addExtraActualNode(TreePath extraNode, String message) {
       extraActualNodesBuilder.add(new OneWayDiff(extraNode, message));
       return this;
     }
 
     /** Logs an extra node on the actual tree in the {@code TreeDifference} being built. */
+    @CanIgnoreReturnValue
     Builder addExtraActualNode(TreePath extraNode) {
       return addExtraActualNode(extraNode, "");
     }
@@ -205,6 +210,7 @@ final class TreeDifference {
      * Logs a discrepancy between an expected and actual node in the {@code TreeDifference} being
      * built.
      */
+    @CanIgnoreReturnValue
     Builder addDifferingNodes(TreePath expectedNode, TreePath actualNode) {
       return addDifferingNodes(expectedNode, actualNode, "");
     }
@@ -213,6 +219,7 @@ final class TreeDifference {
      * Logs a discrepancy between an expected and actual node in the {@code TreeDifference} being
      * built.
      */
+    @CanIgnoreReturnValue
     Builder addDifferingNodes(TreePath expectedNode, TreePath actualNode, String message) {
       differingNodesBuilder.add(new TwoWayDiff(expectedNode, actualNode, message));
       return this;

@@ -765,8 +765,17 @@ public final class JavaSourcesSubject
     }
   }
 
-  public static JavaSourcesSubject assertThat(JavaFileObject... javaFileObjects) {
-    return assertAbout(javaSources()).that(ImmutableList.copyOf(javaFileObjects));
+  public static JavaSourcesSubject assertThat(JavaFileObject javaFileObject) {
+    return assertAbout(javaSources()).that(ImmutableList.of(javaFileObject));
+  }
+
+  public static JavaSourcesSubject assertThat(
+      JavaFileObject javaFileObject, JavaFileObject... javaFileObjects) {
+    return assertAbout(javaSources())
+        .that(ImmutableList.<JavaFileObject>builder()
+            .add(javaFileObject)
+            .add(javaFileObjects)
+            .build());
   }
 
   public static final class SingleSourceAdapter

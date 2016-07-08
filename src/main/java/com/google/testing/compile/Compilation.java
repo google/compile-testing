@@ -59,7 +59,7 @@ final class Compilation {
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
     if (compiler == null) {
       throw new IllegalStateException("Java Compiler is not present. "
-          + "May be, you need to include tools.jar on your dependency list.");
+          + "Maybe you need to include tools.jar on your dependency list?");
     }
     DiagnosticCollector<JavaFileObject> diagnosticCollector =
         new DiagnosticCollector<JavaFileObject>();

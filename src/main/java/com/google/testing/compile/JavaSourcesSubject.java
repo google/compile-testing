@@ -34,6 +34,7 @@ import com.google.common.collect.Maps;
 import com.google.common.io.ByteSource;
 import com.google.common.truth.FailureStrategy;
 import com.google.common.truth.Subject;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.testing.compile.Compilation.Result;
 import com.sun.source.tree.CompilationUnitTree;
 
@@ -62,17 +63,17 @@ public final class JavaSourcesSubject
     extends Subject<JavaSourcesSubject, Iterable<? extends JavaFileObject>>
     implements CompileTester, ProcessedCompileTesterFactory {
   private final List<String> options = new ArrayList<String>(Arrays.asList("-Xlint"));
-  
+
   JavaSourcesSubject(FailureStrategy failureStrategy, Iterable<? extends JavaFileObject> subject) {
     super(failureStrategy, subject);
   }
-  
+
   @Override
   public JavaSourcesSubject withCompilerOptions(Iterable<String> options) {
     Iterables.addAll(this.options, options);
     return this;
   }
-  
+
   @Override
   public JavaSourcesSubject withCompilerOptions(String... options) {
     this.options.addAll(Arrays.asList(options));
@@ -94,16 +95,19 @@ public final class JavaSourcesSubject
     new CompilationClause().parsesAs(first, rest);
   }
 
+  @CanIgnoreReturnValue
   @Override
   public SuccessfulCompilationClause compilesWithoutError() {
     return new CompilationClause().compilesWithoutError();
   }
 
+  @CanIgnoreReturnValue
   @Override
   public CleanCompilationClause compilesWithoutWarnings() {
     return new CompilationClause().compilesWithoutWarnings();
   }
 
+  @CanIgnoreReturnValue
   @Override
   public UnsuccessfulCompilationClause failsToCompile() {
     return new CompilationClause().failsToCompile();
@@ -158,7 +162,7 @@ public final class JavaSourcesSubject
         return message.toString();
       }
     }
-    
+
     @Override
     public void parsesAs(JavaFileObject first, JavaFileObject... rest) {
       Compilation.ParseResult actualResult = Compilation.parse(getSubject());
@@ -283,11 +287,13 @@ public final class JavaSourcesSubject
       }
     }
 
+    @CanIgnoreReturnValue
     @Override
     public SuccessfulCompilationClause compilesWithoutError() {
       return new SuccessfulCompilationBuilder(successfulCompilationResult());
     }
 
+    @CanIgnoreReturnValue
     @Override
     public CleanCompilationClause compilesWithoutWarnings() {
       return new CleanCompilationBuilder(successfulCompilationResult()).withWarningCount(0);
@@ -311,6 +317,7 @@ public final class JavaSourcesSubject
       return result;
     }
 
+    @CanIgnoreReturnValue
     @Override
     public UnsuccessfulCompilationClause failsToCompile() {
       Result result = Compilation.compile(processors, options, getSubject());
@@ -384,21 +391,25 @@ public final class JavaSourcesSubject
       this.result = result;
     }
 
+    @CanIgnoreReturnValue
     @Override
     public T withNoteCount(int noteCount) {
       return withDiagnosticCount(Kind.NOTE, noteCount);
     }
 
+    @CanIgnoreReturnValue
     @Override
     public FileClause<T> withNoteContaining(String messageFragment) {
       return withDiagnosticContaining(Kind.NOTE, messageFragment);
     }
 
+    @CanIgnoreReturnValue
     @Override
     public T withWarningCount(int warningCount) {
       return withDiagnosticCount(Kind.WARNING, warningCount);
     }
 
+    @CanIgnoreReturnValue
     @Override
     public FileClause<T> withWarningContaining(String messageFragment) {
       return withDiagnosticContaining(Kind.WARNING, messageFragment);
@@ -407,6 +418,7 @@ public final class JavaSourcesSubject
     /**
      * Fails if the number of diagnostic messages of a given kind is not {@code expectedCount}.
      */
+    @CanIgnoreReturnValue
     protected T withDiagnosticCount(Kind kind, int expectedCount) {
       List<Diagnostic<? extends JavaFileObject>> diagnostics = result.diagnosticsByKind().get(kind);
       if (diagnostics.size() != expectedCount) {
@@ -426,6 +438,7 @@ public final class JavaSourcesSubject
      * Fails if there is no diagnostic message of a given kind that contains
      * {@code messageFragment}.
      */
+    @CanIgnoreReturnValue
     protected FileClause<T> withDiagnosticContaining(
         final Kind kind, final String messageFragment) {
       FluentIterable<Diagnostic<? extends JavaFileObject>> diagnostics =
@@ -453,6 +466,7 @@ public final class JavaSourcesSubject
           return thisObject();
         }
 
+        @CanIgnoreReturnValue
         @Override
         public LineClause<T> in(final JavaFileObject file) {
           final FluentIterable<Diagnostic<? extends JavaFileObject>> diagnosticsInFile =
@@ -488,6 +502,7 @@ public final class JavaSourcesSubject
               return thisObject();
             }
 
+            @CanIgnoreReturnValue
             @Override
             public ColumnClause<T> onLine(final long lineNumber) {
               final FluentIterable<Diagnostic<? extends JavaFileObject>> diagnosticsOnLine =
@@ -524,6 +539,7 @@ public final class JavaSourcesSubject
                   return thisObject();
                 }
 
+                @CanIgnoreReturnValue
                 @Override
                 public ChainingClause<T> atColumn(final long columnNumber) {
                   FluentIterable<Diagnostic<? extends JavaFileObject>> diagnosticsAtColumn =
@@ -587,6 +603,7 @@ public final class JavaSourcesSubject
       super(result);
     }
 
+    @CanIgnoreReturnValue
     @Override
     public T generatesSources(JavaFileObject first, JavaFileObject... rest) {
       new JavaSourcesSubject(failureStrategy, result.generatedSources())
@@ -594,6 +611,7 @@ public final class JavaSourcesSubject
       return thisObject();
     }
 
+    @CanIgnoreReturnValue
     @Override
     public T generatesFiles(JavaFileObject first, JavaFileObject... rest) {
       for (JavaFileObject expected : Lists.asList(first, rest)) {
@@ -620,6 +638,7 @@ public final class JavaSourcesSubject
       return false;
     }
 
+    @CanIgnoreReturnValue
     @Override
     public SuccessfulFileClause<T> generatesFileNamed(
         JavaFileManager.Location location, String packageName, String relativeName) {
@@ -662,11 +681,13 @@ public final class JavaSourcesSubject
       checkArgument(!result.successful());
     }
 
+    @CanIgnoreReturnValue
     @Override
     public UnsuccessfulCompilationClause withErrorCount(int errorCount) {
       return withDiagnosticCount(Kind.ERROR, errorCount);
     }
 
+    @CanIgnoreReturnValue
     @Override
     public FileClause<UnsuccessfulCompilationClause> withErrorContaining(String messageFragment) {
       return withDiagnosticContaining(Kind.ERROR, messageFragment);
@@ -712,6 +733,7 @@ public final class JavaSourcesSubject
       return chainedClause;
     }
 
+    @CanIgnoreReturnValue
     @Override
     public SuccessfulFileClause<T> withContents(ByteSource expectedByteSource) {
       try {
@@ -725,6 +747,7 @@ public final class JavaSourcesSubject
       return this;
     }
 
+    @CanIgnoreReturnValue
     @Override
     public SuccessfulFileClause<T> withStringContents(Charset charset, String expectedString) {
       try {
@@ -742,8 +765,17 @@ public final class JavaSourcesSubject
     }
   }
 
-  public static JavaSourcesSubject assertThat(JavaFileObject... javaFileObjects) {
-    return assertAbout(javaSources()).that(ImmutableList.copyOf(javaFileObjects));
+  public static JavaSourcesSubject assertThat(JavaFileObject javaFileObject) {
+    return assertAbout(javaSources()).that(ImmutableList.of(javaFileObject));
+  }
+
+  public static JavaSourcesSubject assertThat(
+      JavaFileObject javaFileObject, JavaFileObject... javaFileObjects) {
+    return assertAbout(javaSources())
+        .that(ImmutableList.<JavaFileObject>builder()
+            .add(javaFileObject)
+            .add(javaFileObjects)
+            .build());
   }
 
   public static final class SingleSourceAdapter
@@ -756,16 +788,16 @@ public final class JavaSourcesSubject
       this.delegate =
           new JavaSourcesSubject(failureStrategy, ImmutableList.of(subject));
     }
-    
+
     @Override
     public JavaSourcesSubject withCompilerOptions(Iterable<String> options) {
       return delegate.withCompilerOptions(options);
     }
-    
+
     @Override
     public JavaSourcesSubject withCompilerOptions(String... options) {
       return delegate.withCompilerOptions(options);
-    }    
+    }
 
     @Override
     public CompileTester processedWith(Processor first, Processor... rest) {
@@ -777,16 +809,19 @@ public final class JavaSourcesSubject
       return delegate.newCompilationClause(processors);
     }
 
+    @CanIgnoreReturnValue
     @Override
     public SuccessfulCompilationClause compilesWithoutError() {
       return delegate.compilesWithoutError();
     }
-    
+
+    @CanIgnoreReturnValue
     @Override
     public CleanCompilationClause compilesWithoutWarnings() {
       return delegate.compilesWithoutWarnings();
     }
 
+    @CanIgnoreReturnValue
     @Override
     public UnsuccessfulCompilationClause failsToCompile() {
       return delegate.failsToCompile();

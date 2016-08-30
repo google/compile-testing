@@ -23,7 +23,7 @@
  *
  * <p>The simplest invocation looks like this: <pre>   {@code
  *
- *   assert_().about(javaSource())
+ *   assertAbout(javaSource())
  *       .that(JavaFileObjects.forSourceString("HelloWorld", "final class HelloWorld {}"))
  *       .compilesWithoutError();
  * }</pre>
@@ -33,7 +33,7 @@
  * of {@linkplain javax.annotation.processing.Processor annotation processors}. Here is the same
  * example with a processor: <pre>   {@code
  *
- *   assert_().about(javaSource())
+ *   assertAbout(javaSource())
  *       .that(JavaFileObjects.forSourceString("HelloWorld", "final class HelloWorld {}"))
  *       .processedWith(new MyAnnotationProcessor())
  *       .compilesWithoutError();
@@ -47,7 +47,7 @@
  * snippet tests that a file (a class path resource) processed with an annotation processor
  * generates a source file equivalent to a golden file: <pre>   {@code
  *
- *   assert_().about(javaSource())
+ *   assertAbout(javaSource())
  *       .that(JavaFileObjects.forResource("HelloWorld.java"))
  *       .processedWith(new MyAnnotationProcessor())
  *       .compilesWithoutError()
@@ -58,11 +58,15 @@
  * error to a source file: <pre>   {@code
  *
  *   JavaFileObject fileObject = JavaFileObjects.forResource("HelloWorld.java");
- *   assert_().about(javaSource())
+ *   assertAbout(javaSource())
  *       .that(fileObject)
  *       .processedWith(new NoHelloWorld())
  *       .failsToCompile()
  *       .withErrorContaining("No types named HelloWorld!").in(fileObject).onLine(23).atColumn(5);
  * }</pre>
  */
+
+@CheckReturnValue
 package com.google.testing.compile;
+
+import javax.annotation.CheckReturnValue;

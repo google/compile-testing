@@ -10,5 +10,6 @@ notifications:
   email: false
 
 branches:
-  except:
-    - gh-pages
+  only:
+    - master
+    - /^release.*$/

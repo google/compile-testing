@@ -200,7 +200,7 @@ final class TreeDiffer {
         actualPath = prevActualPath;
       }
     }
-    
+
     private boolean namesEqual(@Nullable Name expected, @Nullable Name actual) {
       return (expected == null)
           ? actual == null

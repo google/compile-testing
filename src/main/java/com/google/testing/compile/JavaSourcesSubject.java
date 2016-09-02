@@ -646,8 +646,11 @@ public final class JavaSourcesSubject
       // packageName is a valid package name.
       // We're relying on the implementation of location.getName() to be equivalent to the path of
       // the location.
-      String expectedFilename = new StringBuilder(location.getName()).append('/')
-          .append(packageName.replace('.', '/')).append('/').append(relativeName).toString();
+      StringBuilder fileNameBuilder = new StringBuilder(location.getName()).append('/');
+      if(packageName != null && !packageName.isEmpty()) {
+        fileNameBuilder.append(packageName.replace('.', '/')).append('/');
+      }
+      String expectedFilename = fileNameBuilder.append(relativeName).toString();
 
       for (JavaFileObject generated : result.generatedFilesByKind().values()) {
         if (generated.toUri().getPath().endsWith(expectedFilename)) {

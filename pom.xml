@@ -16,7 +16,7 @@
 
   <properties>
     <guava.version>19.0</guava.version>
-    <truth.version>0.28</truth.version>
+    <truth.version>0.30</truth.version>
     <junit.version>4.12</junit.version>
     <jsr305.version>3.0.1</jsr305.version>
   </properties>

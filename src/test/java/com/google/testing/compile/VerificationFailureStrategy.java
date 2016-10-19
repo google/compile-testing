@@ -13,27 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package com.google.testing.compile;
 
-import javax.tools.Diagnostic;
+import com.google.common.truth.FailureStrategy;
+import com.google.common.truth.TestVerb;
 
-/**
- * Utilities for working with {@link Diagnostic} instances and collections thereof.
- *
- * @author Gregory Kick
- */
-final class Diagnostics {
-  private Diagnostics() {}
+final class VerificationFailureStrategy extends FailureStrategy {
+  static final class VerificationException extends RuntimeException {
+    private static final long serialVersionUID = 1L;
 
-  /**
-   * Returns {@code diagnostics} as a {@link String} similar to the error output printed by
-   * {@code javac}.
-   */
-  static String toString(Iterable<? extends Diagnostic<?>> diagnostics) {
-    StringBuilder builder = new StringBuilder();
-    for (Diagnostic<?> diagnostic : diagnostics) {
-      builder.append(diagnostic.toString()).append('\n');
+    VerificationException(String message) {
+      super(message);
     }
-    return builder.toString();
+  }
+
+  /** A {@link TestVerb} that throws something other than {@link AssertionError}. */
+  static final TestVerb VERIFY = new TestVerb(new VerificationFailureStrategy());
+
+  @Override
+  public void fail(String message) {
+    throw new VerificationFailureStrategy.VerificationException(message);
   }
 }

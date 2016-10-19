@@ -15,192 +15,264 @@
  */
 package com.google.testing.compile;
 
-import static com.google.common.base.Charsets.UTF_8;
-import static javax.tools.JavaFileObject.Kind.SOURCE;
+import static com.google.common.base.Preconditions.checkState;
+import static com.google.testing.compile.JavaFileObjects.asByteSource;
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.toList;
+import static javax.tools.Diagnostic.Kind.ERROR;
+import static javax.tools.Diagnostic.Kind.MANDATORY_WARNING;
+import static javax.tools.Diagnostic.Kind.NOTE;
+import static javax.tools.Diagnostic.Kind.WARNING;
+import static javax.tools.JavaFileObject.Kind.CLASS;
 
-import com.google.common.base.Function;
-import com.google.common.base.MoreObjects;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableListMultimap;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Multimaps;
-import com.sun.source.tree.CompilationUnitTree;
-import com.sun.source.util.JavacTask;
-import com.sun.source.util.Trees;
-import com.sun.tools.javac.api.JavacTool;
-
+import com.google.common.collect.Sets;
 import java.io.IOException;
-import java.util.List;
-import java.util.Locale;
-
-import javax.annotation.processing.Processor;
+import java.util.Optional;
+import java.util.stream.Collector;
 import javax.tools.Diagnostic;
-import javax.tools.DiagnosticCollector;
-import javax.tools.JavaCompiler;
-import javax.tools.JavaCompiler.CompilationTask;
+import javax.tools.Diagnostic.Kind;
+import javax.tools.JavaFileManager.Location;
 import javax.tools.JavaFileObject;
-import javax.tools.ToolProvider;
+import javax.tools.StandardLocation;
 
-/**
- * Utilities for performing compilation with {@code javac}.
- *
- * @author Gregory Kick
- */
-final class Compilation {
-  private Compilation() {}
+/** The results of {@linkplain Compiler#compile compiling} source files. */
+public final class Compilation {
 
-  /**
-   * Compile {@code sources} using {@code processors}.
-   *
-   * @throws RuntimeException if compilation fails.
-   */
-  static Result compile(Iterable<? extends Processor> processors,
-      Iterable<String> options, Iterable<? extends JavaFileObject> sources) {
-    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-    DiagnosticCollector<JavaFileObject> diagnosticCollector =
-        new DiagnosticCollector<JavaFileObject>();
-    InMemoryJavaFileManager fileManager = new InMemoryJavaFileManager(
-        compiler.getStandardFileManager(diagnosticCollector, Locale.getDefault(), UTF_8));
-    CompilationTask task = compiler.getTask(
-        null, // explicitly use the default because old versions of javac log some output on stderr
-        fileManager,
-        diagnosticCollector,
-        ImmutableList.copyOf(options),
-        ImmutableSet.<String>of(),
-        sources);
-    task.setProcessors(processors);
-    boolean successful = task.call();
-    return new Result(successful, sortDiagnosticsByKind(diagnosticCollector.getDiagnostics()),
-        fileManager.getOutputFiles());
+  private final Compiler compiler;
+  private final ImmutableList<JavaFileObject> sourceFiles;
+  private final Status status;
+  private final ImmutableList<Diagnostic<? extends JavaFileObject>> diagnostics;
+  private final ImmutableList<JavaFileObject> generatedFiles;
+
+  Compilation(
+      Compiler compiler,
+      Iterable<? extends JavaFileObject> sourceFiles,
+      boolean successful,
+      Iterable<Diagnostic<? extends JavaFileObject>> diagnostics,
+      Iterable<JavaFileObject> generatedFiles) {
+    this.compiler = compiler;
+    this.sourceFiles = ImmutableList.copyOf(sourceFiles);
+    this.status = successful ? Status.SUCCESS : Status.FAILURE;
+    this.diagnostics = ImmutableList.copyOf(diagnostics);
+    this.generatedFiles = ImmutableList.copyOf(generatedFiles);
+  }
+
+  /** The compiler. */
+  Compiler compiler() {
+    return compiler;
+  }
+
+  /** The source files compiled. */
+  ImmutableList<JavaFileObject> sourceFiles() {
+    return sourceFiles;
+  }
+
+  /** The status of the compilation. */
+  Status status() {
+    return status;
   }
 
   /**
-   * Parse {@code sources} into {@linkplain CompilationUnitTree compilation units}.  This method
-   * <b>does not</b> compile the sources.
+   * All diagnostics reported during compilation. The order of the returned list is unspecified.
+   *
+   * @see #errors()
+   * @see #warnings()
+   * @see #notes()
    */
-  static ParseResult parse(Iterable<? extends JavaFileObject> sources) {
-    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-    DiagnosticCollector<JavaFileObject> diagnosticCollector =
-        new DiagnosticCollector<JavaFileObject>();
-    InMemoryJavaFileManager fileManager = new InMemoryJavaFileManager(
-        compiler.getStandardFileManager(diagnosticCollector, Locale.getDefault(), UTF_8));
-    JavacTask task = ((JavacTool) compiler).getTask(
-        null, // explicitly use the default because old versions of javac log some output on stderr
-        fileManager,
-        diagnosticCollector,
-        ImmutableSet.<String>of(),
-        ImmutableSet.<String>of(),
-        sources);
+  public ImmutableList<Diagnostic<? extends JavaFileObject>> diagnostics() {
+    return diagnostics;
+  }
+
+  /** {@linkplain Diagnostic.Kind#ERROR Errors} reported during compilation. */
+  public ImmutableList<Diagnostic<? extends JavaFileObject>> errors() {
+    return diagnosticsOfKind(ERROR);
+  }
+
+  /**
+   * {@linkplain Diagnostic.Kind#WARNING Warnings} (including {@linkplain
+   * Diagnostic.Kind#MANDATORY_WARNING mandatory warnings}) reported during compilation.
+   */
+  public ImmutableList<Diagnostic<? extends JavaFileObject>> warnings() {
+    return diagnosticsOfKind(WARNING, MANDATORY_WARNING);
+  }
+
+  /** {@linkplain Diagnostic.Kind#NOTE Notes} reported during compilation. */
+  public ImmutableList<Diagnostic<? extends JavaFileObject>> notes() {
+    return diagnosticsOfKind(NOTE);
+  }
+
+  ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsOfKind(Kind kind, Kind... more) {
+    ImmutableSet<Kind> kinds = Sets.immutableEnumSet(kind, more);
+    return diagnostics()
+        .stream()
+        .filter(diagnostic -> kinds.contains(diagnostic.getKind()))
+        .collect(toImmutableList());
+  }
+
+  /**
+   * Files generated during compilation.
+   *
+   * @throws IllegalStateException for {@linkplain #status() failed compilations}, since the state
+   *     of the generated files is undefined in that case
+   */
+  public ImmutableList<JavaFileObject> generatedFiles() {
+    checkState(
+        status.equals(Status.SUCCESS),
+        "compilation failed, so generated files are unavailable. %s",
+        describeErrors());
+    return generatedFiles;
+  }
+
+  /**
+   * Source files generated during compilation.
+   *
+   * @throws IllegalStateException for {@linkplain #status() failed compilations}, since the state
+   *     of the generated files is undefined in that case
+   */
+  public ImmutableList<JavaFileObject> generatedSourceFiles() {
+    return generatedFiles()
+        .stream()
+        .filter(generatedFile -> generatedFile.getKind().equals(JavaFileObject.Kind.SOURCE))
+        .collect(toImmutableList());
+  }
+
+  /**
+   * Returns the file at {@code path} if one was generated.
+   *
+   * <p>For example:
+   *
+   * <pre>
+   * {@code Optional<JavaFileObject>} fooClassFile =
+   *     compilation.generatedFile(CLASS_OUTPUT, "com/google/myapp/Foo.class");
+   * </pre>
+   *
+   * @throws IllegalStateException for {@linkplain #status() failed compilations}, since the state
+   *     of the generated files is undefined in that case
+   */
+  public Optional<JavaFileObject> generatedFile(Location location, String path) {
+    // We're relying on the implementation of location.getName() to be equivalent to the first
+    // part of the path.
+    String expectedFilename = String.format("%s/%s", location.getName(), path);
+    return generatedFiles()
+        .stream()
+        .filter(generated -> generated.toUri().getPath().endsWith(expectedFilename))
+        .findFirst();
+  }
+
+  /**
+   * Returns the file with name {@code fileName} in package {@code packageName} if one was
+   * generated.
+   *
+   * <p>For example:
+   *
+   * <pre>
+   * {@code Optional<JavaFileObject>} fooClassFile =
+   *     compilation.generatedFile(CLASS_OUTPUT, "com.google.myapp", "Foo.class");
+   * </pre>
+   *
+   * @throws IllegalStateException for {@linkplain #status() failed compilations}, since the state
+   *     of the generated files is undefined in that case
+   */
+  public Optional<JavaFileObject> generatedFile(
+      Location location, String packageName, String fileName) {
+    return generatedFile(
+        location,
+        packageName.isEmpty() ? fileName : packageName.replace('.', '/') + '/' + fileName);
+  }
+
+  /**
+   * Returns the source file with name {@code qualifiedName} (no extension) if one was generated.
+   *
+   * <p>For example:
+   *
+   * <pre>
+   * {@code Optional<JavaFileObject>} fooSourceFile =
+   *     compilation.generatedSourceFile("com.google.myapp.Foo");
+   * </pre>
+   *
+   * @throws IllegalStateException for {@linkplain #status() failed compilations}, since the state
+   *     of the generated files is undefined in that case
+   */
+  public Optional<JavaFileObject> generatedSourceFile(String qualifiedName) {
+    return generatedFile(StandardLocation.SOURCE_OUTPUT, qualifiedName);
+  }
+
+  @Override
+  public String toString() {
+    StringBuilder builder = new StringBuilder();
+    builder
+        .append("compilation of ")
+        .append(sourceFiles.stream().map(JavaFileObject::getName).collect(toList()));
+    if (!compiler.processors().isEmpty()) {
+      builder.append(" using annotation processors ").append(compiler.processors());
+    }
+    if (!compiler.options().isEmpty()) {
+      builder.append(" passing options ").append(compiler.options());
+    }
+    return builder.toString();
+  }
+
+  /** Returns a description of the errors reported during compilation. */
+  String describeErrors() {
+    ImmutableList<Diagnostic<? extends JavaFileObject>> errors = errors();
+    if (errors.isEmpty()) {
+      return "Compilation produced no errors.\n";
+    }
+    StringBuilder message = new StringBuilder("Compilation produced the following errors:\n");
+    errors.stream().forEach(error -> message.append(error).append('\n'));
+    return message.toString();
+  }
+
+  /** Returns a description of the source file generated by this compilation. */
+  String describeGeneratedSourceFiles() {
+    ImmutableList<JavaFileObject> generatedSourceFiles =
+        generatedFiles
+            .stream()
+            .filter(generatedFile -> generatedFile.getKind().equals(JavaFileObject.Kind.SOURCE))
+            .collect(toImmutableList());
+    if (generatedSourceFiles.isEmpty()) {
+      return "No files were generated.\n";
+    } else {
+      StringBuilder message = new StringBuilder("Generated Source Files\n======================\n");
+      for (JavaFileObject generatedFile : generatedSourceFiles) {
+        message.append(describeGeneratedFile(generatedFile));
+      }
+      return message.toString();
+    }
+  }
+
+  /** Returns a description of the contents of a given generated file. */
+  private String describeGeneratedFile(JavaFileObject generatedFile) {
     try {
-      Iterable<? extends CompilationUnitTree> parsedCompilationUnits = task.parse();
-      List<Diagnostic<? extends JavaFileObject>> diagnostics = diagnosticCollector.getDiagnostics();
-      for (Diagnostic<?> diagnostic : diagnostics) {
-        if (Diagnostic.Kind.ERROR == diagnostic.getKind()) {
-          throw new IllegalStateException("error while parsing:\n"
-              + Diagnostics.toString(diagnostics));
-        }
+      StringBuilder entry = new StringBuilder("\n").append(generatedFile.getName()).append(":\n");
+      if (generatedFile.getKind().equals(CLASS)) {
+        entry.append(
+            String.format(
+                "  [generated class file (%d bytes)]", asByteSource(generatedFile).size()));
+      } else {
+        entry.append(generatedFile.getCharContent(true));
       }
-      return new ParseResult(sortDiagnosticsByKind(diagnostics), parsedCompilationUnits,
-          Trees.instance(task));
+      return entry.append('\n').toString();
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new IllegalStateException(
+          "Couldn't read from JavaFileObject when it was already in memory.", e);
     }
   }
 
-  private static ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>>
-      sortDiagnosticsByKind(Iterable<Diagnostic<? extends JavaFileObject>> diagnostics) {
-    return Multimaps.index(diagnostics,
-        new Function<Diagnostic<?>, Diagnostic.Kind>() {
-          @Override public Diagnostic.Kind apply(Diagnostic<?> input) {
-            return input.getKind();
-          }
-        });
+  // TODO(dpb): Use Guava's toImmutableList() once that's available. MOE:strip_line
+  private static <T> Collector<T, ?, ImmutableList<T>> toImmutableList() {
+    return collectingAndThen(toList(), ImmutableList::copyOf);
   }
 
-  /**
-   * The diagnostic, parse trees, and {@link Trees} instance for a parse task.
-   *
-   * <p>Note: It is possible for the {@link Trees} instance contained within a {@code ParseResult}
-   * to be invalidated by a call to {@link com.sun.tools.javac.api.JavacTaskImpl#cleanup()}. Though
-   * we do not currently expose the {@link JavacTask} used to create a {@code ParseResult} to
-   * {@code cleanup()} calls on its underlying implementation, this should be acknowledged as an
-   * implementation detail that could cause unexpected behavior when making calls to methods in
-   * {@link Trees}.
-   */
-  static final class ParseResult {
-    private final ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>>
-        diagnostics;
-    private final ImmutableList<? extends CompilationUnitTree> compilationUnits;
-    private final Trees trees;
+  /** The status of a compilation. */
+  public enum Status {
 
-    ParseResult(
-        ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>> diagnostics,
-        Iterable<? extends CompilationUnitTree> compilationUnits, Trees trees) {
-      this.trees = trees;
-      this.compilationUnits = ImmutableList.copyOf(compilationUnits);
-      this.diagnostics = diagnostics;
-    }
+    /** Compilation finished without errors. */
+    SUCCESS,
 
-    ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>>
-        diagnosticsByKind() {
-      return diagnostics;
-    }
-
-    Iterable<? extends CompilationUnitTree> compilationUnits() {
-      return compilationUnits;
-    }
-
-    Trees trees() {
-      return trees;
-    }
-  }
-
-  /** The diagnostic and file output of a compilation. */
-  static final class Result {
-    private final boolean successful;
-    private final ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>>
-        diagnostics;
-    private final ImmutableListMultimap<JavaFileObject.Kind, JavaFileObject> generatedFilesByKind;
-
-    Result(boolean successful,
-        ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>> diagnostics,
-        Iterable<JavaFileObject> generatedFiles) {
-      this.successful = successful;
-      this.diagnostics = diagnostics;
-      this.generatedFilesByKind = Multimaps.index(generatedFiles,
-          new Function<JavaFileObject, JavaFileObject.Kind>() {
-            @Override public JavaFileObject.Kind apply(JavaFileObject input) {
-              return input.getKind();
-            }
-          });
-      if (!successful && diagnostics.get(Diagnostic.Kind.ERROR).isEmpty()) {
-        throw new CompilationFailureException();
-      }
-    }
-
-    boolean successful() {
-      return successful;
-    }
-
-    ImmutableListMultimap<Diagnostic.Kind, Diagnostic<? extends JavaFileObject>>
-        diagnosticsByKind() {
-      return diagnostics;
-    }
-
-    ImmutableListMultimap<JavaFileObject.Kind, JavaFileObject> generatedFilesByKind() {
-      return generatedFilesByKind;
-    }
-
-    ImmutableList<JavaFileObject> generatedSources() {
-      return generatedFilesByKind.get(SOURCE);
-    }
-
-    @Override
-    public String toString() {
-      return MoreObjects.toStringHelper(this)
-          .add("successful", successful)
-          .add("diagnostics", diagnostics)
-          .toString();
-    }
+    /** Compilation finished with errors. */
+    FAILURE,
   }
 }

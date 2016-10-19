@@ -15,7 +15,6 @@
  */
 package com.google.testing.compile;
 
-import com.google.common.base.CharMatcher;
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Optional;
 import com.google.common.cache.CacheBuilder;
@@ -23,7 +22,6 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
-
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -35,7 +33,6 @@ import java.io.Writer;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.Map.Entry;
-
 import javax.tools.FileObject;
 import javax.tools.ForwardingJavaFileManager;
 import javax.tools.JavaFileManager;
@@ -64,15 +61,17 @@ final class InMemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileMa
   }
 
   private static URI uriForFileObject(Location location, String packageName, String relativeName) {
-    return URI.create(
-        "mem:///" + location.getName() + '/' + CharMatcher.is('.').replaceFrom(packageName, '/')
-            + '/' + relativeName);
+    StringBuilder uri = new StringBuilder("mem:///").append(location.getName()).append('/');
+    if (!packageName.isEmpty()) {
+      uri.append(packageName.replace('.', '/')).append('/');
+    }
+    uri.append(relativeName);
+    return URI.create(uri.toString());
   }
 
   private static URI uriForJavaFileObject(Location location, String className, Kind kind) {
     return URI.create(
-        "mem:///" + location.getName() + '/' + CharMatcher.is('.').replaceFrom(className, '/')
-            + kind.extension);
+        "mem:///" + location.getName() + '/' + className.replace('.', '/') + kind.extension);
   }
 
   @Override

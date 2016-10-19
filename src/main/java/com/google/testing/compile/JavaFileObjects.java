@@ -25,7 +25,6 @@ import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
 import com.google.common.io.Resources;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -37,7 +36,6 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.Arrays;
-
 import javax.tools.ForwardingJavaFileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
@@ -183,13 +181,10 @@ public final class JavaFileObjects {
 
   private static final class JarFileJavaFileObject
       extends ForwardingJavaFileObject<ResourceSourceJavaFileObject> {
-    final String name;
-
     JarFileJavaFileObject(URL jarUrl) {
       // this is a cheap way to give SimpleJavaFileObject a uri that satisfies the contract
       // then we just override the methods that we want to behave differently for jars
       super(new ResourceSourceJavaFileObject(jarUrl, getPathUri(jarUrl)));
-      this.name = jarUrl.toString();
     }
 
     static final Splitter JAR_URL_SPLITTER = Splitter.on('!');
@@ -202,11 +197,6 @@ public final class JavaFileObjects {
       checkArgument(!pathPart.endsWith("/"), "cannot create a java file object for a directory: %s",
           pathPart);
       return URI.create(pathPart);
-    }
-
-    @Override
-    public String getName() {
-      return name;
     }
   }
 

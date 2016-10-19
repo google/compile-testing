@@ -18,12 +18,11 @@ package com.google.testing.compile;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.common.collect.Iterables;
-
+import com.google.testing.compile.Parser.ParseResult;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.Trees;
-
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -33,8 +32,9 @@ import org.junit.runners.JUnit4;
  */
 @RunWith(JUnit4.class)
 public class TreeDifferenceTest {
-  private static final Compilation.ParseResult PARSE_RESULTS =
-      MoreTrees.parseLines("package test;",
+  private static final ParseResult PARSE_RESULTS =
+      MoreTrees.parseLines(
+          "package test;",
           "",
           "final class TestClass {",
           "    public String toString() {",

@@ -15,34 +15,11 @@
  */
 package com.google.testing.compile;
 
-import static com.sun.source.tree.Tree.Kind.ANNOTATION_TYPE;
-import static com.sun.source.tree.Tree.Kind.BOOLEAN_LITERAL;
-import static com.sun.source.tree.Tree.Kind.BREAK;
-import static com.sun.source.tree.Tree.Kind.CHAR_LITERAL;
-import static com.sun.source.tree.Tree.Kind.CLASS;
-import static com.sun.source.tree.Tree.Kind.CONTINUE;
-import static com.sun.source.tree.Tree.Kind.DOUBLE_LITERAL;
-import static com.sun.source.tree.Tree.Kind.ENUM;
-import static com.sun.source.tree.Tree.Kind.FLOAT_LITERAL;
-import static com.sun.source.tree.Tree.Kind.IDENTIFIER;
-import static com.sun.source.tree.Tree.Kind.INTERFACE;
-import static com.sun.source.tree.Tree.Kind.INT_LITERAL;
-import static com.sun.source.tree.Tree.Kind.LABELED_STATEMENT;
-import static com.sun.source.tree.Tree.Kind.LONG_LITERAL;
-import static com.sun.source.tree.Tree.Kind.MEMBER_SELECT;
-import static com.sun.source.tree.Tree.Kind.METHOD;
-import static com.sun.source.tree.Tree.Kind.NULL_LITERAL;
-import static com.sun.source.tree.Tree.Kind.STRING_LITERAL;
-import static com.sun.source.tree.Tree.Kind.TYPE_PARAMETER;
-import static com.sun.source.tree.Tree.Kind.VARIABLE;
-
 import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import com.google.common.collect.Sets;
-
+import com.google.testing.compile.Parser.ParseResult;
 import com.sun.source.tree.BreakTree;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
@@ -57,9 +34,7 @@ import com.sun.source.tree.TypeParameterTree;
 import com.sun.source.tree.VariableTree;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.TreePathScanner;
-
 import java.util.Arrays;
-
 import javax.annotation.Nullable;
 
 /**
@@ -76,19 +51,20 @@ final class MoreTrees {
 
   /** Parses the source given into a {@link CompilationUnitTree}. */
   static CompilationUnitTree parseLinesToTree(Iterable<String> source) {
-    Iterable<? extends CompilationUnitTree> parseResults = Compilation.parse(ImmutableList.of(
-        JavaFileObjects.forSourceLines("", source))).compilationUnits();
+    Iterable<? extends CompilationUnitTree> parseResults =
+        Parser.parse(ImmutableList.of(JavaFileObjects.forSourceLines("", source)))
+            .compilationUnits();
     return Iterables.getOnlyElement(parseResults);
   }
 
-  /** Parses the source given and produces a {@link Compilation.ParseResult}. */
-  static Compilation.ParseResult parseLines(String... source) {
+  /** Parses the source given and produces a {@link ParseResult}. */
+  static ParseResult parseLines(String... source) {
     return parseLines(Arrays.asList(source));
   }
 
-  /** Parses the source given and produces a {@link Compilation.ParseResult}. */
-  static Compilation.ParseResult parseLines(Iterable<String> source) {
-    return Compilation.parse(ImmutableList.of(JavaFileObjects.forSourceLines("", source)));
+  /** Parses the source given and produces a {@link ParseResult}. */
+  static ParseResult parseLines(Iterable<String> source) {
+    return Parser.parse(ImmutableList.of(JavaFileObjects.forSourceLines("", source)));
   }
 
   /**

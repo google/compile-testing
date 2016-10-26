@@ -18,12 +18,11 @@ package com.google.testing.compile;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.common.collect.ImmutableList;
-
+import com.google.testing.compile.Parser.ParseResult;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.Trees;
-
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -56,8 +55,7 @@ public class TreeContextTest {
       "    }",
       "}");
 
-  private static final Compilation.ParseResult PARSE_RESULTS =
-      MoreTrees.parseLines(baseTreeSource);
+  private static final ParseResult PARSE_RESULTS = MoreTrees.parseLines(baseTreeSource);
   private static final CompilationUnitTree COMPILATION_UNIT =
       PARSE_RESULTS.compilationUnits().iterator().next();
   private static final Trees TREES = PARSE_RESULTS.trees();

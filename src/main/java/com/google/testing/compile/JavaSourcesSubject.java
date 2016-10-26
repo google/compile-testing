@@ -15,10 +15,10 @@
  */
 package com.google.testing.compile;
 
-import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.truth.Truth.assertAbout;
+import static com.google.testing.compile.CompilationSubject.compilations;
+import static com.google.testing.compile.Compiler.javac;
 import static com.google.testing.compile.JavaSourcesSubjectFactory.javaSources;
-import static javax.tools.JavaFileObject.Kind.CLASS;
 
 import com.google.common.base.Function;
 import com.google.common.base.Joiner;
@@ -35,20 +35,20 @@ import com.google.common.io.ByteSource;
 import com.google.common.truth.FailureStrategy;
 import com.google.common.truth.Subject;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-import com.google.testing.compile.Compilation.Result;
+import com.google.testing.compile.CompilationSubject.DiagnosticAtColumn;
+import com.google.testing.compile.CompilationSubject.DiagnosticInFile;
+import com.google.testing.compile.CompilationSubject.DiagnosticOnLine;
+import com.google.testing.compile.Parser.ParseResult;
 import com.sun.source.tree.CompilationUnitTree;
-
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
 import javax.tools.Diagnostic.Kind;
-import javax.tools.FileObject;
 import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
 
@@ -125,47 +125,9 @@ public final class JavaSourcesSubject
       this.processors = ImmutableSet.copyOf(processors);
     }
 
-    /** Returns a {@code String} report describing the contents of a given generated file. */
-    private String reportFileGenerated(JavaFileObject generatedFile) {
-      try {
-        StringBuilder entry =
-            new StringBuilder().append(String.format("\n%s:\n", generatedFile.toUri().getPath()));
-        if (generatedFile.getKind().equals(CLASS)) {
-          entry.append(String.format("[generated class file (%s bytes)]",
-                  JavaFileObjects.asByteSource(generatedFile).size()));
-        } else {
-          entry.append(generatedFile.getCharContent(true));
-        }
-        return entry.append("\n").toString();
-      } catch (IOException e) {
-        throw new IllegalStateException("Couldn't read from JavaFileObject when it was "
-            + "already in memory.", e);
-      }
-    }
-
-    /**
-     * Returns a {@code String} report describing what files were generated in the given
-     * {@link Compilation.Result}
-     */
-    private String reportFilesGenerated(Compilation.Result result) {
-      FluentIterable<JavaFileObject> generatedFiles =
-          FluentIterable.from(result.generatedSources());
-      StringBuilder message = new StringBuilder("\n\n");
-      if (generatedFiles.isEmpty()) {
-        return message.append("(No files were generated.)\n").toString();
-      } else {
-        message.append("Generated Files\n")
-            .append("===============\n");
-        for (JavaFileObject generatedFile : generatedFiles) {
-          message.append(reportFileGenerated(generatedFile));
-        }
-        return message.toString();
-      }
-    }
-
     @Override
     public void parsesAs(JavaFileObject first, JavaFileObject... rest) {
-      Compilation.ParseResult actualResult = Compilation.parse(getSubject());
+      ParseResult actualResult = Parser.parse(actual());
       ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
           actualResult.diagnosticsByKind().get(Kind.ERROR);
       if (!errors.isEmpty()) {
@@ -176,7 +138,7 @@ public final class JavaSourcesSubject
         }
         failureStrategy.fail(message.toString());
       }
-      final Compilation.ParseResult expectedResult = Compilation.parse(Lists.asList(first, rest));
+      final ParseResult expectedResult = Parser.parse(Lists.asList(first, rest));
       final FluentIterable<? extends CompilationUnitTree> actualTrees = FluentIterable.from(
           actualResult.compilationUnits());
       final FluentIterable<? extends CompilationUnitTree> expectedTrees = FluentIterable.from(
@@ -290,45 +252,29 @@ public final class JavaSourcesSubject
     @CanIgnoreReturnValue
     @Override
     public SuccessfulCompilationClause compilesWithoutError() {
-      return new SuccessfulCompilationBuilder(successfulCompilationResult());
+      Compilation compilation = compilation();
+      check().about(compilations()).that(compilation).succeeded();
+      return new SuccessfulCompilationBuilder(compilation);
     }
 
     @CanIgnoreReturnValue
     @Override
     public CleanCompilationClause compilesWithoutWarnings() {
-      return new CleanCompilationBuilder(successfulCompilationResult()).withWarningCount(0);
-    }
-
-    private Compilation.Result successfulCompilationResult() {
-      Compilation.Result result =
-          Compilation.compile(processors, options, getSubject());
-      if (!result.successful()) {
-        ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
-            result.diagnosticsByKind().get(Kind.ERROR);
-        StringBuilder message = new StringBuilder("Compilation produced the following errors:\n");
-        for (Diagnostic<? extends JavaFileObject> error : errors) {
-          message.append('\n');
-          message.append(error);
-        }
-        message.append('\n');
-        message.append(reportFilesGenerated(result));
-        failureStrategy.fail(message.toString());
-      }
-      return result;
+      Compilation compilation = compilation();
+      check().about(compilations()).that(compilation).succeededWithoutWarnings();
+      return new CleanCompilationBuilder(compilation);
     }
 
     @CanIgnoreReturnValue
     @Override
     public UnsuccessfulCompilationClause failsToCompile() {
-      Result result = Compilation.compile(processors, options, getSubject());
-      if (result.successful()) {
-        String message = Joiner.on('\n').join(
-            "Compilation was expected to fail, but contained no errors.",
-            "",
-            reportFilesGenerated(result));
-        failureStrategy.fail(message);
-      }
-      return new UnsuccessfulCompilationBuilder(result);
+      Compilation compilation = compilation();
+      check().about(compilations()).that(compilation).failed();
+      return new UnsuccessfulCompilationBuilder(compilation);
+    }
+
+    private Compilation compilation() {
+      return javac().withProcessors(processors).withOptions(options).compile(actual());
     }
   }
 
@@ -340,244 +286,57 @@ public final class JavaSourcesSubject
     return new CompilationClause(processors);
   }
 
-  private static String messageListing(Iterable<? extends Diagnostic<?>> diagnostics,
-      String headingFormat, Object... formatArgs) {
-    StringBuilder listing = new StringBuilder(String.format(headingFormat, formatArgs))
-        .append('\n');
-    for (Diagnostic<?> diagnostic : diagnostics) {
-      listing.append(diagnostic.getMessage(null)).append('\n');
-    }
-    return listing.toString();
-  }
-
-  /**
-   * Returns a string representation of a diagnostic kind.
-   *
-   * @param expectingSpecificCount {@code true} if being used after a count, as in "Expected 5
-   *     errors"; {@code false} if being used to describe one message, as in "Expected a warning
-   *     containing…".
-   */
-  private static String kindToString(Kind kind, boolean expectingSpecificCount) {
-    switch (kind) {
-      case ERROR:
-        return expectingSpecificCount ? "errors" : "an error";
-
-      case MANDATORY_WARNING:
-      case WARNING:
-        return expectingSpecificCount ? "warnings" : "a warning";
-
-      case NOTE:
-        return expectingSpecificCount ? "notes" : "a note";
-
-      case OTHER:
-        return expectingSpecificCount ? "diagnostic messages" : "a diagnostic message";
-
-      default:
-        throw new AssertionError(kind);
-    }
-  }
-
   /**
    * Base implementation of {@link CompilationWithWarningsClause}.
    *
    * @param T the type parameter for {@link CompilationWithWarningsClause}. {@code this} must be an
    *     instance of {@code T}; otherwise some calls will throw {@link ClassCastException}.
    */
-  private abstract class CompilationWithWarningsBuilder<T>
-      implements CompilationWithWarningsClause<T> {
-    protected final Compilation.Result result;
+  abstract class CompilationWithWarningsBuilder<T> implements CompilationWithWarningsClause<T> {
+    protected final Compilation compilation;
 
-    protected CompilationWithWarningsBuilder(Compilation.Result result) {
-      this.result = result;
+    protected CompilationWithWarningsBuilder(Compilation compilation) {
+      this.compilation = compilation;
     }
 
     @CanIgnoreReturnValue
     @Override
     public T withNoteCount(int noteCount) {
-      return withDiagnosticCount(Kind.NOTE, noteCount);
+      check().about(compilations()).that(compilation).hadNoteCount(noteCount);
+      return thisObject();
     }
 
     @CanIgnoreReturnValue
     @Override
     public FileClause<T> withNoteContaining(String messageFragment) {
-      return withDiagnosticContaining(Kind.NOTE, messageFragment);
+      return new FileBuilder(
+          check().about(compilations()).that(compilation).hadNoteContaining(messageFragment));
     }
 
     @CanIgnoreReturnValue
     @Override
     public T withWarningCount(int warningCount) {
-      return withDiagnosticCount(Kind.WARNING, warningCount);
+      check().about(compilations()).that(compilation).hadWarningCount(warningCount);
+      return thisObject();
     }
 
     @CanIgnoreReturnValue
     @Override
     public FileClause<T> withWarningContaining(String messageFragment) {
-      return withDiagnosticContaining(Kind.WARNING, messageFragment);
+      return new FileBuilder(
+          check().about(compilations()).that(compilation).hadWarningContaining(messageFragment));
     }
 
-    /**
-     * Fails if the number of diagnostic messages of a given kind is not {@code expectedCount}.
-     */
     @CanIgnoreReturnValue
-    protected T withDiagnosticCount(Kind kind, int expectedCount) {
-      List<Diagnostic<? extends JavaFileObject>> diagnostics = result.diagnosticsByKind().get(kind);
-      if (diagnostics.size() != expectedCount) {
-        failureStrategy.fail(
-            messageListing(
-                diagnostics,
-                "Expected %d %s, but found the following %d %s:",
-                expectedCount,
-                kindToString(kind, true),
-                diagnostics.size(),
-                kindToString(kind, true)));
-      }
+    public T withErrorCount(int errorCount) {
+      check().about(compilations()).that(compilation).hadErrorCount(errorCount);
       return thisObject();
     }
 
-    /**
-     * Fails if there is no diagnostic message of a given kind that contains
-     * {@code messageFragment}.
-     */
     @CanIgnoreReturnValue
-    protected FileClause<T> withDiagnosticContaining(
-        final Kind kind, final String messageFragment) {
-      FluentIterable<Diagnostic<? extends JavaFileObject>> diagnostics =
-          FluentIterable.from(result.diagnosticsByKind().get(kind));
-      final FluentIterable<Diagnostic<? extends JavaFileObject>> diagnosticsWithMessage =
-          diagnostics.filter(
-              new Predicate<Diagnostic<?>>() {
-                @Override
-                public boolean apply(Diagnostic<?> input) {
-                  return input.getMessage(null).contains(messageFragment);
-                }
-              });
-      if (diagnosticsWithMessage.isEmpty()) {
-        failureStrategy.fail(
-            messageListing(
-                diagnostics,
-                "Expected %s containing \"%s\", but only found:",
-                kindToString(kind, false),
-                messageFragment));
-      }
-      return new FileClause<T>() {
-
-        @Override
-        public T and() {
-          return thisObject();
-        }
-
-        @CanIgnoreReturnValue
-        @Override
-        public LineClause<T> in(final JavaFileObject file) {
-          final FluentIterable<Diagnostic<? extends JavaFileObject>> diagnosticsInFile =
-              diagnosticsWithMessage.filter(
-                  new Predicate<Diagnostic<? extends FileObject>>() {
-                    @Override
-                    public boolean apply(Diagnostic<? extends FileObject> input) {
-                      return ((input.getSource() != null)
-                          && file.toUri().getPath().equals(input.getSource().toUri().getPath()));
-                    }
-                  });
-          if (diagnosticsInFile.isEmpty()) {
-            failureStrategy.fail(
-                String.format(
-                    "Expected %s in %s, but only found them in %s",
-                    kindToString(kind, false),
-                    file.getName(),
-                    diagnosticsWithMessage
-                        .transform(
-                            new Function<Diagnostic<? extends FileObject>, String>() {
-                              @Override
-                              public String apply(Diagnostic<? extends FileObject> input) {
-                                return (input.getSource() != null)
-                                    ? input.getSource().getName()
-                                    : "(no associated file)";
-                              }
-                            })
-                        .toSet()));
-          }
-          return new LineClause<T>() {
-            @Override
-            public T and() {
-              return thisObject();
-            }
-
-            @CanIgnoreReturnValue
-            @Override
-            public ColumnClause<T> onLine(final long lineNumber) {
-              final FluentIterable<Diagnostic<? extends JavaFileObject>> diagnosticsOnLine =
-                  diagnosticsWithMessage.filter(
-                      new Predicate<Diagnostic<?>>() {
-                        @Override
-                        public boolean apply(Diagnostic<?> input) {
-                          return lineNumber == input.getLineNumber();
-                        }
-                      });
-              if (diagnosticsOnLine.isEmpty()) {
-                failureStrategy.fail(
-                    String.format(
-                        "Expected %s on line %d of %s, but only found them on line(s) %s",
-                        kindToString(kind, false),
-                        lineNumber,
-                        file.getName(),
-                        diagnosticsInFile
-                            .transform(
-                                new Function<Diagnostic<?>, String>() {
-                                  @Override
-                                  public String apply(Diagnostic<?> input) {
-                                    long errLine = input.getLineNumber();
-                                    return (errLine != Diagnostic.NOPOS)
-                                        ? errLine + ""
-                                        : "(no associated position)";
-                                  }
-                                })
-                            .toSet()));
-              }
-              return new ColumnClause<T>() {
-                @Override
-                public T and() {
-                  return thisObject();
-                }
-
-                @CanIgnoreReturnValue
-                @Override
-                public ChainingClause<T> atColumn(final long columnNumber) {
-                  FluentIterable<Diagnostic<? extends JavaFileObject>> diagnosticsAtColumn =
-                      diagnosticsOnLine.filter(
-                          new Predicate<Diagnostic<?>>() {
-                            @Override
-                            public boolean apply(Diagnostic<?> input) {
-                              return columnNumber == input.getColumnNumber();
-                            }
-                          });
-                  if (diagnosticsAtColumn.isEmpty()) {
-                    failureStrategy.fail(
-                        String.format(
-                            "Expected %s at %d:%d of %s, but only found them at column(s) %s",
-                            kindToString(kind, false),
-                            lineNumber,
-                            columnNumber,
-                            file.getName(),
-                            diagnosticsOnLine
-                                .transform(
-                                    new Function<Diagnostic<?>, String>() {
-                                      @Override
-                                      public String apply(Diagnostic<?> input) {
-                                        long errCol = input.getColumnNumber();
-                                        return (errCol != Diagnostic.NOPOS)
-                                            ? errCol + ""
-                                            : "(no associated position)";
-                                      }
-                                    })
-                                .toSet()));
-                  }
-                  return this;
-                }
-              };
-            }
-          };
-        }
-      };
+    public FileClause<T> withErrorContaining(String messageFragment) {
+      return new FileBuilder(
+          check().about(compilations()).that(compilation).hadErrorContaining(messageFragment));
     }
 
     /**
@@ -586,6 +345,49 @@ public final class JavaSourcesSubject
     @SuppressWarnings("unchecked")
     protected final T thisObject() {
       return (T) this;
+    }
+
+    private final class FileBuilder implements FileClause<T> {
+      private final DiagnosticInFile diagnosticInFile;
+
+      private FileBuilder(DiagnosticInFile diagnosticInFile) {
+        this.diagnosticInFile = diagnosticInFile;
+      }
+
+      @Override
+      public T and() {
+        return thisObject();
+      }
+
+      @Override
+      public LineClause<T> in(JavaFileObject file) {
+        final DiagnosticOnLine diagnosticOnLine = diagnosticInFile.inFile(file);
+
+        return new LineClause<T>() {
+          @Override
+          public T and() {
+            return thisObject();
+          }
+
+          @Override
+          public ColumnClause<T> onLine(long lineNumber) {
+            final DiagnosticAtColumn diagnosticAtColumn = diagnosticOnLine.onLine(lineNumber);
+
+            return new ColumnClause<T>() {
+              @Override
+              public T and() {
+                return thisObject();
+              }
+
+              @Override
+              public ChainingClause<T> atColumn(long columnNumber) {
+                diagnosticAtColumn.atColumn(columnNumber);
+                return this;
+              }
+            };
+          }
+        };
+      }
     }
   }
 
@@ -599,14 +401,14 @@ public final class JavaSourcesSubject
   private abstract class GeneratedCompilationBuilder<T> extends CompilationWithWarningsBuilder<T>
       implements GeneratedPredicateClause<T>, ChainingClause<GeneratedPredicateClause<T>> {
 
-    protected GeneratedCompilationBuilder(Result result) {
-      super(result);
+    protected GeneratedCompilationBuilder(Compilation compilation) {
+      super(compilation);
     }
 
     @CanIgnoreReturnValue
     @Override
     public T generatesSources(JavaFileObject first, JavaFileObject... rest) {
-      new JavaSourcesSubject(failureStrategy, result.generatedSources())
+      new JavaSourcesSubject(failureStrategy, compilation.generatedSourceFiles())
           .parsesAs(first, rest);
       return thisObject();
     }
@@ -615,7 +417,7 @@ public final class JavaSourcesSubject
     @Override
     public T generatesFiles(JavaFileObject first, JavaFileObject... rest) {
       for (JavaFileObject expected : Lists.asList(first, rest)) {
-        if (!wasGenerated(result, expected)) {
+        if (!wasGenerated(expected)) {
           failureStrategy.fail("Did not find a generated file corresponding to "
               + expected.getName());
         }
@@ -623,12 +425,12 @@ public final class JavaSourcesSubject
       return thisObject();
     }
 
-    boolean wasGenerated(Compilation.Result result, JavaFileObject expected) {
+    boolean wasGenerated(JavaFileObject expected) {
       ByteSource expectedByteSource = JavaFileObjects.asByteSource(expected);
-      for (JavaFileObject generated : result.generatedFilesByKind().get(expected.getKind())) {
+      for (JavaFileObject generated : compilation.generatedFiles()) {
         try {
-          ByteSource generatedByteSource = JavaFileObjects.asByteSource(generated);
-          if (expectedByteSource.contentEquals(generatedByteSource)) {
+          if (generated.getKind().equals(expected.getKind())
+              && expectedByteSource.contentEquals(JavaFileObjects.asByteSource(generated))) {
             return true;
           }
         } catch (IOException e) {
@@ -642,33 +444,40 @@ public final class JavaSourcesSubject
     @Override
     public SuccessfulFileClause<T> generatesFileNamed(
         JavaFileManager.Location location, String packageName, String relativeName) {
-      // TODO(gak): Validate that these inputs aren't null, location is an output location, and
-      // packageName is a valid package name.
-      // We're relying on the implementation of location.getName() to be equivalent to the path of
-      // the location.
-      String expectedFilename = new StringBuilder(location.getName()).append('/')
-          .append(packageName.replace('.', '/')).append('/').append(relativeName).toString();
+      final JavaFileObjectSubject javaFileObjectSubject =
+          check()
+              .about(compilations())
+              .that(compilation)
+              .generatedFile(location, packageName, relativeName);
+      return new SuccessfulFileClause<T>() {
+        @Override
+        public GeneratedPredicateClause<T> and() {
+          return GeneratedCompilationBuilder.this;
+        }
 
-      for (JavaFileObject generated : result.generatedFilesByKind().values()) {
-        if (generated.toUri().getPath().endsWith(expectedFilename)) {
-          return new SuccessfulFileBuilder<T>(
-              this, generated.toUri().getPath(), JavaFileObjects.asByteSource(generated));
+        @Override
+        public SuccessfulFileClause<T> withContents(ByteSource expectedByteSource) {
+          javaFileObjectSubject.hasContents(expectedByteSource);
+          return this;
         }
-      }
-      StringBuilder encounteredFiles = new StringBuilder();
-      for (JavaFileObject generated : result.generatedFilesByKind().values()) {
-        if (generated.toUri().getPath().contains(location.getName())) {
-          encounteredFiles.append("  ").append(generated.toUri().getPath()).append('\n');
+
+        @Override
+        public SuccessfulFileClause<T> withStringContents(Charset charset, String expectedString) {
+          javaFileObjectSubject.contentsAsString(charset).isEqualTo(expectedString);
+          return this;
         }
-      }
-      failureStrategy.fail("Did not find a generated file corresponding to " + relativeName
-          + " in package " + packageName + "; Found: " + encounteredFiles.toString());
-      return new SuccessfulFileBuilder<T>(this, null, null);
+      };
     }
 
     @Override
     public GeneratedPredicateClause<T> and() {
       return this;
+    }
+  }
+
+  final class CompilationBuilder extends GeneratedCompilationBuilder<CompilationBuilder> {
+    CompilationBuilder(Compilation compilation) {
+      super(compilation);
     }
   }
 
@@ -676,21 +485,8 @@ public final class JavaSourcesSubject
       extends CompilationWithWarningsBuilder<UnsuccessfulCompilationClause>
       implements UnsuccessfulCompilationClause {
 
-    UnsuccessfulCompilationBuilder(Compilation.Result result) {
-      super(result);
-      checkArgument(!result.successful());
-    }
-
-    @CanIgnoreReturnValue
-    @Override
-    public UnsuccessfulCompilationClause withErrorCount(int errorCount) {
-      return withDiagnosticCount(Kind.ERROR, errorCount);
-    }
-
-    @CanIgnoreReturnValue
-    @Override
-    public FileClause<UnsuccessfulCompilationClause> withErrorContaining(String messageFragment) {
-      return withDiagnosticContaining(Kind.ERROR, messageFragment);
+    UnsuccessfulCompilationBuilder(Compilation compilation) {
+      super(compilation);
     }
   }
 
@@ -698,9 +494,8 @@ public final class JavaSourcesSubject
       extends GeneratedCompilationBuilder<SuccessfulCompilationClause>
       implements SuccessfulCompilationClause {
 
-    SuccessfulCompilationBuilder(Compilation.Result result) {
-      super(result);
-      checkArgument(result.successful());
+    SuccessfulCompilationBuilder(Compilation compilation) {
+      super(compilation);
     }
   }
 
@@ -708,60 +503,8 @@ public final class JavaSourcesSubject
       extends GeneratedCompilationBuilder<CleanCompilationClause>
       implements CleanCompilationClause {
 
-    CleanCompilationBuilder(Compilation.Result result) {
-      super(result);
-      checkArgument(result.successful());
-    }
-  }
-
-  private final class SuccessfulFileBuilder<T> implements SuccessfulFileClause<T> {
-    private final GeneratedPredicateClause<T> chainedClause;
-    private final String generatedFilePath;
-    private final ByteSource generatedByteSource;
-
-    SuccessfulFileBuilder(
-        GeneratedPredicateClause<T> chainedClause,
-        String generatedFilePath,
-        ByteSource generatedByteSource) {
-      this.chainedClause = chainedClause;
-      this.generatedFilePath = generatedFilePath;
-      this.generatedByteSource = generatedByteSource;
-    }
-
-    @Override
-    public GeneratedPredicateClause<T> and() {
-      return chainedClause;
-    }
-
-    @CanIgnoreReturnValue
-    @Override
-    public SuccessfulFileClause<T> withContents(ByteSource expectedByteSource) {
-      try {
-        if (!expectedByteSource.contentEquals(generatedByteSource)) {
-          failureStrategy.fail("The contents in " + generatedFilePath
-              + " did not match the expected contents");
-        }
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-      return this;
-    }
-
-    @CanIgnoreReturnValue
-    @Override
-    public SuccessfulFileClause<T> withStringContents(Charset charset, String expectedString) {
-      try {
-        String generatedString = generatedByteSource.asCharSource(charset).read();
-        if (!generatedString.equals(expectedString)) {
-          failureStrategy.failComparing(
-              "The contents in " + generatedFilePath + " did not match the expected string",
-              expectedString,
-              generatedString);
-        }
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-      return this;
+    CleanCompilationBuilder(Compilation compilation) {
+      super(compilation);
     }
   }
 

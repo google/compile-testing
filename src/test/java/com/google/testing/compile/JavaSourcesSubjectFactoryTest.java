@@ -15,41 +15,24 @@
  */
 package com.google.testing.compile;
 
-import static com.google.common.base.Charsets.UTF_8;
 import static com.google.common.truth.Truth.assertAbout;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
+import static com.google.testing.compile.VerificationFailureStrategy.VERIFY;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static javax.tools.StandardLocation.CLASS_OUTPUT;
 import static org.junit.Assert.fail;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.io.ByteSource;
 import com.google.common.io.Resources;
-import com.google.common.truth.FailureStrategy;
-import com.google.common.truth.TestVerb;
-import com.google.errorprone.annotations.CanIgnoreReturnValue;
-
+import com.google.testing.compile.VerificationFailureStrategy.VerificationException;
+import java.util.Arrays;
+import javax.tools.Diagnostic;
+import javax.tools.JavaFileObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-
-import java.io.IOException;
-import java.io.Writer;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.Set;
-
-import javax.annotation.processing.AbstractProcessor;
-import javax.annotation.processing.Messager;
-import javax.annotation.processing.ProcessingEnvironment;
-import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.SourceVersion;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.TypeElement;
-import javax.tools.Diagnostic;
-import javax.tools.Diagnostic.Kind;
-import javax.tools.JavaFileObject;
 
 /**
  * Tests {@link JavaSourcesSubjectFactory} (and {@link JavaSourceSubjectFactory}).
@@ -58,14 +41,6 @@ import javax.tools.JavaFileObject;
  */
 @RunWith(JUnit4.class)
 public class JavaSourcesSubjectFactoryTest {
-  /** We need a {@link TestVerb} that throws anything <i>except</i> {@link AssertionError}. */
-  private static final TestVerb VERIFY = new TestVerb(new FailureStrategy() {
-    @Override
-    public void fail(String message) {
-      throw new VerificationException(message);
-    }
-  });
-
   private static final JavaFileObject HELLO_WORLD =
       JavaFileObjects.forSourceLines(
           "test.HelloWorld",
@@ -117,7 +92,7 @@ public class JavaSourcesSubjectFactoryTest {
   public void compilesWithoutError_warnings() {
     assertAbout(javaSource())
         .that(HELLO_WORLD)
-        .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+        .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.WARNING))
         .compilesWithoutError()
         .withWarningContaining("this is a message")
         .in(HELLO_WORLD)
@@ -136,7 +111,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.WARNING))
           .compilesWithoutWarnings();
       fail();
     } catch (VerificationException expected) {
@@ -151,7 +126,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.WARNING))
           .compilesWithoutError()
           .withWarningContaining("what is it?");
       fail();
@@ -170,7 +145,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.WARNING))
           .compilesWithoutError()
           .withWarningContaining("this is a message")
           .in(otherSource);
@@ -188,7 +163,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.WARNING))
           .compilesWithoutError()
           .withWarningContaining("this is a message")
           .in(HELLO_WORLD)
@@ -208,7 +183,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.WARNING))
           .compilesWithoutError()
           .withWarningContaining("this is a message")
           .in(HELLO_WORLD)
@@ -229,7 +204,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.WARNING))
           .compilesWithoutError()
           .withWarningCount(42);
       fail();
@@ -243,7 +218,7 @@ public class JavaSourcesSubjectFactoryTest {
   public void compilesWithoutError_notes() {
     assertAbout(javaSource())
         .that(HELLO_WORLD)
-        .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+        .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.NOTE))
         .compilesWithoutError()
         .withNoteContaining("this is a message")
         .in(HELLO_WORLD)
@@ -264,7 +239,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.NOTE))
           .compilesWithoutError()
           .withNoteContaining("what is it?");
       fail();
@@ -283,7 +258,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.NOTE))
           .compilesWithoutError()
           .withNoteContaining("this is a message")
           .in(otherSource);
@@ -301,7 +276,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.NOTE))
           .compilesWithoutError()
           .withNoteContaining("this is a message")
           .in(HELLO_WORLD)
@@ -321,7 +296,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.NOTE))
           .compilesWithoutError()
           .withNoteContaining("this is a message")
           .in(HELLO_WORLD)
@@ -343,7 +318,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(fileObject)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.NOTE))
           .compilesWithoutError()
           .withNoteCount(42);
       fail();
@@ -383,22 +358,12 @@ public class JavaSourcesSubjectFactoryTest {
 
   @Test
   public void compilesWithoutError_exceptionCreatedOrPassedThrough() {
-    final RuntimeException e = new RuntimeException();
+    RuntimeException e = new RuntimeException();
     try {
-      VERIFY.about(javaSource())
+      VERIFY
+          .about(javaSource())
           .that(JavaFileObjects.forResource("HelloWorld.java"))
-          .processedWith(new AbstractProcessor() {
-            @Override
-            public Set<String> getSupportedAnnotationTypes() {
-              return ImmutableSet.of("*");
-            }
-
-            @Override
-            public boolean process(Set<? extends TypeElement> annotations,
-                RoundEnvironment roundEnv) {
-              throw e;
-            }
-          })
+          .processedWith(new ThrowingProcessor(e))
           .compilesWithoutError();
       fail();
     } catch (CompilationFailureException expected) {
@@ -412,22 +377,25 @@ public class JavaSourcesSubjectFactoryTest {
   @Test
   public void parsesAs() {
     assertAbout(javaSource())
-        .that(JavaFileObjects.forResource(Resources.getResource("HelloWorld.java")))
-        .parsesAs(JavaFileObjects.forSourceLines("test.HelloWorld",
-            "package test;",
-            "",
-            "public class HelloWorld {",
-            "  public static void main(String[] args) {",
-            "    System.out.println(\"Hello World!\");",
-            "  }",
-            "}"));
+        .that(JavaFileObjects.forResource("HelloWorld.java"))
+        .parsesAs(
+            JavaFileObjects.forSourceLines(
+                "test.HelloWorld",
+                "package test;",
+                "",
+                "public class HelloWorld {",
+                "  public static void main(String[] args) {",
+                "    System.out.println(\"Hello World!\");",
+                "  }",
+                "}"));
   }
 
   @Test
   public void parsesAs_expectedFileFailsToParse() {
     try {
-      VERIFY.about(javaSource())
-          .that(JavaFileObjects.forResource(Resources.getResource("HelloWorld.java")))
+      VERIFY
+          .about(javaSource())
+          .that(JavaFileObjects.forResource("HelloWorld.java"))
           .parsesAs(JavaFileObjects.forResource("HelloWorld-broken.java"));
       fail();
     } catch (IllegalStateException expected) {
@@ -438,9 +406,10 @@ public class JavaSourcesSubjectFactoryTest {
   @Test
   public void parsesAs_actualFileFailsToParse() {
     try {
-      VERIFY.about(javaSource())
+      VERIFY
+          .about(javaSource())
           .that(JavaFileObjects.forResource("HelloWorld-broken.java"))
-          .parsesAs(JavaFileObjects.forResource(Resources.getResource("HelloWorld.java")));
+          .parsesAs(JavaFileObjects.forResource("HelloWorld.java"));
       fail();
     } catch (IllegalStateException expected) {
       assertThat(expected.getMessage()).startsWith("error while parsing:");
@@ -450,7 +419,8 @@ public class JavaSourcesSubjectFactoryTest {
   @Test
   public void failsToCompile_throws() {
     try {
-      VERIFY.about(javaSource())
+      VERIFY
+          .about(javaSource())
           .that(JavaFileObjects.forResource("HelloWorld.java"))
           .failsToCompile();
       fail();
@@ -554,7 +524,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD_BROKEN)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.WARNING))
           .failsToCompile()
           .withWarningContaining("what is it?");
       fail();
@@ -573,7 +543,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD_BROKEN)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.WARNING))
           .failsToCompile()
           .withWarningContaining("this is a message")
           .in(otherSource);
@@ -591,7 +561,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD_BROKEN)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.WARNING))
           .failsToCompile()
           .withWarningContaining("this is a message")
           .in(HELLO_WORLD_BROKEN)
@@ -612,7 +582,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD_BROKEN)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.WARNING))
           .failsToCompile()
           .withWarningContaining("this is a message")
           .in(HELLO_WORLD_BROKEN)
@@ -633,7 +603,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD_BROKEN)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.WARNING))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.WARNING))
           .failsToCompile()
           .withWarningCount(42);
       fail();
@@ -649,7 +619,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD_BROKEN)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.NOTE))
           .failsToCompile()
           .withNoteContaining("what is it?");
       fail();
@@ -668,7 +638,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD_BROKEN)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.NOTE))
           .failsToCompile()
           .withNoteContaining("this is a message")
           .in(otherSource);
@@ -686,7 +656,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD_BROKEN)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.NOTE))
           .failsToCompile()
           .withNoteContaining("this is a message")
           .in(HELLO_WORLD_BROKEN)
@@ -706,7 +676,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD_BROKEN)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.NOTE))
           .failsToCompile()
           .withNoteContaining("this is a message")
           .in(HELLO_WORLD_BROKEN)
@@ -727,7 +697,7 @@ public class JavaSourcesSubjectFactoryTest {
       VERIFY
           .about(javaSource())
           .that(HELLO_WORLD_BROKEN)
-          .processedWith(new DiagnosticMessageProcessor(Diagnostic.Kind.NOTE))
+          .processedWith(new DiagnosticMessage.Processor(Diagnostic.Kind.NOTE))
           .failsToCompile()
           .withNoteCount(42);
       fail();
@@ -871,8 +841,7 @@ public class JavaSourcesSubjectFactoryTest {
           .withContents(ByteSource.wrap("Bar".getBytes(UTF_8)));
       fail();
     } catch (VerificationException expected) {
-      assertThat(expected.getMessage())
-          .contains("Did not find a generated file corresponding to Bogus");
+      assertThat(expected.getMessage()).contains("generated the file named \"Bogus\"");
       assertThat(expected.getMessage()).contains(GeneratingProcessor.GENERATED_RESOURCE_NAME);
     }
   }
@@ -890,7 +859,7 @@ public class JavaSourcesSubjectFactoryTest {
       fail();
     } catch (VerificationException expected) {
       assertThat(expected.getMessage()).contains("Foo");
-      assertThat(expected.getMessage()).contains(" did not match the expected contents");
+      assertThat(expected.getMessage()).contains(" has contents ");
     }
   }
 
@@ -946,185 +915,5 @@ public class JavaSourcesSubjectFactoryTest {
         .compilesWithoutError();
     assertThat(noopProcessor1.invoked).isTrue();
     assertThat(noopProcessor2.invoked).isTrue();
-  }
-
-
-  /**
-   * Annotated elements will have a diagnostic message whose {@linkplain Kind kind} is determined by
-   * a parameter on {@link DiagnosticMessageProcessor}.
-   */
-  public @interface DiagnosticMessage {}
-
-  /**
-   * Adds diagnostic messages of a specified {@linkplain Kind kind} to elements annotated with
-   * {@link DiagnosticMessage}.
-   */
-  private static final class DiagnosticMessageProcessor extends AbstractProcessor {
-
-    private final Diagnostic.Kind kind;
-
-    DiagnosticMessageProcessor(Diagnostic.Kind kind) {
-      this.kind = kind;
-    }
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-      return SourceVersion.latest();
-    }
-
-    @Override
-    public Set<String> getSupportedAnnotationTypes() {
-      return ImmutableSet.of(DiagnosticMessage.class.getCanonicalName());
-    }
-
-    @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-      for (Element element : roundEnv.getElementsAnnotatedWith(DiagnosticMessage.class)) {
-        processingEnv.getMessager().printMessage(kind, "this is a message", element);
-      }
-      return true;
-    }
-  }
-
-
-  private static final class GeneratingProcessor extends AbstractProcessor {
-    static final String GENERATED_CLASS_NAME = "Blah";
-    static final String GENERATED_SOURCE = "final class Blah {\n  String blah = \"blah\";\n}";
-
-    static final String GENERATED_RESOURCE_NAME = "Foo";
-    static final String GENERATED_RESOURCE = "Bar";
-
-    @Override
-    public synchronized void init(ProcessingEnvironment processingEnv) {
-      try {
-        JavaFileObject sourceFile = processingEnv.getFiler().createSourceFile(GENERATED_CLASS_NAME);
-        Writer writer = sourceFile.openWriter();
-        writer.write(GENERATED_SOURCE);
-        writer.close();
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-
-      try {
-        Writer writer = processingEnv.getFiler().createResource(CLASS_OUTPUT,
-            JavaSourcesSubjectFactoryTest.class.getPackage().getName(), GENERATED_RESOURCE_NAME)
-            .openWriter();
-        writer.write(GENERATED_RESOURCE);
-        writer.close();
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    }
-
-    @CanIgnoreReturnValue
-    @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-      return false;
-    }
-
-    @Override
-    public Set<String> getSupportedAnnotationTypes() {
-      return ImmutableSet.of("*");
-    }
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-      return SourceVersion.latestSupported();
-    }
-  }
-
-  private static final class FailingGeneratingProcessor extends AbstractProcessor {
-    static final String GENERATED_CLASS_NAME = GeneratingProcessor.GENERATED_CLASS_NAME;
-    static final String GENERATED_SOURCE = GeneratingProcessor.GENERATED_SOURCE;
-    static final String ERROR_MESSAGE = "expected error!";
-    final GeneratingProcessor delegate = new GeneratingProcessor();
-    Messager messager;
-
-    @Override
-    public synchronized void init(ProcessingEnvironment processingEnv) {
-      delegate.init(processingEnv);
-      this.messager = processingEnv.getMessager();
-    }
-
-    @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-      delegate.process(annotations, roundEnv);
-      messager.printMessage(Kind.ERROR, ERROR_MESSAGE);
-      return false;
-    }
-
-    @Override
-    public Set<String> getSupportedAnnotationTypes() {
-      return delegate.getSupportedAnnotationTypes();
-    }
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-      return delegate.getSupportedSourceVersion();
-    }
-  }
-
-  private static final class NoOpProcessor extends AbstractProcessor {
-    boolean invoked = false;
-    Map<String, String> options;
-
-    @Override
-    public synchronized void init(ProcessingEnvironment processingEnv) {
-      super.init(processingEnv);
-      options = processingEnv.getOptions();
-    }
-
-    @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-      invoked = true;
-      return false;
-    }
-
-    @Override
-    public Set<String> getSupportedAnnotationTypes() {
-      return ImmutableSet.of("*");
-    }
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-      return SourceVersion.latestSupported();
-    }
-  }
-
-  private static final class VerificationException extends RuntimeException {
-    private static final long serialVersionUID = 1L;
-
-    VerificationException(String message) {
-      super(message);
-    }
-  }
-
-  private static final class ErrorProcessor extends AbstractProcessor {
-    Messager messager;
-
-    @Override
-    public synchronized void init(ProcessingEnvironment processingEnv) {
-      super.init(processingEnv);
-      this.messager = processingEnv.getMessager();
-    }
-
-    @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-      for (Element element : roundEnv.getRootElements()) {
-        messager.printMessage(Kind.ERROR, "expected error!", element);
-        messager.printMessage(Kind.ERROR, "another expected error!");
-      }
-      return false;
-    }
-
-    @Override
-    public Set<String> getSupportedAnnotationTypes() {
-      return ImmutableSet.of("*");
-    }
-
-    @Override
-    public SourceVersion getSupportedSourceVersion() {
-      return SourceVersion.latestSupported();
-    }
   }
 }

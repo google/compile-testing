@@ -1,0 +1,142 @@
+/*
+ * Copyright (C) 2016 Google, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.google.testing.compile;
+
+import static com.google.common.base.Functions.toStringFunction;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static javax.tools.ToolProvider.getSystemJavaCompiler;
+
+import com.google.auto.value.AutoValue;
+import com.google.common.collect.FluentIterable;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.testing.compile.Compilation.Status;
+import java.util.Locale;
+import javax.annotation.processing.Processor;
+import javax.tools.DiagnosticCollector;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaCompiler.CompilationTask;
+import javax.tools.JavaFileObject;
+
+/** An object that can {@link #compile} Java source files. */
+@AutoValue
+public abstract class Compiler {
+
+  /** Returns the {@code javac} compiler. */
+  public static Compiler javac() {
+    return compiler(getSystemJavaCompiler());
+  }
+
+  /** Returns a {@link Compiler} that uses a given {@link JavaCompiler} instance. */
+  public static Compiler compiler(JavaCompiler javaCompiler) {
+    return new AutoValue_Compiler(javaCompiler, ImmutableList.of(), ImmutableList.of());
+  }
+
+  abstract JavaCompiler javaCompiler();
+
+  /** The annotation processors applied during compilation. */
+  public abstract ImmutableList<Processor> processors();
+
+  /** The options passed to the compiler. */
+  public abstract ImmutableList<String> options();
+
+  /**
+   * Uses annotation processors during compilation. These replace any previously specified.
+   *
+   * <p>Note that most annotation processors cannot be reused for more than one compilation.
+   *
+   * @return a new instance with the same options and the given processors
+   */
+  public final Compiler withProcessors(Processor... processors) {
+    return withProcessors(ImmutableList.copyOf(processors));
+  }
+
+  /**
+   * Uses annotation processors during compilation. These replace any previously specified.
+   *
+   * <p>Note that most annotation processors cannot be reused for more than one compilation.
+   *
+   * @return a new instance with the same options and the given processors
+   */
+  public final Compiler withProcessors(Iterable<? extends Processor> processors) {
+    return copy(ImmutableList.copyOf(processors), options());
+  }
+
+  /**
+   * Passes command-line options to the compiler. These replace any previously specified.
+   *
+   * @return a new instance with the same processors and the given options
+   */
+  public final Compiler withOptions(Object... options) {
+    return withOptions(ImmutableList.copyOf(options));
+  }
+
+  /**
+   * Passes command-line options to the compiler. These replace any previously specified.
+   *
+   * @return a new instance with the same processors and the given options
+   */
+  public final Compiler withOptions(Iterable<?> options) {
+    return copy(processors(), FluentIterable.from(options).transform(toStringFunction()).toList());
+  }
+
+  /**
+   * Compiles Java source files.
+   *
+   * @return the results of the compilation
+   */
+  public final Compilation compile(JavaFileObject... files) {
+    return compile(ImmutableList.copyOf(files));
+  }
+
+  /**
+   * Compiles Java source files.
+   *
+   * @return the results of the compilation
+   */
+  public final Compilation compile(Iterable<? extends JavaFileObject> files) {
+    DiagnosticCollector<JavaFileObject> diagnosticCollector = new DiagnosticCollector<>();
+    InMemoryJavaFileManager fileManager =
+        new InMemoryJavaFileManager(
+            javaCompiler().getStandardFileManager(diagnosticCollector, Locale.getDefault(), UTF_8));
+    CompilationTask task =
+        javaCompiler()
+            .getTask(
+                null, // use the default because old versions of javac log some output on stderr
+                fileManager,
+                diagnosticCollector,
+                options(),
+                ImmutableSet.<String>of(),
+                files);
+    task.setProcessors(processors());
+    boolean succeeded = task.call();
+    Compilation compilation =
+        new Compilation(
+            this,
+            files,
+            succeeded,
+            diagnosticCollector.getDiagnostics(),
+            fileManager.getOutputFiles());
+    if (compilation.status().equals(Status.FAILURE) && compilation.errors().isEmpty()) {
+      throw new CompilationFailureException(compilation);
+    }
+    return compilation;
+  }
+
+  private Compiler copy(ImmutableList<Processor> processors, ImmutableList<String> options) {
+    return new AutoValue_Compiler(javaCompiler(), processors, options);
+  }
+}

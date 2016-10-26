@@ -19,18 +19,12 @@ import static com.google.common.truth.Truth.assertThat;
 import static javax.tools.JavaFileObject.Kind.CLASS;
 import static org.junit.Assert.fail;
 
-import com.google.common.io.Resources;
-
-
+import java.io.IOException;
+import java.net.URI;
+import javax.tools.JavaFileObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
-
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-
-import javax.tools.JavaFileObject;
 
 /**
  *  Tests {@link JavaFileObjects}.
@@ -39,12 +33,12 @@ import javax.tools.JavaFileObject;
  */
 @RunWith(JUnit4.class)
 public class JavaFileObjectsTest {
-  @Test public void forResource_inJarFile() throws URISyntaxException, IOException {
+  @Test
+  public void forResource_inJarFile() {
     JavaFileObject resourceInJar = JavaFileObjects.forResource("java/lang/Object.class");
     assertThat(resourceInJar.getKind()).isEqualTo(CLASS);
     assertThat(resourceInJar.toUri()).isEqualTo(URI.create("/java/lang/Object.class"));
-    assertThat(resourceInJar.getName())
-        .isEqualTo(Resources.getResource("java/lang/Object.class").toString());
+    assertThat(resourceInJar.getName()).isEqualTo("/java/lang/Object.class");
     assertThat(resourceInJar.isNameCompatible("Object", CLASS)).isTrue();
   }
 

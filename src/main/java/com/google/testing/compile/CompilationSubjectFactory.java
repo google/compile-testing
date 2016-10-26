@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Google, Inc.
+ * Copyright (C) 2016 Google, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,15 @@
  */
 package com.google.testing.compile;
 
-/**
- * An exception thrown to indicate that compilation has failed for an unknown reason.
- */
-@SuppressWarnings("serial")
-public class CompilationFailureException extends RuntimeException {
-  CompilationFailureException(Compilation compilation) {
-    super(
-        compilation
-            + " failed, but did not report any error diagnostics or throw any exceptions. "
-            + "This behavior has been observed in older versions of javac, which swallow "
-            + "exceptions and log them on System.err. Check there for more information.");
+import com.google.common.truth.FailureStrategy;
+import com.google.common.truth.SubjectFactory;
+import com.google.common.truth.Truth;
+
+/** A {@link Truth} subject factory for a {@link Compilation}. */
+final class CompilationSubjectFactory extends SubjectFactory<CompilationSubject, Compilation> {
+
+  @Override
+  public CompilationSubject getSubject(FailureStrategy fs, Compilation that) {
+    return new CompilationSubject(fs, that);
   }
 }

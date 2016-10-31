@@ -127,6 +127,10 @@ public final class JavaSourcesSubject
 
     @Override
     public void parsesAs(JavaFileObject first, JavaFileObject... rest) {
+      if (Iterables.isEmpty(actual())) {
+        failureStrategy.fail(
+            "Compilation generated no additional source files, though some were expected.");
+      }
       ParseResult actualResult = Parser.parse(actual());
       ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
           actualResult.diagnosticsByKind().get(Kind.ERROR);

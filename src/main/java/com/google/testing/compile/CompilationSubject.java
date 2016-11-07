@@ -177,7 +177,7 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
     StringBuilder listing =
         new StringBuilder(String.format(headingFormat, formatArgs)).append('\n');
     for (Diagnostic<?> diagnostic : diagnostics) {
-      listing.append(diagnostic.getMessage(null)).append('\n');
+      listing.append(diagnostic).append('\n');
     }
     return listing.toString();
   }

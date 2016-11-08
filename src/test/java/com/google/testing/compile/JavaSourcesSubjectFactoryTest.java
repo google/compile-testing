@@ -819,6 +819,23 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
+  public void generatesSources_failWithNoGeneratedSources() {
+    try {
+      VERIFY.about(javaSource())
+          .that(JavaFileObjects.forResource("HelloWorld.java"))
+          .processedWith(new NonGeneratingProcessor())
+          .compilesWithoutError()
+          .and().generatesSources(JavaFileObjects.forSourceString(
+              GeneratingProcessor.GENERATED_CLASS_NAME,
+              GeneratingProcessor.GENERATED_SOURCE));
+      fail();
+    } catch (VerificationException expected) {
+      assertThat(expected.getMessage()).contains(
+          "Compilation generated no additional source files, though some were expected.");
+    }
+  }
+
+  @Test
   public void generatesFileNamed() {
     assertAbout(javaSource())
         .that(JavaFileObjects.forResource("HelloWorld.java"))

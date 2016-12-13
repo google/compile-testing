@@ -1,3 +1,5 @@
+[![Maven Central](https://img.shields.io/maven-central/v/com.google.testing.compile/compile-testing.svg)](https://repo1.maven.org/maven2/com/google/testing/compile/compile-testing/)
+
 Compile Testing
 ===============
 
@@ -6,13 +8,13 @@ A library for testing javac compilation with or without annotation processors. S
 Latest Release
 --------------
 
-The latest release is version `0.8`.  Include it as a [Maven](http://maven.apache.org/) dependency with the following snippet:
+Include it as a [Maven](http://maven.apache.org/) dependency with the following snippet (replace `$version` with the latest version - see badge at the top):
 
 ```
 <dependency>
   <groupId>com.google.testing.compile</groupId>
   <artifactId>compile-testing</artifactId>
-  <version>0.8</version>
+  <version>$version</version>
   <scope>test</scope>
 </dependency>
 ```

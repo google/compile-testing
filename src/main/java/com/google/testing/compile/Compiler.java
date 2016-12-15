@@ -22,7 +22,6 @@ import static javax.tools.ToolProvider.getSystemJavaCompiler;
 import com.google.auto.value.AutoValue;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.testing.compile.Compilation.Status;
 import java.util.Locale;
 import javax.annotation.processing.Processor;
@@ -119,7 +118,7 @@ public abstract class Compiler {
                 fileManager,
                 diagnosticCollector,
                 options(),
-                ImmutableSet.<String>of(),
+                null,
                 files);
     task.setProcessors(processors());
     boolean succeeded = task.call();

@@ -121,7 +121,7 @@ public final class Compilation {
     checkState(
         status.equals(Status.SUCCESS),
         "compilation failed, so generated files are unavailable. %s",
-        describeErrors());
+        describeFailureDiagnostics());
     return generatedFiles;
   }
 
@@ -214,14 +214,18 @@ public final class Compilation {
     return builder.toString();
   }
 
-  /** Returns a description of the errors reported during compilation. */
-  String describeErrors() {
+  /** Returns a description of the why the compilation failed. */
+  String describeFailureDiagnostics() {
     ImmutableList<Diagnostic<? extends JavaFileObject>> errors = errors();
     if (errors.isEmpty()) {
       return "Compilation produced no errors.\n";
     }
     StringBuilder message = new StringBuilder("Compilation produced the following errors:\n");
     errors.stream().forEach(error -> message.append(error).append('\n'));
+    // If we compiled with -Werror we should output the warnings too
+    if (compiler.options().contains("-Werror")) {
+      warnings().stream().forEach(warning -> message.append(warning).append('\n'));
+    }
     return message.toString();
   }
 

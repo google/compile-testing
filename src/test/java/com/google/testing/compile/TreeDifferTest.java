@@ -112,6 +112,48 @@ public class TreeDifferTest {
           "final class TestClass {",
           "  private static final int[] myArray = {1, 2, 3};",
           "}");
+
+  private static final CompilationUnitTree LAMBDA_1 =
+      MoreTrees.parseLinesToTree("package test;",
+          "final class TestClass {",
+          "  private static final Consumer<Integer> NEWLINE = (int i) -> System.out.println(i);",
+          "}");
+
+  private static final CompilationUnitTree LAMBDA_2 =
+      MoreTrees.parseLinesToTree("package test;",
+          "final class TestClass {",
+          "  private static final Consumer<Integer> NEWLINE =",
+          "      (int i) -> System.out.println(i);",
+          "}");
+
+  private static final CompilationUnitTree LAMBDA_IMPLICIT_ARG_TYPE =
+      MoreTrees.parseLinesToTree("package test;",
+          "final class TestClass {",
+          "  private static final Consumer<Integer> NEWLINE =",
+          "      (i) -> System.out.println(i);",
+          "}");
+
+  private static final CompilationUnitTree LAMBDA_IMPLICIT_ARG_TYPE_NO_PARENS =
+      MoreTrees.parseLinesToTree("package test;",
+          "final class TestClass {",
+          "  private static final Consumer<Integer> NEWLINE =",
+          "      i -> System.out.println(i);",
+          "}");
+
+  private static final CompilationUnitTree METHOD_REFERENCE =
+      MoreTrees.parseLinesToTree("package test;",
+          "final class TestClass {",
+          "  private static final Runnable NEWLINE = System.out::println;",
+          "}");
+
+  private static final CompilationUnitTree ANONYMOUS_CLASS =
+      MoreTrees.parseLinesToTree("package test;",
+          "final class TestClass {",
+          "  private static final Runnable NEWLINE = new Runnable() {",
+          "    public void run() { System.out.println(); }",
+          "  };",
+          "}");
+
   @Test
   public void scan_differingCompilationUnits() {
     TreeDifference diff = TreeDiffer.diffCompilationUnits(EXPECTED_TREE, ACTUAL_TREE);
@@ -202,6 +244,42 @@ public class TreeDifferTest {
   public void scan_testActualNullIterableTree() {
     TreeDifference diff =
         TreeDiffer.diffCompilationUnits(NEW_ARRAY_STATIC_INITIALIZER, NEW_ARRAY_SIZE_FOUR);
+    assertThat(diff.isEmpty()).isFalse();
+  }
+
+  @Test
+  public void scan_testLambdas() {
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(LAMBDA_1, LAMBDA_2);
+    assertThat(diff.isEmpty()).isTrue();
+  }
+
+  @Test
+  public void scan_testLambdasExplicitVsImplicit() {
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(LAMBDA_1, LAMBDA_IMPLICIT_ARG_TYPE);
+    assertThat(diff.isEmpty()).isFalse();
+  }
+
+  @Test
+  public void scan_testLambdasParensVsNone() {
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(
+            LAMBDA_IMPLICIT_ARG_TYPE, LAMBDA_IMPLICIT_ARG_TYPE_NO_PARENS);
+    assertThat(diff.isEmpty()).isTrue();
+  }
+
+  @Test
+  public void scan_testLambdaVersusMethodReference() {
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(LAMBDA_1, METHOD_REFERENCE);
+    assertThat(diff.isEmpty()).isFalse();
+  }
+
+  @Test
+  public void scan_testLambdaVersusAnonymousClass() {
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(LAMBDA_1, ANONYMOUS_CLASS);
     assertThat(diff.isEmpty()).isFalse();
   }
 

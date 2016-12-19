@@ -46,7 +46,9 @@ import com.sun.source.tree.IfTree;
 import com.sun.source.tree.ImportTree;
 import com.sun.source.tree.InstanceOfTree;
 import com.sun.source.tree.LabeledStatementTree;
+import com.sun.source.tree.LambdaExpressionTree;
 import com.sun.source.tree.LiteralTree;
+import com.sun.source.tree.MemberReferenceTree;
 import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.MethodInvocationTree;
 import com.sun.source.tree.MethodTree;
@@ -267,6 +269,35 @@ final class TreeDiffer {
       parallelScan(expected.getTypeArguments(), other.get().getTypeArguments());
       scan(expected.getMethodSelect(), other.get().getMethodSelect());
       parallelScan(expected.getArguments(), other.get().getArguments());
+      return null;
+    }
+
+    @Override
+    public Void visitLambdaExpression(LambdaExpressionTree expected, Tree actual) {
+      Optional<LambdaExpressionTree> other = checkTypeAndCast(expected, actual);
+      if (!other.isPresent()) {
+        addTypeMismatch(expected, actual);
+        return null;
+      }
+
+      parallelScan(expected.getParameters(), other.get().getParameters());
+      scan(expected.getBody(), other.get().getBody());
+      return null;
+    }
+
+    @Override
+    public Void visitMemberReference(MemberReferenceTree expected, Tree actual) {
+      Optional<MemberReferenceTree> other = checkTypeAndCast(expected, actual);
+      if (!other.isPresent()) {
+        addTypeMismatch(expected, actual);
+        return null;
+      }
+
+      scan(expected.getQualifierExpression(), other.get().getQualifierExpression());
+      parallelScan(expected.getTypeArguments(), other.get().getTypeArguments());
+      checkForDiff(expected.getName().contentEquals(other.get().getName()),
+          "Expected identifier to be <%s> but was <%s>.",
+          expected.getName(), other.get().getName());
       return null;
     }
 

@@ -67,7 +67,8 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
   /** Asserts that the compilation succeeded. */
   public void succeeded() {
     if (actual().status().equals(FAILURE)) {
-      failureStrategy.fail(actual().describeErrors() + actual().describeGeneratedSourceFiles());
+      failureStrategy.fail(
+          actual().describeFailureDiagnostics() + actual().describeGeneratedSourceFiles());
     }
   }
 

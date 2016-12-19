@@ -16,6 +16,7 @@
 
 package com.google.testing.compile;
 
+import static com.google.common.truth.Truth.assertThat;
 import static com.google.testing.compile.CompilationSubject.assertThat;
 import static com.google.testing.compile.Compiler.javac;
 import static org.junit.Assert.fail;
@@ -41,5 +42,25 @@ public class CompilationTest {
       fail();
     } catch (IllegalStateException expected) {
     }
+  }
+
+  @Test
+  public void describeFailureDiagnostics_includesWarnings_whenCompilingWerror() {
+    // Arrange
+    Compiler compiler = javac().withOptions("-Xlint:cast", "-Werror");
+    JavaFileObject source =
+        JavaFileObjects.forSourceLines(
+            "test.CastWarning", //
+            "package test;", //
+            "class CastWarning {", //
+            "  int i = (int) 0;", //
+            "}");
+
+    // Act
+    Compilation compilation = compiler.compile(source);
+
+    // Assert
+    assertThat(compilation).failed();
+    assertThat(compilation.describeFailureDiagnostics()).contains("[cast] redundant cast to int");
   }
 }

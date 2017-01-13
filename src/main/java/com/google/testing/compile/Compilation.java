@@ -60,17 +60,17 @@ public final class Compilation {
   }
 
   /** The compiler. */
-  Compiler compiler() {
+  public Compiler compiler() {
     return compiler;
   }
 
   /** The source files compiled. */
-  ImmutableList<JavaFileObject> sourceFiles() {
+  public ImmutableList<JavaFileObject> sourceFiles() {
     return sourceFiles;
   }
 
   /** The status of the compilation. */
-  Status status() {
+  public Status status() {
     return status;
   }
 

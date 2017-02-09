@@ -20,7 +20,9 @@ import static com.google.common.truth.Truth.assertAbout;
 import static com.google.testing.compile.Compilation.Status.FAILURE;
 import static com.google.testing.compile.Compilation.Status.SUCCESS;
 import static com.google.testing.compile.JavaFileObjectSubject.javaFileObjects;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static javax.tools.Diagnostic.Kind.ERROR;
 import static javax.tools.Diagnostic.Kind.MANDATORY_WARNING;
@@ -34,11 +36,15 @@ import com.google.common.truth.Subject;
 import com.google.common.truth.SubjectFactory;
 import com.google.common.truth.Truth;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Collector;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileManager.Location;
 import javax.tools.JavaFileObject;
@@ -167,9 +173,9 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
               diagnostics,
               "Expected %d %s, but found the following %d %s:",
               expectedCount,
-              kindToString(kind, true),
+              kindPlural(kind),
               actualCount,
-              kindToString(kind, true)));
+              kindPlural(kind)));
     }
   }
 
@@ -183,27 +189,42 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
     return listing.toString();
   }
 
-  /**
-   * Returns a string representation of a diagnostic kind.
-   *
-   * @param expectingSpecificCount {@code true} if being used after a count, as in "Expected 5
-   *     errors"; {@code false} if being used to describe one message, as in "Expected a warning
-   *     containing…".
-   */
-  private static String kindToString(Diagnostic.Kind kind, boolean expectingSpecificCount) {
+  /** Returns the phrase describing one diagnostic of a kind. */
+  private static String kindSingular(Diagnostic.Kind kind) {
     switch (kind) {
       case ERROR:
-        return expectingSpecificCount ? "errors" : "an error";
+        return "an error";
 
       case MANDATORY_WARNING:
       case WARNING:
-        return expectingSpecificCount ? "warnings" : "a warning";
+        return "a warning";
 
       case NOTE:
-        return expectingSpecificCount ? "notes" : "a note";
+        return "a note";
 
       case OTHER:
-        return expectingSpecificCount ? "diagnostic messages" : "a diagnostic message";
+        return "a diagnostic message";
+
+      default:
+        throw new AssertionError(kind);
+    }
+  }
+
+  /** Returns the phrase describing several diagnostics of a kind. */
+  private static String kindPlural(Diagnostic.Kind kind) {
+    switch (kind) {
+      case ERROR:
+        return "errors";
+
+      case MANDATORY_WARNING:
+      case WARNING:
+        return "warnings";
+
+      case NOTE:
+        return "notes";
+
+      case OTHER:
+        return "diagnostic messages";
 
       default:
         throw new AssertionError(kind);
@@ -242,12 +263,10 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
     if (diagnosticsWithMessage.isEmpty()) {
       failureStrategy.fail(
           messageListing(
-              diagnosticsOfKind,
-              "Expected %s %s, but only found:",
-              kindToString(kind, false),
-              verb));
+              diagnosticsOfKind, "Expected %s %s, but only found:", kindSingular(kind), verb));
     }
-    return new DiagnosticInFile(kind, diagnosticsWithMessage);
+    return new DiagnosticInFile(
+        String.format("%s %s", kindSingular(kind), verb), diagnosticsWithMessage);
   }
 
   /**
@@ -300,6 +319,10 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
     return collectingAndThen(toList(), ImmutableList::copyOf);
   }
 
+  private static <T> Collector<T, ?, ImmutableSet<T>> toImmutableSet() {
+    return collectingAndThen(toList(), ImmutableSet::copyOf);
+  }
+
   private static class DiagnosticsAssertions {
     private final ImmutableList<Diagnostic<? extends JavaFileObject>> diagnostics;
 
@@ -312,25 +335,21 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
       return diagnostics.stream().filter(predicate).collect(toImmutableList());
     }
 
-    ImmutableSet<String> mapDiagnostics(
-        Function<? super Diagnostic<? extends JavaFileObject>, ? extends String> mapper) {
-      return diagnostics
-          .stream()
-          .map(mapper)
-          .collect(collectingAndThen(toList(), ImmutableSet::copyOf));
+    <T> Stream<T> mapDiagnostics(Function<? super Diagnostic<? extends JavaFileObject>, T> mapper) {
+      return diagnostics.stream().map(mapper);
     }
   }
 
   /** Assertions that a note, warning, or error was found in a given file. */
   public final class DiagnosticInFile extends DiagnosticsAssertions {
 
-    private final Diagnostic.Kind kind;
+    private final String expectedDiagnostic;
 
     private DiagnosticInFile(
-        Diagnostic.Kind kind,
+        String expectedDiagnostic,
         Iterable<Diagnostic<? extends JavaFileObject>> diagnosticsWithMessage) {
       super(diagnosticsWithMessage);
-      this.kind = kind;
+      this.expectedDiagnostic = expectedDiagnostic;
     }
 
     /** Asserts that the note, warning, or error was found in a given file. */
@@ -342,9 +361,9 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
         failureStrategy.fail(
             String.format(
                 "Expected %s in %s, but only found them in %s",
-                kindToString(kind, false), expectedFile.getName(), sourceFilesWithDiagnostics()));
+                expectedDiagnostic, expectedFile.getName(), sourceFilesWithDiagnostics()));
       }
-      return new DiagnosticOnLine(kind, expectedFile, diagnosticsInFile);
+      return new DiagnosticOnLine(expectedDiagnostic, expectedFile, diagnosticsInFile);
     }
 
     private ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsInFile(
@@ -359,66 +378,104 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
 
     private ImmutableSet<String> sourceFilesWithDiagnostics() {
       return mapDiagnostics(
-          diagnostic ->
-              diagnostic.getSource() == null
-                  ? "(no associated file)"
-                  : diagnostic.getSource().getName());
+              diagnostic ->
+                  diagnostic.getSource() == null
+                      ? "(no associated file)"
+                      : diagnostic.getSource().getName())
+          .collect(toImmutableSet());
+    }
+  }
+
+  /** An object that can list the lines in a file. */
+  static final class LinesInFile {
+    private final JavaFileObject file;
+    private ImmutableList<String> lines;
+
+    LinesInFile(JavaFileObject file) {
+      this.file = file;
+    }
+
+    String fileName() {
+      return file.getName();
+    }
+
+    /** Returns the lines in the file. */
+    ImmutableList<String> linesInFile() {
+      if (lines == null) {
+        try {
+          lines = JavaFileObjects.asByteSource(file).asCharSource(UTF_8).readLines();
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
+      }
+      return lines;
+    }
+    
+    /**
+     * Returns a {@link Collector} that lists the file lines numbered by the input stream (1-based).
+     */
+    Collector<Long, ?, String> toLineList() {
+      return Collectors.mapping(this::listLine, joining("\n"));
+    }
+
+    /** Lists the line at a line number (1-based). */
+    String listLine(long lineNumber) {
+      return lineNumber == Diagnostic.NOPOS
+          ? "(no associated line)"
+          : String.format("%4d: %s", lineNumber, linesInFile().get((int) (lineNumber - 1)));
     }
   }
 
   /** Assertions that a note, warning, or error was found on a given line. */
   public final class DiagnosticOnLine extends DiagnosticsAssertions {
 
-    private final Diagnostic.Kind kind;
-    private final JavaFileObject file;
+    private final String expectedDiagnostic;
+    private final LinesInFile linesInFile;
 
     private DiagnosticOnLine(
-        Diagnostic.Kind kind,
+        String expectedDiagnostic,
         JavaFileObject file,
         ImmutableList<Diagnostic<? extends JavaFileObject>> diagnostics) {
       super(diagnostics);
-      this.kind = kind;
-      this.file = file;
+      this.expectedDiagnostic = expectedDiagnostic;
+      this.linesInFile = new LinesInFile(file);
     }
 
     /** Asserts that the note, warning, or error was found on a given line. */
     @CanIgnoreReturnValue
-    public DiagnosticAtColumn onLine(final long expectedLine) {
+    public DiagnosticAtColumn onLine(long expectedLine) {
       ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsOnLine =
           diagnosticsMatching(diagnostic -> diagnostic.getLineNumber() == expectedLine);
       if (diagnosticsOnLine.isEmpty()) {
         failureStrategy.fail(
             String.format(
-                "Expected %s on line %d of %s, but only found them on line(s) %s",
-                kindToString(kind, false), expectedLine, file.getName(), linesWithDiagnostics()));
+                "Expected %s in %s on line:\n%s\nbut found it on line(s):\n%s",
+                expectedDiagnostic,
+                linesInFile.fileName(),
+                linesInFile.listLine(expectedLine),
+                mapDiagnostics(Diagnostic::getLineNumber)
+                    .collect(linesInFile.toLineList())));
       }
-      return new DiagnosticAtColumn(kind, file, expectedLine, diagnosticsOnLine);
-    }
-
-    private ImmutableSet<String> linesWithDiagnostics() {
-      return mapDiagnostics(
-          diagnostic ->
-              diagnostic.getLineNumber() == Diagnostic.NOPOS
-                  ? "(no associated position)"
-                  : Long.toString(diagnostic.getLineNumber()));
+      return new DiagnosticAtColumn(
+          expectedDiagnostic, linesInFile, expectedLine, diagnosticsOnLine);
     }
   }
 
   /** Assertions that a note, warning, or error was found at a given column. */
   public final class DiagnosticAtColumn extends DiagnosticsAssertions {
 
-    private final Diagnostic.Kind kind;
-    private final JavaFileObject file;
+    private final String expectedDiagnostic;
+    private final LinesInFile linesInFile;
     private final long line;
 
     private DiagnosticAtColumn(
-        Diagnostic.Kind kind,
-        JavaFileObject file,
+        String expectedDiagnostic,
+        LinesInFile linesInFile,
         long line,
         ImmutableList<Diagnostic<? extends JavaFileObject>> diagnostics) {
       super(diagnostics);
-      this.kind = kind;
-      this.file = file;
+      this.expectedDiagnostic = expectedDiagnostic;
+      this.linesInFile = linesInFile;
       this.line = line;
     }
 
@@ -428,21 +485,23 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
           .isEmpty()) {
         failureStrategy.fail(
             String.format(
-                "Expected %s at %d:%d of %s, but only found them at column(s) %s",
-                kindToString(kind, false),
-                line,
+                "Expected %s in %s at column %d of line %d, but found it at column(s) %s:\n%s",
+                expectedDiagnostic,
+                linesInFile.fileName(),
                 expectedColumn,
-                file.getName(),
-                columnsWithDiagnostics()));
+                line,
+                columnsWithDiagnostics(),
+                linesInFile.listLine(line)));
       }
     }
 
     private ImmutableSet<String> columnsWithDiagnostics() {
       return mapDiagnostics(
-          diagnostic ->
-              diagnostic.getColumnNumber() == Diagnostic.NOPOS
-                  ? "(no associated position)"
-                  : Long.toString(diagnostic.getColumnNumber()));
+              diagnostic ->
+                  diagnostic.getColumnNumber() == Diagnostic.NOPOS
+                      ? "(no associated position)"
+                      : Long.toString(diagnostic.getColumnNumber()))
+          .collect(toImmutableSet());
     }
   }
 }

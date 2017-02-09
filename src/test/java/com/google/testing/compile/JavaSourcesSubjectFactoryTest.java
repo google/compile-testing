@@ -152,7 +152,10 @@ public class JavaSourcesSubjectFactoryTest {
       fail();
     } catch (VerificationException expected) {
       assertThat(expected.getMessage())
-          .contains(String.format("Expected a warning in %s", otherSource.getName()));
+          .contains(
+              String.format(
+                  "Expected a warning containing \"this is a message\" in %s",
+                  otherSource.getName()));
       assertThat(expected.getMessage()).contains(HELLO_WORLD.getName());
     }
   }
@@ -172,7 +175,10 @@ public class JavaSourcesSubjectFactoryTest {
     } catch (VerificationException expected) {
       int actualErrorLine = 6;
       assertThat(expected.getMessage())
-          .contains(String.format("Expected a warning on line 1 of %s", HELLO_WORLD.getName()));
+          .contains(
+              String.format(
+                  "Expected a warning containing \"this is a message\" in %s on line:\n   1: ",
+                  HELLO_WORLD.getName()));
       assertThat(expected.getMessage()).contains("" + actualErrorLine);
     }
   }
@@ -193,7 +199,10 @@ public class JavaSourcesSubjectFactoryTest {
     } catch (VerificationException expected) {
       int actualErrorCol = 8;
       assertThat(expected.getMessage())
-          .contains(String.format("Expected a warning at 6:1 of %s", HELLO_WORLD.getName()));
+          .contains(
+              String.format(
+                  "Expected a warning containing \"this is a message\" in %s at column 1 of line 6",
+                  HELLO_WORLD.getName()));
       assertThat(expected.getMessage()).contains("[" + actualErrorCol + "]");
     }
   }
@@ -265,7 +274,9 @@ public class JavaSourcesSubjectFactoryTest {
       fail();
     } catch (VerificationException expected) {
       assertThat(expected.getMessage())
-          .contains(String.format("Expected a note in %s", otherSource.getName()));
+          .contains(
+              String.format(
+                  "Expected a note containing \"this is a message\" in %s", otherSource.getName()));
       assertThat(expected.getMessage()).contains(HELLO_WORLD.getName());
     }
   }
@@ -285,7 +296,10 @@ public class JavaSourcesSubjectFactoryTest {
     } catch (VerificationException expected) {
       int actualErrorLine = 6;
       assertThat(expected.getMessage())
-          .contains(String.format("Expected a note on line 1 of %s", HELLO_WORLD.getName()));
+          .contains(
+              String.format(
+                  "Expected a note containing \"this is a message\" in %s on line:\n   1: ",
+                  HELLO_WORLD.getName()));
       assertThat(expected.getMessage()).contains("" + actualErrorLine);
     }
   }
@@ -306,7 +320,10 @@ public class JavaSourcesSubjectFactoryTest {
     } catch (VerificationException expected) {
       int actualErrorCol = 8;
       assertThat(expected.getMessage())
-          .contains(String.format("Expected a note at 6:1 of %s", HELLO_WORLD.getName()));
+          .contains(
+              String.format(
+                  "Expected a note containing \"this is a message\" in %s at column 1 of line 6",
+                  HELLO_WORLD.getName()));
       assertThat(expected.getMessage()).contains("[" + actualErrorCol + "]");
     }
   }
@@ -460,7 +477,10 @@ public class JavaSourcesSubjectFactoryTest {
       fail();
     } catch (VerificationException expected) {
       assertThat(expected.getMessage())
-          .contains(String.format("Expected an error in %s", otherFileObject.getName()));
+          .contains(
+              String.format(
+                  "Expected an error containing \"expected error!\" in %s",
+                  otherFileObject.getName()));
       assertThat(expected.getMessage()).contains(fileObject.getName());
       //                  "(no associated file)")));
     }
@@ -479,7 +499,10 @@ public class JavaSourcesSubjectFactoryTest {
     } catch (VerificationException expected) {
       int actualErrorLine = 18;
       assertThat(expected.getMessage())
-          .contains(String.format("Expected an error on line 1 of %s", fileObject.getName()));
+          .contains(
+              String.format(
+                  "Expected an error containing \"expected error!\" in %s on line:\n   1: ",
+                  fileObject.getName()));
       assertThat(expected.getMessage()).contains("" + actualErrorLine);
     }
   }
@@ -497,7 +520,10 @@ public class JavaSourcesSubjectFactoryTest {
     } catch (VerificationException expected) {
       int actualErrorCol = 8;
       assertThat(expected.getMessage())
-          .contains(String.format("Expected an error at 18:1 of %s", fileObject.getName()));
+          .contains(
+              String.format(
+                  "Expected an error containing \"expected error!\" in %s at column 1 of line 18",
+                  fileObject.getName()));
       assertThat(expected.getMessage()).contains("" + actualErrorCol);
     }
   }
@@ -550,7 +576,10 @@ public class JavaSourcesSubjectFactoryTest {
       fail();
     } catch (VerificationException expected) {
       assertThat(expected.getMessage())
-          .contains(String.format("Expected a warning in %s", otherSource.getName()));
+          .contains(
+              String.format(
+                  "Expected a warning containing \"this is a message\" in %s",
+                  otherSource.getName()));
       assertThat(expected.getMessage()).contains(HELLO_WORLD_BROKEN.getName());
     }
   }
@@ -571,7 +600,9 @@ public class JavaSourcesSubjectFactoryTest {
       int actualErrorLine = 6;
       assertThat(expected.getMessage())
           .contains(
-              String.format("Expected a warning on line 1 of %s", HELLO_WORLD_BROKEN.getName()));
+              String.format(
+                  "Expected a warning containing \"this is a message\" in %s on line:\n   1: ",
+                  HELLO_WORLD_BROKEN.getName()));
       assertThat(expected.getMessage()).contains("" + actualErrorLine);
     }
   }
@@ -592,7 +623,10 @@ public class JavaSourcesSubjectFactoryTest {
     } catch (VerificationException expected) {
       int actualErrorCol = 8;
       assertThat(expected.getMessage())
-          .contains(String.format("Expected a warning at 6:1 of %s", HELLO_WORLD_BROKEN.getName()));
+          .contains(
+              String.format(
+                  "Expected a warning containing \"this is a message\" in %s at column 1 of line 6",
+                  HELLO_WORLD_BROKEN.getName()));
       assertThat(expected.getMessage()).contains("[" + actualErrorCol + "]");
     }
   }
@@ -645,7 +679,9 @@ public class JavaSourcesSubjectFactoryTest {
       fail();
     } catch (VerificationException expected) {
       assertThat(expected.getMessage())
-          .contains(String.format("Expected a note in %s", otherSource.getName()));
+          .contains(
+              String.format(
+                  "Expected a note containing \"this is a message\" in %s", otherSource.getName()));
       assertThat(expected.getMessage()).contains(HELLO_WORLD_BROKEN.getName());
     }
   }
@@ -665,7 +701,10 @@ public class JavaSourcesSubjectFactoryTest {
     } catch (VerificationException expected) {
       int actualErrorLine = 6;
       assertThat(expected.getMessage())
-          .contains(String.format("Expected a note on line 1 of %s", HELLO_WORLD_BROKEN.getName()));
+          .contains(
+              String.format(
+                  "Expected a note containing \"this is a message\" in %s on line:\n   1: ",
+                  HELLO_WORLD_BROKEN.getName()));
       assertThat(expected.getMessage()).contains("" + actualErrorLine);
     }
   }
@@ -686,7 +725,10 @@ public class JavaSourcesSubjectFactoryTest {
     } catch (VerificationException expected) {
       int actualErrorCol = 8;
       assertThat(expected.getMessage())
-          .contains(String.format("Expected a note at 6:1 of %s", HELLO_WORLD_BROKEN.getName()));
+          .contains(
+              String.format(
+                  "Expected a note containing \"this is a message\" in %s at column 1 of line 6",
+                  HELLO_WORLD_BROKEN.getName()));
       assertThat(expected.getMessage()).contains("[" + actualErrorCol + "]");
     }
   }

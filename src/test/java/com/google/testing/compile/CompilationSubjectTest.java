@@ -20,7 +20,9 @@ import static com.google.testing.compile.CompilationSubject.assertThat;
 import static com.google.testing.compile.CompilationSubject.compilations;
 import static com.google.testing.compile.Compiler.javac;
 import static com.google.testing.compile.VerificationFailureStrategy.VERIFY;
+import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.stream.Collectors.joining;
 import static javax.tools.StandardLocation.CLASS_OUTPUT;
 import static org.junit.Assert.fail;
 
@@ -28,6 +30,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
 import com.google.testing.compile.VerificationFailureStrategy.VerificationException;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
 import org.junit.Test;
@@ -273,7 +276,8 @@ public class CompilationSubjectTest {
         assertThat(expected.getMessage())
             .contains(
                 String.format(
-                    "Expected a warning in %s", HELLO_WORLD_DIFFERENT_RESOURCE.getName()));
+                    "Expected a warning containing \"this is a message\" in %s",
+                    HELLO_WORLD_DIFFERENT_RESOURCE.getName()));
         assertThat(expected.getMessage()).contains(sourceFile.getName());
       }
     }
@@ -289,7 +293,12 @@ public class CompilationSubjectTest {
       } catch (VerificationException expected) {
         int actualErrorLine = 6;
         assertThat(expected.getMessage())
-            .contains(String.format("Expected a warning on line 1 of %s", sourceFile.getName()));
+            .contains(
+                lines(
+                    format(
+                        "Expected a warning containing \"this is a message\" in %s on line:",
+                        sourceFile.getName()),
+                    "   1: "));
         assertThat(expected.getMessage()).contains("" + actualErrorLine);
       }
     }
@@ -306,7 +315,11 @@ public class CompilationSubjectTest {
       } catch (VerificationException expected) {
         int actualErrorCol = 8;
         assertThat(expected.getMessage())
-            .contains(String.format("Expected a warning at 6:1 of %s", sourceFile.getName()));
+            .contains(
+                format(
+                    "Expected a warning containing \"this is a message\" in %s "
+                        + "at column 1 of line 6",
+                    sourceFile.getName()));
         assertThat(expected.getMessage()).contains("[" + actualErrorCol + "]");
       }
     }
@@ -422,7 +435,9 @@ public class CompilationSubjectTest {
       } catch (VerificationException expected) {
         assertThat(expected.getMessage())
             .contains(
-                String.format("Expected a note in %s", HELLO_WORLD_DIFFERENT_RESOURCE.getName()));
+                format(
+                    "Expected a note containing \"this is a message\" in %s",
+                    HELLO_WORLD_DIFFERENT_RESOURCE.getName()));
         assertThat(expected.getMessage()).contains(sourceFile.getName());
       }
     }
@@ -438,7 +453,12 @@ public class CompilationSubjectTest {
       } catch (VerificationException expected) {
         int actualErrorLine = 6;
         assertThat(expected.getMessage())
-            .contains(String.format("Expected a note on line 1 of %s", sourceFile.getName()));
+            .contains(
+                lines(
+                    format(
+                        "Expected a note containing \"this is a message\" in %s on line:",
+                        sourceFile.getName()),
+                    "   1: "));
         assertThat(expected.getMessage()).contains("" + actualErrorLine);
       }
     }
@@ -455,7 +475,10 @@ public class CompilationSubjectTest {
       } catch (VerificationException expected) {
         int actualErrorCol = 8;
         assertThat(expected.getMessage())
-            .contains(String.format("Expected a note at 6:1 of %s", sourceFile.getName()));
+            .contains(
+                format(
+                    "Expected a note containing \"this is a message\" in %s at column 1 of line 6",
+                    sourceFile.getName()));
         assertThat(expected.getMessage()).contains("[" + actualErrorCol + "]");
       }
     }
@@ -576,7 +599,9 @@ public class CompilationSubjectTest {
       } catch (VerificationException expected) {
         assertThat(expected.getMessage())
             .contains(
-                String.format("Expected an error in %s", HELLO_WORLD_DIFFERENT_RESOURCE.getName()));
+                format(
+                    "Expected an error containing \"expected error!\" in %s",
+                    HELLO_WORLD_DIFFERENT_RESOURCE.getName()));
         assertThat(expected.getMessage()).contains(HELLO_WORLD_RESOURCE.getName());
         //                  "(no associated file)")));
       }
@@ -594,7 +619,11 @@ public class CompilationSubjectTest {
         int actualErrorLine = 18;
         assertThat(expected.getMessage())
             .contains(
-                String.format("Expected an error on line 1 of %s", HELLO_WORLD_RESOURCE.getName()));
+                lines(
+                    format(
+                        "Expected an error containing \"expected error!\" in %s on line:",
+                        HELLO_WORLD_RESOURCE.getName()),
+                    "   1: "));
         assertThat(expected.getMessage()).contains("" + actualErrorLine);
       }
     }
@@ -612,7 +641,9 @@ public class CompilationSubjectTest {
         int actualErrorCol = 8;
         assertThat(expected.getMessage())
             .contains(
-                String.format("Expected an error at 18:1 of %s", HELLO_WORLD_RESOURCE.getName()));
+                format(
+                    "Expected an error containing \"expected error!\" in %s at column 1 of line 18",
+                    HELLO_WORLD_RESOURCE.getName()));
         assertThat(expected.getMessage()).contains("" + actualErrorCol);
       }
     }
@@ -709,6 +740,10 @@ public class CompilationSubjectTest {
         assertThat(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
       }
     }
+  }
+  
+  private static String lines(String... lines) {
+    return Stream.of(lines).collect(joining("\n"));
   }
 
   private static Compiler compilerWithError() {

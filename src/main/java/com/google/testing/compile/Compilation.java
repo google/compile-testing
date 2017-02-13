@@ -24,6 +24,7 @@ import static javax.tools.Diagnostic.Kind.MANDATORY_WARNING;
 import static javax.tools.Diagnostic.Kind.NOTE;
 import static javax.tools.Diagnostic.Kind.WARNING;
 import static javax.tools.JavaFileObject.Kind.CLASS;
+import static javax.tools.StandardLocation.SOURCE_OUTPUT;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -35,7 +36,6 @@ import javax.tools.Diagnostic;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.JavaFileManager.Location;
 import javax.tools.JavaFileObject;
-import javax.tools.StandardLocation;
 
 /** The results of {@linkplain Compiler#compile compiling} source files. */
 public final class Compilation {
@@ -183,7 +183,8 @@ public final class Compilation {
   }
 
   /**
-   * Returns the source file with name {@code qualifiedName} (no extension) if one was generated.
+   * Returns the source file for the type with a given qualified name (no ".java" extension) if one
+   * was generated.
    *
    * <p>For example:
    *
@@ -196,7 +197,10 @@ public final class Compilation {
    *     of the generated files is undefined in that case
    */
   public Optional<JavaFileObject> generatedSourceFile(String qualifiedName) {
-    return generatedFile(StandardLocation.SOURCE_OUTPUT, qualifiedName);
+    int lastIndexOfDot = qualifiedName.lastIndexOf('.');
+    String packageName = lastIndexOfDot == -1 ? "" : qualifiedName.substring(0, lastIndexOfDot);
+    String fileName = qualifiedName.substring(lastIndexOfDot + 1) + ".java";
+    return generatedFile(SOURCE_OUTPUT, packageName, fileName);
   }
 
   @Override

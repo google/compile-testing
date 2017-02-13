@@ -17,8 +17,10 @@
 package com.google.testing.compile;
 
 import static com.google.common.truth.Truth.assertThat;
+import static com.google.common.truth.Truth8.assertThat;
 import static com.google.testing.compile.CompilationSubject.assertThat;
 import static com.google.testing.compile.Compiler.javac;
+import static javax.tools.StandardLocation.SOURCE_OUTPUT;
 import static org.junit.Assert.fail;
 
 import com.google.common.collect.ImmutableList;
@@ -29,6 +31,69 @@ import org.junit.runners.JUnit4;
 
 @RunWith(JUnit4.class)
 public class CompilationTest {
+  
+  private static final JavaFileObject source1 =
+      JavaFileObjects.forSourceLines(
+          "test.Source1", // format one per line
+          "package test;",
+          "",
+          "class Source1 {}");
+
+  private static final JavaFileObject source2 =
+      JavaFileObjects.forSourceLines(
+          "test.Source2", // format one per line
+          "package test;",
+          "",
+          "interface Source2 {}");
+
+  private static final JavaFileObject brokenSource =
+      JavaFileObjects.forSourceLines(
+          "test.BrokenSource", // format one per line
+          "package test;",
+          "",
+          "interface BrokenSource { what is this }");
+  
+  @Test
+  public void compiler() {
+    Compiler compiler = compilerWithGenerator();
+    Compilation compilation = compiler.compile(source1, source2);
+    assertThat(compilation.compiler()).isEqualTo(compiler);
+    assertThat(compilation.sourceFiles()).containsExactly(source1, source2).inOrder();
+    assertThat(compilation.status()).isEqualTo(Compilation.Status.SUCCESS);
+  }
+  
+  @Test
+  public void compilerStatusFailure() {
+    Compiler compiler = compilerWithGenerator();
+    Compilation compilation = compiler.compile(brokenSource);
+    assertThat(compilation.status()).isEqualTo(Compilation.Status.FAILURE);
+  }
+
+  @Test
+  public void generatedFilePath() {
+    Compiler compiler = compilerWithGenerator();
+    Compilation compilation = compiler.compile(source1, source2);
+    assertThat(compilation.generatedFile(SOURCE_OUTPUT, "test/generated/Blah.java")).isPresent();
+  }
+
+  @Test
+  public void generatedFilePackage() {
+    Compiler compiler = compilerWithGenerator();
+    Compilation compilation = compiler.compile(source1, source2);
+    assertThat(compilation.generatedFile(SOURCE_OUTPUT, "test.generated", "Blah.java")).isPresent();
+  }
+
+  @Test
+  public void generatedSourceFile() {
+    Compiler compiler = compilerWithGenerator();
+    Compilation compilation = compiler.compile(source1, source2);
+    assertThat(compilation.generatedSourceFile("test.generated.Blah")).isPresent();
+  }
+
+  private static Compiler compilerWithGenerator() {
+    return javac().withProcessors(new GeneratingProcessor("test.generated"));
+  }
+  
   @Test
   public void generatedFiles_unsuccessfulCompilationThrows() {
     Compilation compilation =

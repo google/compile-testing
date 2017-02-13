@@ -36,11 +36,21 @@ final class GeneratingProcessor extends AbstractProcessor {
 
   static final String GENERATED_RESOURCE_NAME = "Foo";
   static final String GENERATED_RESOURCE = "Bar";
+  
+  private final String packageName;
+
+  GeneratingProcessor() {
+    this("");
+  }
+  
+  GeneratingProcessor(String packageName) {
+    this.packageName = packageName;
+  }
 
   @Override
   public synchronized void init(ProcessingEnvironment processingEnv) {
     Filer filer = processingEnv.getFiler();
-    try (Writer writer = filer.createSourceFile(GENERATED_CLASS_NAME).openWriter()) {
+    try (Writer writer = filer.createSourceFile(generatedClassName()).openWriter()) {
       writer.write(GENERATED_SOURCE);
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -55,6 +65,14 @@ final class GeneratingProcessor extends AbstractProcessor {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  String packageName() {
+    return packageName;
+  }
+  
+  String generatedClassName() {
+    return packageName.isEmpty() ? GENERATED_CLASS_NAME : packageName + "." + GENERATED_CLASS_NAME;
   }
 
   @CanIgnoreReturnValue

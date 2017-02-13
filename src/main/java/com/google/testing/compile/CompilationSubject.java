@@ -252,7 +252,26 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
   }
 
   private DiagnosticInFile hadDiagnosticContainingMatch(
-      String verb, final Pattern expectedPattern, Diagnostic.Kind kind, Diagnostic.Kind... more) {
+      String diagnosticMatchDescription,
+      Pattern expectedPattern,
+      Diagnostic.Kind kind,
+      Diagnostic.Kind... more) {
+    String expectedDiagnostic =
+        String.format("%s %s", kindSingular(kind), diagnosticMatchDescription);
+    return new DiagnosticInFile(
+        expectedDiagnostic,
+        findMatchingDiagnostics(expectedDiagnostic, expectedPattern, kind, more));
+  }
+
+  /**
+   * Returns the diagnostics that match one of the kinds and a pattern. If none match, fails the
+   * test.
+   */
+  private ImmutableList<Diagnostic<? extends JavaFileObject>> findMatchingDiagnostics(
+      String expectedDiagnostic,
+      Pattern expectedPattern,
+      Diagnostic.Kind kind,
+      Diagnostic.Kind... more) {
     ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsOfKind =
         actual().diagnosticsOfKind(kind, more);
     ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsWithMessage =
@@ -262,11 +281,9 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
             .collect(toImmutableList());
     if (diagnosticsWithMessage.isEmpty()) {
       failureStrategy.fail(
-          messageListing(
-              diagnosticsOfKind, "Expected %s %s, but only found:", kindSingular(kind), verb));
+          messageListing(diagnosticsOfKind, "Expected %s, but only found:", expectedDiagnostic));
     }
-    return new DiagnosticInFile(
-        String.format("%s %s", kindSingular(kind), verb), diagnosticsWithMessage);
+    return diagnosticsWithMessage;
   }
 
   /**
@@ -323,14 +340,24 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
     return collectingAndThen(toList(), ImmutableSet::copyOf);
   }
 
-  private static class DiagnosticsAssertions {
+  private class DiagnosticAssertions {
+    private final String expectedDiagnostic;
     private final ImmutableList<Diagnostic<? extends JavaFileObject>> diagnostics;
 
-    DiagnosticsAssertions(Iterable<Diagnostic<? extends JavaFileObject>> diagnostics) {
-      this.diagnostics = ImmutableList.copyOf(diagnostics);
+    DiagnosticAssertions(
+        String expectedDiagnostic,
+        Iterable<Diagnostic<? extends JavaFileObject>> matchingDiagnostics) {
+      this.expectedDiagnostic = expectedDiagnostic;
+      this.diagnostics = ImmutableList.copyOf(matchingDiagnostics);
     }
 
-    ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsMatching(
+    DiagnosticAssertions(
+        DiagnosticAssertions previous,
+        Iterable<Diagnostic<? extends JavaFileObject>> matchingDiagnostics) {
+      this(previous.expectedDiagnostic, matchingDiagnostics);
+    }
+
+    ImmutableList<Diagnostic<? extends JavaFileObject>> filterDiagnostics(
         Predicate<? super Diagnostic<? extends JavaFileObject>> predicate) {
       return diagnostics.stream().filter(predicate).collect(toImmutableList());
     }
@@ -338,42 +365,46 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
     <T> Stream<T> mapDiagnostics(Function<? super Diagnostic<? extends JavaFileObject>, T> mapper) {
       return diagnostics.stream().map(mapper);
     }
+
+    protected void failExpectingMatchingDiagnostic(String format, Object... args) {
+      failureStrategy.fail(
+          new StringBuilder("Expected ")
+              .append(expectedDiagnostic)
+              .append(String.format(format, args))
+              .toString());
+    }
   }
 
   /** Assertions that a note, warning, or error was found in a given file. */
-  public final class DiagnosticInFile extends DiagnosticsAssertions {
-
-    private final String expectedDiagnostic;
+  public final class DiagnosticInFile extends DiagnosticAssertions {
 
     private DiagnosticInFile(
         String expectedDiagnostic,
         Iterable<Diagnostic<? extends JavaFileObject>> diagnosticsWithMessage) {
-      super(diagnosticsWithMessage);
-      this.expectedDiagnostic = expectedDiagnostic;
+      super(expectedDiagnostic, diagnosticsWithMessage);
     }
 
     /** Asserts that the note, warning, or error was found in a given file. */
     @CanIgnoreReturnValue
-    public DiagnosticOnLine inFile(final JavaFileObject expectedFile) {
-      ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsInFile =
-          diagnosticsInFile(expectedFile);
-      if (diagnosticsInFile.isEmpty()) {
-        failureStrategy.fail(
-            String.format(
-                "Expected %s in %s, but only found them in %s",
-                expectedDiagnostic, expectedFile.getName(), sourceFilesWithDiagnostics()));
-      }
-      return new DiagnosticOnLine(expectedDiagnostic, expectedFile, diagnosticsInFile);
+    public DiagnosticOnLine inFile(JavaFileObject expectedFile) {
+      return new DiagnosticOnLine(this, expectedFile, findDiagnosticsInFile(expectedFile));
     }
 
-    private ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsInFile(
+    /** Returns the diagnostics that are in the given file. Fails the test if none are found. */
+    private ImmutableList<Diagnostic<? extends JavaFileObject>> findDiagnosticsInFile(
         JavaFileObject expectedFile) {
       String expectedFilePath = expectedFile.toUri().getPath();
-      return diagnosticsMatching(
-          diagnostic -> {
-            JavaFileObject source = diagnostic.getSource();
-            return source != null && source.toUri().getPath().equals(expectedFilePath);
-          });
+      ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsInFile =
+          filterDiagnostics(
+              diagnostic -> {
+                JavaFileObject source = diagnostic.getSource();
+                return source != null && source.toUri().getPath().equals(expectedFilePath);
+              });
+      if (diagnosticsInFile.isEmpty()) {
+        failExpectingMatchingDiagnostic(
+            " in %s, but found it in %s", expectedFile.getName(), sourceFilesWithDiagnostics());
+      }
+      return diagnosticsInFile;
     }
 
     private ImmutableSet<String> sourceFilesWithDiagnostics() {
@@ -427,71 +458,74 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
   }
 
   /** Assertions that a note, warning, or error was found on a given line. */
-  public final class DiagnosticOnLine extends DiagnosticsAssertions {
+  public final class DiagnosticOnLine extends DiagnosticAssertions {
 
-    private final String expectedDiagnostic;
     private final LinesInFile linesInFile;
 
     private DiagnosticOnLine(
-        String expectedDiagnostic,
+        DiagnosticAssertions previous,
         JavaFileObject file,
-        ImmutableList<Diagnostic<? extends JavaFileObject>> diagnostics) {
-      super(diagnostics);
-      this.expectedDiagnostic = expectedDiagnostic;
+        ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsInFile) {
+      super(previous, diagnosticsInFile);
       this.linesInFile = new LinesInFile(file);
     }
 
     /** Asserts that the note, warning, or error was found on a given line. */
     @CanIgnoreReturnValue
     public DiagnosticAtColumn onLine(long expectedLine) {
-      ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsOnLine =
-          diagnosticsMatching(diagnostic -> diagnostic.getLineNumber() == expectedLine);
-      if (diagnosticsOnLine.isEmpty()) {
-        failureStrategy.fail(
-            String.format(
-                "Expected %s in %s on line:\n%s\nbut found it on line(s):\n%s",
-                expectedDiagnostic,
-                linesInFile.fileName(),
-                linesInFile.listLine(expectedLine),
-                mapDiagnostics(Diagnostic::getLineNumber)
-                    .collect(linesInFile.toLineList())));
-      }
       return new DiagnosticAtColumn(
-          expectedDiagnostic, linesInFile, expectedLine, diagnosticsOnLine);
+          this, linesInFile, expectedLine, findMatchingDiagnosticsOnLine(expectedLine));
+    }
+
+    /**
+     * Returns the matching diagnostics found on a specific line of the file. Fails the test if none
+     * are found.
+     *
+     * @param expectedLine the expected line number
+     */
+    @CanIgnoreReturnValue
+    private ImmutableList<Diagnostic<? extends JavaFileObject>> findMatchingDiagnosticsOnLine(
+        long expectedLine) {
+      ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsOnLine =
+          filterDiagnostics(diagnostic -> diagnostic.getLineNumber() == expectedLine);
+      if (diagnosticsOnLine.isEmpty()) {
+        failExpectingMatchingDiagnostic(
+            " in %s on line:\n%s\nbut found it on line(s):\n%s",
+            linesInFile.fileName(),
+            linesInFile.listLine(expectedLine),
+            mapDiagnostics(Diagnostic::getLineNumber).collect(linesInFile.toLineList()));
+      }
+      return diagnosticsOnLine;
     }
   }
 
   /** Assertions that a note, warning, or error was found at a given column. */
-  public final class DiagnosticAtColumn extends DiagnosticsAssertions {
+  public final class DiagnosticAtColumn extends DiagnosticAssertions {
 
-    private final String expectedDiagnostic;
     private final LinesInFile linesInFile;
     private final long line;
 
     private DiagnosticAtColumn(
-        String expectedDiagnostic,
+        DiagnosticAssertions previous,
         LinesInFile linesInFile,
         long line,
-        ImmutableList<Diagnostic<? extends JavaFileObject>> diagnostics) {
-      super(diagnostics);
-      this.expectedDiagnostic = expectedDiagnostic;
+        ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsOnLine) {
+      super(previous, diagnosticsOnLine);
       this.linesInFile = linesInFile;
       this.line = line;
     }
 
     /** Asserts that the note, warning, or error was found at a given column. */
     public void atColumn(final long expectedColumn) {
-      if (diagnosticsMatching(diagnostic -> diagnostic.getColumnNumber() == expectedColumn)
+      if (filterDiagnostics(diagnostic -> diagnostic.getColumnNumber() == expectedColumn)
           .isEmpty()) {
-        failureStrategy.fail(
-            String.format(
-                "Expected %s in %s at column %d of line %d, but found it at column(s) %s:\n%s",
-                expectedDiagnostic,
-                linesInFile.fileName(),
-                expectedColumn,
-                line,
-                columnsWithDiagnostics(),
-                linesInFile.listLine(line)));
+        failExpectingMatchingDiagnostic(
+            " in %s at column %d of line %d, but found it at column(s) %s:\n%s",
+            linesInFile.fileName(),
+            expectedColumn,
+            line,
+            columnsWithDiagnostics(),
+            linesInFile.listLine(line));
       }
     }
 

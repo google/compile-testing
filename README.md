@@ -8,7 +8,7 @@ Latest Release
 
 The latest release is version `0.8`.  Include it as a [Maven](http://maven.apache.org/) dependency with the following snippet:
 
-```
+```xml
 <dependency>
   <groupId>com.google.testing.compile</groupId>
   <artifactId>compile-testing</artifactId>

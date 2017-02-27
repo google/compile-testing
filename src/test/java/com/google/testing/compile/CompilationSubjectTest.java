@@ -181,7 +181,7 @@ public class CompilationSubjectTest {
     }
 
     @Test
-    public void hadWarningContaining() {
+    public void hadWarningContainingInFileOnLineAtColumn() {
       assertThat(compilerWithWarning().compile(sourceFile))
           .hadWarningContaining("this is a message")
           .inFile(sourceFile)
@@ -192,6 +192,21 @@ public class CompilationSubjectTest {
           .inFile(sourceFile)
           .onLine(7)
           .atColumn(29);
+    }
+
+    /* TODO(dpb): Positive cases for onLineContaining for
+     * (error, warning, note) x
+     * (containing(String), containingMatch(String), containingMatch(Pattern)). */
+    @Test
+    public void hadWarningContainingInFileOnLineContaining() {
+      assertThat(compilerWithWarning().compile(sourceFile))
+          .hadWarningContaining("this is a message")
+          .inFile(sourceFile)
+          .onLineContaining("class HelloWorld");
+      assertThat(compilerWithWarning().compile(sourceFile))
+          .hadWarningContaining("this is a message")
+          .inFile(sourceFile)
+          .onLineContaining("Object foo");
     }
 
     @Test
@@ -300,6 +315,65 @@ public class CompilationSubjectTest {
                         sourceFile.getName()),
                     "   1: "));
         assertThat(expected.getMessage()).contains("" + actualErrorLine);
+      }
+    }
+
+    /* TODO(dpb): Negative cases for onLineContaining for
+     * (warning, error, note) x
+     * (containing(String), containingMatch(String), containingMatch(Pattern)). */
+    @Test
+    public void hadNoteContainingInFileOnLineContaining_wrongLine() {
+      try {
+        verifyThat(compilerWithNote().compile(sourceFile))
+            .hadNoteContaining("this is a message")
+            .inFile(sourceFile)
+            .onLineContaining("package");
+        fail();
+      } catch (VerificationException expected) {
+        assertThat(expected.getMessage())
+            .isEqualTo(
+                lines(
+                    format(
+                        "Expected a note containing \"this is a message\" in %s on line:",
+                        sourceFile.getName()),
+                    "   1: package test;",
+                    "but found it on line(s):",
+                    "   6: public class HelloWorld {",
+                    "   7:   @DiagnosticMessage Object foo;"));
+      }
+    }
+
+    @Test
+    public void hadWarningContainingMatchInFileOnLineContaining_noMatches() {
+      try {
+        verifyThat(compilerWithWarning().compile(sourceFile))
+            .hadWarningContainingMatch("this is a+ message")
+            .inFile(sourceFile)
+            .onLineContaining("not found!");
+        fail();
+      } catch (IllegalArgumentException expected) {
+        assertThat(expected.getMessage())
+            .isEqualTo(format("No line in %s contained \"not found!\"", sourceFile.getName()));
+      }
+    }
+
+    @Test
+    public void hadWarningContainingInFileOnLineContaining_moreThanOneMatch() {
+      try {
+        verifyThat(compilerWithWarning().compile(sourceFile))
+            .hadWarningContainingMatch(Pattern.compile("this is ab? message"))
+            .inFile(sourceFile)
+            .onLineContaining("@DiagnosticMessage");
+        fail();
+      } catch (IllegalArgumentException expected) {
+        assertThat(expected.getMessage())
+            .isEqualTo(
+                lines(
+                    format(
+                        "More than one line in %s contained \"@DiagnosticMessage\":",
+                        sourceFile.getName()),
+                    "   5: @DiagnosticMessage",
+                    "   7:   @DiagnosticMessage Object foo;"));
       }
     }
 

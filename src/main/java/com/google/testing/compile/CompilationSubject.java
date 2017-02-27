@@ -15,7 +15,10 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Predicates.notNull;
 import static com.google.common.collect.Iterables.size;
+import static com.google.common.collect.Streams.mapWithIndex;
 import static com.google.common.truth.Truth.assertAbout;
 import static com.google.testing.compile.Compilation.Status.FAILURE;
 import static com.google.testing.compile.Compilation.Status.SUCCESS;
@@ -31,6 +34,7 @@ import static javax.tools.Diagnostic.Kind.WARNING;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
 import com.google.common.truth.FailureStrategy;
 import com.google.common.truth.Subject;
 import com.google.common.truth.SubjectFactory;
@@ -475,6 +479,42 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
     public DiagnosticAtColumn onLine(long expectedLine) {
       return new DiagnosticAtColumn(
           this, linesInFile, expectedLine, findMatchingDiagnosticsOnLine(expectedLine));
+    }
+
+    /**
+     * Asserts that the note, warning, or error was found on the single line that contains a
+     * substring.
+     */
+    public void onLineContaining(String expectedLineSubstring) {
+      findMatchingDiagnosticsOnLine(findLineContainingSubstring(expectedLineSubstring));
+    }
+
+    /**
+     * Returns the single line number that contains an expected substring.
+     *
+     * @throws IllegalArgumentException unless exactly one line in the file contains {@code
+     *     expectedLineSubstring}
+     */
+    private long findLineContainingSubstring(String expectedLineSubstring) {
+      ImmutableSet<Long> matchingLines =
+          mapWithIndex(
+                  linesInFile.linesInFile().stream(),
+                  (line, index) -> line.contains(expectedLineSubstring) ? index : null)
+              .filter(notNull())
+              .map(index -> index + 1) // to 1-based line numbers
+              .collect(toImmutableSet());
+      checkArgument(
+          !matchingLines.isEmpty(),
+          "No line in %s contained \"%s\"",
+          linesInFile.fileName(),
+          expectedLineSubstring);
+      checkArgument(
+          matchingLines.size() == 1,
+          "More than one line in %s contained \"%s\":\n%s",
+          linesInFile.fileName(),
+          expectedLineSubstring,
+          matchingLines.stream().collect(linesInFile.toLineList()));
+      return Iterables.getOnlyElement(matchingLines);
     }
 
     /**

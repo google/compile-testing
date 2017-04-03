@@ -46,6 +46,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nullable;
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
 import javax.tools.Diagnostic.Kind;
@@ -63,6 +64,7 @@ public final class JavaSourcesSubject
     extends Subject<JavaSourcesSubject, Iterable<? extends JavaFileObject>>
     implements CompileTester, ProcessedCompileTesterFactory {
   private final List<String> options = new ArrayList<String>(Arrays.asList("-Xlint"));
+  @Nullable private ClassLoader classLoader;
 
   JavaSourcesSubject(FailureStrategy failureStrategy, Iterable<? extends JavaFileObject> subject) {
     super(failureStrategy, subject);
@@ -77,6 +79,12 @@ public final class JavaSourcesSubject
   @Override
   public JavaSourcesSubject withCompilerOptions(String... options) {
     this.options.addAll(Arrays.asList(options));
+    return this;
+  }
+
+  @Override
+  public JavaSourcesSubject withClasspathFrom(ClassLoader classLoader) {
+    this.classLoader = classLoader;
     return this;
   }
 
@@ -278,7 +286,11 @@ public final class JavaSourcesSubject
     }
 
     private Compilation compilation() {
-      return javac().withProcessors(processors).withOptions(options).compile(actual());
+      Compiler compiler = javac().withProcessors(processors).withOptions(options);
+      if (classLoader != null) {
+        compiler = compiler.withClasspathFrom(classLoader);
+      }
+      return compiler.compile(actual());
     }
   }
 
@@ -544,6 +556,11 @@ public final class JavaSourcesSubject
     @Override
     public JavaSourcesSubject withCompilerOptions(String... options) {
       return delegate.withCompilerOptions(options);
+    }
+
+    @Override
+    public JavaSourcesSubject withClasspathFrom(ClassLoader classLoader) {
+      return delegate.withClasspathFrom(classLoader);
     }
 
     @Override

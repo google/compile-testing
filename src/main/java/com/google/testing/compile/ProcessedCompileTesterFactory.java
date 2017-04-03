@@ -37,6 +37,15 @@ public interface ProcessedCompileTesterFactory {
    * default.
    */
   @CheckReturnValue ProcessedCompileTesterFactory withCompilerOptions(String... options);
+
+  /**
+   * Attempts to extract the classpath from the classpath of the Classloader argument, including all
+   * its parents up to (and including) the System Classloader.
+   * <p>
+   * If not specified, we will use the System classpath for compilation.
+   */
+  @CheckReturnValue
+  ProcessedCompileTesterFactory withClasspathFrom(ClassLoader classloader);
   
   /** Adds {@linkplain Processor annotation processors} to the compilation being tested.  */
   @CheckReturnValue

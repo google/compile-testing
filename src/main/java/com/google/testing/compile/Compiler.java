@@ -20,11 +20,18 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static javax.tools.ToolProvider.getSystemJavaCompiler;
 
 import com.google.auto.value.AutoValue;
+import com.google.common.base.Joiner;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.testing.compile.Compilation.Status;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import javax.annotation.processing.Processor;
 import javax.tools.DiagnosticCollector;
 import javax.tools.JavaCompiler;
@@ -94,6 +101,20 @@ public abstract class Compiler {
   }
 
   /**
+   * Uses the classpath from the passed on classloader (and its parents) for the compilation
+   * instead of the system classpath.
+   *
+   * @throws IllegalArgumentException if the given classloader had classpaths which we could not
+   *     determine or use for compilation.
+   */
+  public final Compiler withClasspathFrom(ClassLoader classloader) {
+    String classpath = getClasspathFromClassloader(classloader);
+    ImmutableList<String> options =
+        ImmutableList.<String>builder().add("-classpath").add(classpath).addAll(options()).build();
+    return copy(processors(), options);
+  }
+
+  /**
    * Compiles Java source files.
    *
    * @return the results of the compilation
@@ -134,6 +155,46 @@ public abstract class Compiler {
       throw new CompilationFailureException(compilation);
     }
     return compilation;
+  }
+
+  /**
+   * Returns the current classpaths of the given classloader including its parents.
+   *
+   * @throws IllegalArgumentException if the given classloader had classpaths which we could not
+   *     determine or use for compilation.
+   */
+  private static String getClasspathFromClassloader(ClassLoader currentClassloader) {
+    ClassLoader systemClassLoader = ClassLoader.getSystemClassLoader();
+
+    // Add all URLClassloaders in the hirearchy till the system classloader.
+    List<URLClassLoader> classloaders = new ArrayList<>();
+    while(true) {
+      if (currentClassloader instanceof URLClassLoader) {
+        // We only know how to extract classpaths from URLClassloaders.
+        classloaders.add((URLClassLoader) currentClassloader);
+      } else {
+        throw new IllegalArgumentException("Classpath for compilation could not be extracted "
+            + "since given classloader is not an instance of URLClassloader");
+      }
+      if (currentClassloader == systemClassLoader) {
+        break;
+      }
+      currentClassloader = currentClassloader.getParent();
+    }
+
+    Set<String> classpaths = new LinkedHashSet<>();
+    for (URLClassLoader classLoader : classloaders) {
+      for (URL url : classLoader.getURLs()) {
+        if (url.getProtocol().equals("file")) {
+          classpaths.add(url.getPath());
+        } else {
+          throw new IllegalArgumentException("Given classloader consists of classpaths which are "
+              + "unsupported for compilation.");
+        }
+      }
+    }
+
+    return Joiner.on(':').join(classpaths);
   }
 
   private Compiler copy(ImmutableList<Processor> processors, ImmutableList<String> options) {

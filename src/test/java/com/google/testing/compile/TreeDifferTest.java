@@ -18,11 +18,10 @@ package com.google.testing.compile;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.common.collect.ImmutableList;
-
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
-
+import java.util.Objects;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
@@ -328,14 +327,20 @@ public class TreeDifferTest {
 
     @Override
     public boolean equals(Object o) {
-      if (!(o instanceof SimplifiedDiff)) {
+      if (o == this) {
+        return true;
+      } else if (o instanceof SimplifiedDiff) {
+        SimplifiedDiff that = (SimplifiedDiff) o;
+        return this.kind.equals(that.kind)
+            && this.details.equals(that.details);
+      } else {
         return false;
       }
+    }
 
-      // Checked by the above instanceof
-      @SuppressWarnings("unchecked")
-      SimplifiedDiff otherDiff = (SimplifiedDiff) o;
-      return otherDiff.kind.equals(this.kind) && otherDiff.details.equals(this.details);
+    @Override
+    public int hashCode() {
+      return Objects.hash(kind, details);
     }
   }
 }

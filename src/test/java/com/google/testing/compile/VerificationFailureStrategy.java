@@ -16,10 +16,12 @@
 
 package com.google.testing.compile;
 
-import com.google.common.truth.FailureStrategy;
+import com.google.common.truth.AbstractFailureStrategy;
 import com.google.common.truth.TestVerb;
 
-final class VerificationFailureStrategy extends FailureStrategy {
+/** @deprecated prefer {@link com.google.common.truth.ExpectFailure} for testing Truth failures. */
+@Deprecated
+final class VerificationFailureStrategy extends AbstractFailureStrategy {
   static final class VerificationException extends RuntimeException {
     private static final long serialVersionUID = 1L;
 
@@ -28,11 +30,15 @@ final class VerificationFailureStrategy extends FailureStrategy {
     }
   }
 
-  /** A {@link TestVerb} that throws something other than {@link AssertionError}. */
-  static final TestVerb VERIFY = new TestVerb(new VerificationFailureStrategy());
+  /**
+   * A {@link TestVerb} that throws something other than {@link AssertionError}.
+   *
+   * @deprecated prefer {@link com.google.common.truth.ExpectFailure} for testing Truth failures.
+   */
+  @Deprecated static final TestVerb VERIFY = new TestVerb(new VerificationFailureStrategy());
 
   @Override
-  public void fail(String message) {
+  public void fail(String message, Throwable unused) {
     throw new VerificationFailureStrategy.VerificationException(message);
   }
 }

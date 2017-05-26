@@ -25,6 +25,7 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.testing.compile.Compilation.Status;
+import java.io.File;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
@@ -194,7 +195,7 @@ public abstract class Compiler {
       }
     }
 
-    return Joiner.on(':').join(classpaths);
+    return Joiner.on(File.pathSeparatorChar).join(classpaths);
   }
 
   private Compiler copy(ImmutableList<Processor> processors, ImmutableList<String> options) {

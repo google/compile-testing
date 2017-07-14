@@ -59,21 +59,7 @@ public class IncrementalCompileTester {
 
   public final Compilation incrementalBuild(Iterable<? extends JavaFileObject> files, Iterable<? extends Processor> processors,
       ImmutableList<String> options) {
-    Set<JavaFileObject> incrementalSources = new HashSet<>();
-    for (JavaFileObject file : files) {
-      incrementalSources.add(file);
-    }
-    for (JavaFileObject file : fullBuildSources) {
-      if (!incrementalSources.contains(file)) {
-        addToSourcePath(file);
-      }
-    }
-    Compilation compilation = compile(files, processors, options);
-    return compilation;
-  }
-
-  public void addToSourcePath(JavaFileObject... sourceFiles) {
-    fileManager.addToSourcePath(sourceFiles);
+    return compile(files, processors, options);
   }
 
   public InMemoryJavaFileManager.InMemoryJavaFileObject getGeneratedJavaFile(String FQNclassName) {

@@ -74,7 +74,7 @@ final class InMemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileMa
 
   @Override
   public String inferBinaryName(Location location, JavaFileObject file) {
-    if (location == StandardLocation.SOURCE_PATH && file instanceof SimpleJavaFileObject) {
+    if (location == StandardLocation.CLASS_PATH && file instanceof SimpleJavaFileObject) {
       return toBinaryName(file);
     }
     return super.inferBinaryName(location, file);
@@ -172,9 +172,10 @@ final class InMemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileMa
   @Override
   public Iterable<JavaFileObject> list(Location location, String packageName, Set<Kind> kinds, boolean recurse) throws IOException {
     List<JavaFileObject> result = new ArrayList();
-    if (location == StandardLocation.SOURCE_PATH || location == StandardLocation.CLASS_PATH) {
+    if (location == StandardLocation.CLASS_PATH) {
+      String packageAsPath = packageName.replace('.', '/');
       for (Entry<URI, JavaFileObject> entry : inMemoryFileObjects.asMap().entrySet()) {
-        if (entry.getKey().toString().contains("mem:///" + location.getName())) {
+        if (entry.getKey().toString().contains("mem:///" + StandardLocation.CLASS_OUTPUT.getName() + '/' + packageAsPath)) {
           result.add(entry.getValue());
         }
       }

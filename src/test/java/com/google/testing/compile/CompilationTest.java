@@ -21,9 +21,14 @@ import static com.google.common.truth.Truth8.assertThat;
 import static com.google.testing.compile.CompilationSubject.assertThat;
 import static com.google.testing.compile.Compiler.javac;
 import static javax.tools.StandardLocation.SOURCE_OUTPUT;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.io.ByteStreams;
+import java.io.InputStream;
+import java.nio.charset.Charset;
 import javax.tools.JavaFileObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -88,6 +93,18 @@ public class CompilationTest {
     Compiler compiler = compilerWithGenerator();
     Compilation compilation = compiler.compile(source1, source2);
     assertThat(compilation.generatedSourceFile("test.generated.Blah")).isPresent();
+  }
+
+  @Test
+  public void classLoader() throws Exception {
+    Compiler compiler = compilerWithGenerator();
+    Compilation compilation = compiler.compile(source1, source2);
+    Class generatedClass = compilation.classLoader().loadClass("test.generated.Blah");
+    assertThat(generatedClass.getName()).isEqualTo("test.generated.Blah");
+    try (InputStream is = compilation.classLoader().getResourceAsStream("com/google/testing/compile/Foo")) {
+      assertEquals("Bar", new String(ByteStreams.toByteArray(is), Charset.defaultCharset()));
+    }
+    assertNull(compilation.classLoader().getResourceAsStream("doesnotexist"));
   }
 
   private static Compiler compilerWithGenerator() {

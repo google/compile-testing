@@ -51,6 +51,9 @@ final class GeneratingProcessor extends AbstractProcessor {
   public synchronized void init(ProcessingEnvironment processingEnv) {
     Filer filer = processingEnv.getFiler();
     try (Writer writer = filer.createSourceFile(generatedClassName()).openWriter()) {
+      if (!packageName.isEmpty()) {
+        writer.write("package " + packageName + ";\n");
+      }
       writer.write(GENERATED_SOURCE);
     } catch (IOException e) {
       throw new RuntimeException(e);

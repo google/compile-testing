@@ -17,7 +17,7 @@
 package com.google.testing.compile;
 
 import com.google.common.truth.AbstractFailureStrategy;
-import com.google.common.truth.TestVerb;
+import com.google.common.truth.StandardSubjectBuilder;
 
 /** @deprecated prefer {@link com.google.common.truth.ExpectFailure} for testing Truth failures. */
 @Deprecated
@@ -31,11 +31,13 @@ final class VerificationFailureStrategy extends AbstractFailureStrategy {
   }
 
   /**
-   * A {@link TestVerb} that throws something other than {@link AssertionError}.
+   * A {@link StandardSubjectBuilder} that throws something other than {@link AssertionError}.
    *
    * @deprecated prefer {@link com.google.common.truth.ExpectFailure} for testing Truth failures.
    */
-  @Deprecated static final TestVerb VERIFY = new TestVerb(new VerificationFailureStrategy());
+  @Deprecated
+  static final StandardSubjectBuilder VERIFY =
+      StandardSubjectBuilder.forCustomFailureStrategy(new VerificationFailureStrategy());
 
   @Override
   public void fail(String message, Throwable unused) {

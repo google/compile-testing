@@ -6,7 +6,7 @@ A library for testing javac compilation with or without annotation processors. S
 Latest Release
 --------------
 
-The latest release is version `0.8`.  Include it as a [Maven](http://maven.apache.org/) dependency with the following snippet:
+The latest release is version `0.10`.  Include it as a [Maven](http://maven.apache.org/) dependency with the following snippet:
 
 ```
 <dependency>

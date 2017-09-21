@@ -55,7 +55,7 @@ import javax.tools.JavaFileObject;
 
 /**
  * A <a href="https://github.com/truth0/truth">Truth</a> {@link Subject} that evaluates the result
- * of a {@code javac} compilation.  See {@link com.google.testing.compile} for usage examples
+ * of a {@code javac} compilation. See {@link com.google.testing.compile} for usage examples
  *
  * @author Gregory Kick
  */
@@ -138,6 +138,7 @@ public final class JavaSourcesSubject
       if (Iterables.isEmpty(actual())) {
         failureStrategy.fail(
             "Compilation generated no additional source files, though some were expected.");
+        return;
       }
       ParseResult actualResult = Parser.parse(actual());
       ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
@@ -149,52 +150,61 @@ public final class JavaSourcesSubject
           message.append(error);
         }
         failureStrategy.fail(message.toString());
+        return;
       }
       final ParseResult expectedResult = Parser.parse(Lists.asList(first, rest));
-      final FluentIterable<? extends CompilationUnitTree> actualTrees = FluentIterable.from(
-          actualResult.compilationUnits());
-      final FluentIterable<? extends CompilationUnitTree> expectedTrees = FluentIterable.from(
-          expectedResult.compilationUnits());
+      final FluentIterable<? extends CompilationUnitTree> actualTrees =
+          FluentIterable.from(actualResult.compilationUnits());
+      final FluentIterable<? extends CompilationUnitTree> expectedTrees =
+          FluentIterable.from(expectedResult.compilationUnits());
 
       Function<? super CompilationUnitTree, ImmutableSet<String>> getTypesFunction =
           new Function<CompilationUnitTree, ImmutableSet<String>>() {
-        @Override public ImmutableSet<String> apply(CompilationUnitTree compilationUnit) {
-          return TypeEnumerator.getTopLevelTypes(compilationUnit);
-        }
-      };
+            @Override
+            public ImmutableSet<String> apply(CompilationUnitTree compilationUnit) {
+              return TypeEnumerator.getTopLevelTypes(compilationUnit);
+            }
+          };
 
       final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> expectedTreeTypes =
           Maps.toMap(expectedTrees, getTypesFunction);
       final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> actualTreeTypes =
           Maps.toMap(actualTrees, getTypesFunction);
       final ImmutableMap<? extends CompilationUnitTree, Optional<? extends CompilationUnitTree>>
-      matchedTrees = Maps.toMap(expectedTrees,
-          new Function<CompilationUnitTree, Optional<? extends CompilationUnitTree>>() {
-        @Override public Optional<? extends CompilationUnitTree> apply(
-            final CompilationUnitTree expectedTree) {
-          return Iterables.tryFind(actualTrees,
-              new Predicate<CompilationUnitTree>() {
-            @Override public boolean apply(CompilationUnitTree actualTree) {
-              return expectedTreeTypes.get(expectedTree).equals(
-                  actualTreeTypes.get(actualTree));
-            }
-          });
-        }
-      });
+          matchedTrees =
+              Maps.toMap(
+                  expectedTrees,
+                  new Function<CompilationUnitTree, Optional<? extends CompilationUnitTree>>() {
+                    @Override
+                    public Optional<? extends CompilationUnitTree> apply(
+                        final CompilationUnitTree expectedTree) {
+                      return Iterables.tryFind(
+                          actualTrees,
+                          new Predicate<CompilationUnitTree>() {
+                            @Override
+                            public boolean apply(CompilationUnitTree actualTree) {
+                              return expectedTreeTypes
+                                  .get(expectedTree)
+                                  .equals(actualTreeTypes.get(actualTree));
+                            }
+                          });
+                    }
+                  });
 
       for (Map.Entry<? extends CompilationUnitTree, Optional<? extends CompilationUnitTree>>
-      matchedTreePair : matchedTrees.entrySet()) {
+          matchedTreePair : matchedTrees.entrySet()) {
         final CompilationUnitTree expectedTree = matchedTreePair.getKey();
         if (!matchedTreePair.getValue().isPresent()) {
-          failNoCandidates(expectedTreeTypes.get(expectedTree), expectedTree,
-              actualTreeTypes, actualTrees);
+          failNoCandidates(
+              expectedTreeTypes.get(expectedTree), expectedTree, actualTreeTypes, actualTrees);
         } else {
           CompilationUnitTree actualTree = matchedTreePair.getValue().get();
           TreeDifference treeDifference = TreeDiffer.diffCompilationUnits(expectedTree, actualTree);
           if (!treeDifference.isEmpty()) {
-            String diffReport = treeDifference.getDiffReport(
-                new TreeContext(expectedTree, expectedResult.trees()),
-                new TreeContext(actualTree, actualResult.trees()));
+            String diffReport =
+                treeDifference.getDiffReport(
+                    new TreeContext(expectedTree, expectedResult.trees()),
+                    new TreeContext(actualTree, actualResult.trees()));
             failWithCandidate(expectedTree.getSourceFile(), actualTree.getSourceFile(), diffReport);
           }
         }
@@ -202,62 +212,74 @@ public final class JavaSourcesSubject
     }
 
     /** Called when the {@code generatesSources()} verb fails with no diff candidates. */
-    private void failNoCandidates(ImmutableSet<String> expectedTypes,
+    private void failNoCandidates(
+        ImmutableSet<String> expectedTypes,
         CompilationUnitTree expectedTree,
         final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> actualTypes,
         FluentIterable<? extends CompilationUnitTree> actualTrees) {
-      String generatedTypesReport = Joiner.on('\n').join(
-          actualTrees.transform(new Function<CompilationUnitTree, String>() {
-                @Override public String apply(CompilationUnitTree generated) {
-                  return String.format("- %s in <%s>",
-                      actualTypes.get(generated),
-                      generated.getSourceFile().toUri().getPath());
-                }
-              })
-          .toList());
-      failureStrategy.fail(Joiner.on('\n').join(
-          "",
-          "An expected source declared one or more top-level types that were not present.",
-          "",
-          String.format("Expected top-level types: <%s>", expectedTypes),
-          String.format("Declared by expected file: <%s>",
-              expectedTree.getSourceFile().toUri().getPath()),
-          "",
-          "The top-level types that were present are as follows: ",
-          "",
-          generatedTypesReport,
-          ""));
+      String generatedTypesReport =
+          Joiner.on('\n')
+              .join(
+                  actualTrees
+                      .transform(
+                          new Function<CompilationUnitTree, String>() {
+                            @Override
+                            public String apply(CompilationUnitTree generated) {
+                              return String.format(
+                                  "- %s in <%s>",
+                                  actualTypes.get(generated),
+                                  generated.getSourceFile().toUri().getPath());
+                            }
+                          })
+                      .toList());
+      failureStrategy.fail(
+          Joiner.on('\n')
+              .join(
+                  "",
+                  "An expected source declared one or more top-level types that were not present.",
+                  "",
+                  String.format("Expected top-level types: <%s>", expectedTypes),
+                  String.format(
+                      "Declared by expected file: <%s>",
+                      expectedTree.getSourceFile().toUri().getPath()),
+                  "",
+                  "The top-level types that were present are as follows: ",
+                  "",
+                  generatedTypesReport,
+                  ""));
     }
 
     /** Called when the {@code generatesSources()} verb fails with a diff candidate. */
-    private void failWithCandidate(JavaFileObject expectedSource,
-        JavaFileObject actualSource, String diffReport) {
+    private void failWithCandidate(
+        JavaFileObject expectedSource, JavaFileObject actualSource, String diffReport) {
       try {
-        failureStrategy.fail(Joiner.on('\n').join(
-            "",
-            "Source declared the same top-level types of an expected source, but",
-            "didn't match exactly.",
-            "",
-            String.format("Expected file: <%s>", expectedSource.toUri().getPath()),
-            String.format("Actual file: <%s>", actualSource.toUri().getPath()),
-            "",
-            "Diffs:",
-            "======",
-            "",
-            diffReport,
-            "",
-            "Expected Source: ",
-            "================",
-            "",
-            expectedSource.getCharContent(false).toString(),
-            "",
-            "Actual Source:",
-            "=================",
-            "",
-            actualSource.getCharContent(false).toString()));
+        failureStrategy.fail(
+            Joiner.on('\n')
+                .join(
+                    "",
+                    "Source declared the same top-level types of an expected source, but",
+                    "didn't match exactly.",
+                    "",
+                    String.format("Expected file: <%s>", expectedSource.toUri().getPath()),
+                    String.format("Actual file: <%s>", actualSource.toUri().getPath()),
+                    "",
+                    "Diffs:",
+                    "======",
+                    "",
+                    diffReport,
+                    "",
+                    "Expected Source: ",
+                    "================",
+                    "",
+                    expectedSource.getCharContent(false).toString(),
+                    "",
+                    "Actual Source:",
+                    "=================",
+                    "",
+                    actualSource.getCharContent(false).toString()));
       } catch (IOException e) {
-        throw new IllegalStateException("Couldn't read from JavaFileObject when it was already "
-            + "in memory.", e);
+        throw new IllegalStateException(
+            "Couldn't read from JavaFileObject when it was already " + "in memory.", e);
       }
     }
 
@@ -355,9 +377,7 @@ public final class JavaSourcesSubject
           check().about(compilations()).that(compilation).hadErrorContaining(messageFragment));
     }
 
-    /**
-     * Returns this object, cast to {@code T}.
-     */
+    /** Returns this object, cast to {@code T}. */
     @SuppressWarnings("unchecked")
     protected final T thisObject() {
       return (T) this;
@@ -408,8 +428,8 @@ public final class JavaSourcesSubject
   }
 
   /**
-   * Base implementation of {@link GeneratedPredicateClause GeneratedPredicateClause<T>} and
-   * {@link ChainingClause ChainingClause<GeneratedPredicateClause<T>>}.
+   * Base implementation of {@link GeneratedPredicateClause GeneratedPredicateClause<T>} and {@link
+   * ChainingClause ChainingClause<GeneratedPredicateClause<T>>}.
    *
    * @param T the type parameter to {@link GeneratedPredicateClause}. {@code this} must be an
    *     instance of {@code T}.
@@ -434,8 +454,8 @@ public final class JavaSourcesSubject
     public T generatesFiles(JavaFileObject first, JavaFileObject... rest) {
       for (JavaFileObject expected : Lists.asList(first, rest)) {
         if (!wasGenerated(expected)) {
-          failureStrategy.fail("Did not find a generated file corresponding to "
-              + expected.getName());
+          failureStrategy.fail(
+              "Did not find a generated file corresponding to " + expected.getName());
         }
       }
       return thisObject();
@@ -531,21 +551,20 @@ public final class JavaSourcesSubject
   public static JavaSourcesSubject assertThat(
       JavaFileObject javaFileObject, JavaFileObject... javaFileObjects) {
     return assertAbout(javaSources())
-        .that(ImmutableList.<JavaFileObject>builder()
-            .add(javaFileObject)
-            .add(javaFileObjects)
-            .build());
+        .that(
+            ImmutableList.<JavaFileObject>builder()
+                .add(javaFileObject)
+                .add(javaFileObjects)
+                .build());
   }
 
-  public static final class SingleSourceAdapter
-      extends Subject<SingleSourceAdapter, JavaFileObject>
+  public static final class SingleSourceAdapter extends Subject<SingleSourceAdapter, JavaFileObject>
       implements CompileTester, ProcessedCompileTesterFactory {
     private final JavaSourcesSubject delegate;
 
     SingleSourceAdapter(FailureStrategy failureStrategy, JavaFileObject subject) {
       super(failureStrategy, subject);
-      this.delegate =
-          new JavaSourcesSubject(failureStrategy, ImmutableList.of(subject));
+      this.delegate = new JavaSourcesSubject(failureStrategy, ImmutableList.of(subject));
     }
 
     @Override

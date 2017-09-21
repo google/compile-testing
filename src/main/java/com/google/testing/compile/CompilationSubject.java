@@ -320,6 +320,10 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
         StandardLocation.SOURCE_OUTPUT, qualifiedName.replaceAll("\\.", "/") + ".java");
   }
 
+  private static final JavaFileObject ALREADY_FAILED =
+      JavaFileObjects.forSourceLines(
+          "compile.Failure", "package compile;", "", "final class Failure {}");
+
   private JavaFileObjectSubject checkGeneratedFile(
       Optional<JavaFileObject> generatedFile, Location location, String format, Object... args) {
     if (!generatedFile.isPresent()) {
@@ -332,6 +336,7 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
         }
       }
       fail(builder.toString());
+      return ignoreCheck().about(javaFileObjects()).that(ALREADY_FAILED);
     }
     return check().about(javaFileObjects()).that(generatedFile.get());
   }
@@ -445,7 +450,7 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
       }
       return lines;
     }
-    
+
     /**
      * Returns a {@link Collector} that lists the file lines numbered by the input stream (1-based).
      */

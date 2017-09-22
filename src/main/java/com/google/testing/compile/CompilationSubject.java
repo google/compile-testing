@@ -77,7 +77,7 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
   /** Asserts that the compilation succeeded. */
   public void succeeded() {
     if (actual().status().equals(FAILURE)) {
-      failureStrategy.fail(
+      failWithRawMessage(
           actual().describeFailureDiagnostics() + actual().describeGeneratedSourceFiles());
     }
   }
@@ -91,7 +91,7 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
   /** Asserts that the compilation failed. */
   public void failed() {
     if (actual().status().equals(SUCCESS)) {
-      failureStrategy.fail(
+      failWithRawMessage(
           "Compilation was expected to fail, but contained no errors.\n\n"
               + actual().describeGeneratedSourceFiles());
     }
@@ -172,7 +172,7 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
         actual().diagnosticsOfKind(kind, more);
     int actualCount = size(diagnostics);
     if (actualCount != expectedCount) {
-      failureStrategy.fail(
+      failWithRawMessage(
           messageListing(
               diagnostics,
               "Expected %d %s, but found the following %d %s:",
@@ -284,7 +284,7 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
             .filter(diagnostic -> expectedPattern.matcher(diagnostic.getMessage(null)).find())
             .collect(toImmutableList());
     if (diagnosticsWithMessage.isEmpty()) {
-      failureStrategy.fail(
+      failWithRawMessage(
           messageListing(diagnosticsOfKind, "Expected %s, but only found:", expectedDiagnostic));
     }
     return diagnosticsWithMessage;
@@ -376,7 +376,7 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
     }
 
     protected void failExpectingMatchingDiagnostic(String format, Object... args) {
-      failureStrategy.fail(
+      failWithRawMessage(
           new StringBuilder("Expected ")
               .append(expectedDiagnostic)
               .append(String.format(format, args))

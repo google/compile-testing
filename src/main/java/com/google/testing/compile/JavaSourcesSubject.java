@@ -136,7 +136,7 @@ public final class JavaSourcesSubject
     @Override
     public void parsesAs(JavaFileObject first, JavaFileObject... rest) {
       if (Iterables.isEmpty(actual())) {
-        failureStrategy.fail(
+        failWithRawMessage(
             "Compilation generated no additional source files, though some were expected.");
         return;
       }
@@ -149,7 +149,7 @@ public final class JavaSourcesSubject
           message.append('\n');
           message.append(error);
         }
-        failureStrategy.fail(message.toString());
+        failWithRawMessage(message.toString());
         return;
       }
       final ParseResult expectedResult = Parser.parse(Lists.asList(first, rest));
@@ -232,7 +232,7 @@ public final class JavaSourcesSubject
                             }
                           })
                       .toList());
-      failureStrategy.fail(
+      failWithRawMessage(
           Joiner.on('\n')
               .join(
                   "",
@@ -253,7 +253,7 @@ public final class JavaSourcesSubject
     private void failWithCandidate(
         JavaFileObject expectedSource, JavaFileObject actualSource, String diffReport) {
       try {
-        failureStrategy.fail(
+        failWithRawMessage(
             Joiner.on('\n')
                 .join(
                     "",
@@ -444,7 +444,7 @@ public final class JavaSourcesSubject
     @CanIgnoreReturnValue
     @Override
     public T generatesSources(JavaFileObject first, JavaFileObject... rest) {
-      new JavaSourcesSubject(failureStrategy, compilation.generatedSourceFiles())
+      check().about(javaSources()).that(compilation.generatedSourceFiles())
           .parsesAs(first, rest);
       return thisObject();
     }
@@ -454,7 +454,7 @@ public final class JavaSourcesSubject
     public T generatesFiles(JavaFileObject first, JavaFileObject... rest) {
       for (JavaFileObject expected : Lists.asList(first, rest)) {
         if (!wasGenerated(expected)) {
-          failureStrategy.fail(
+          failWithRawMessage(
               "Did not find a generated file corresponding to " + expected.getName());
         }
       }
@@ -564,7 +564,7 @@ public final class JavaSourcesSubject
 
     SingleSourceAdapter(FailureStrategy failureStrategy, JavaFileObject subject) {
       super(failureStrategy, subject);
-      this.delegate = new JavaSourcesSubject(failureStrategy, ImmutableList.of(subject));
+      this.delegate = check().about(javaSources()).that(ImmutableList.of(subject));
     }
 
     @Override

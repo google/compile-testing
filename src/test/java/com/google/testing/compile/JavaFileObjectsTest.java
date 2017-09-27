@@ -20,7 +20,6 @@ import static javax.tools.JavaFileObject.Kind.CLASS;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
-import java.net.URI;
 import javax.tools.JavaFileObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -35,11 +34,14 @@ import org.junit.runners.JUnit4;
 public class JavaFileObjectsTest {
   @Test
   public void forResource_inJarFile() {
-    JavaFileObject resourceInJar = JavaFileObjects.forResource("java/lang/Object.class");
+    JavaFileObject resourceInJar =
+        JavaFileObjects.forResource("com/google/testing/compile/JavaFileObjectsTest.class");
     assertThat(resourceInJar.getKind()).isEqualTo(CLASS);
-    assertThat(resourceInJar.toUri()).isEqualTo(URI.create("/java/lang/Object.class"));
-    assertThat(resourceInJar.getName()).isEqualTo("/java/lang/Object.class");
-    assertThat(resourceInJar.isNameCompatible("Object", CLASS)).isTrue();
+    assertThat(resourceInJar.toUri().getPath())
+        .endsWith("/com/google/testing/compile/JavaFileObjectsTest.class");
+    assertThat(resourceInJar.getName())
+        .endsWith("/com/google/testing/compile/JavaFileObjectsTest.class");
+    assertThat(resourceInJar.isNameCompatible("JavaFileObjectsTest", CLASS)).isTrue();
   }
 
   @Test public void forSourceLines() throws IOException {

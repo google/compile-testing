@@ -15,15 +15,15 @@
  */
 package com.google.testing.compile;
 
-import com.google.common.truth.FailureStrategy;
-import com.google.common.truth.SubjectFactory;
+import com.google.common.truth.FailureMetadata;
+import com.google.common.truth.Subject;
 import com.google.common.truth.Truth;
 
 /** A {@link Truth} subject factory for a {@link Compilation}. */
-final class CompilationSubjectFactory extends SubjectFactory<CompilationSubject, Compilation> {
+final class CompilationSubjectFactory implements Subject.Factory<CompilationSubject, Compilation> {
 
   @Override
-  public CompilationSubject getSubject(FailureStrategy fs, Compilation that) {
-    return new CompilationSubject(fs, that);
+  public CompilationSubject createSubject(FailureMetadata failureMetadata, Compilation that) {
+    return new CompilationSubject(failureMetadata, that);
   }
 }

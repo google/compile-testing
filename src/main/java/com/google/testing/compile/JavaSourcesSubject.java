@@ -32,7 +32,7 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.io.ByteSource;
-import com.google.common.truth.FailureStrategy;
+import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.testing.compile.CompilationSubject.DiagnosticAtColumn;
@@ -66,8 +66,8 @@ public final class JavaSourcesSubject
   private final List<String> options = new ArrayList<String>(Arrays.asList("-Xlint"));
   @Nullable private ClassLoader classLoader;
 
-  JavaSourcesSubject(FailureStrategy failureStrategy, Iterable<? extends JavaFileObject> subject) {
-    super(failureStrategy, subject);
+  JavaSourcesSubject(FailureMetadata failureMetadata, Iterable<? extends JavaFileObject> subject) {
+    super(failureMetadata, subject);
   }
 
   @Override
@@ -562,8 +562,8 @@ public final class JavaSourcesSubject
       implements CompileTester, ProcessedCompileTesterFactory {
     private final JavaSourcesSubject delegate;
 
-    SingleSourceAdapter(FailureStrategy failureStrategy, JavaFileObject subject) {
-      super(failureStrategy, subject);
+    SingleSourceAdapter(FailureMetadata failureMetadata, JavaFileObject subject) {
+      super(failureMetadata, subject);
       this.delegate = check().about(javaSources()).that(ImmutableList.of(subject));
     }
 

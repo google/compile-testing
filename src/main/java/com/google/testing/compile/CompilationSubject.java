@@ -35,9 +35,8 @@ import static javax.tools.Diagnostic.Kind.WARNING;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
-import com.google.common.truth.FailureStrategy;
+import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
-import com.google.common.truth.SubjectFactory;
 import com.google.common.truth.Truth;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.io.IOException;
@@ -57,11 +56,11 @@ import javax.tools.StandardLocation;
 /** A {@link Truth} subject for a {@link Compilation}. */
 public final class CompilationSubject extends Subject<CompilationSubject, Compilation> {
 
-  private static final SubjectFactory<CompilationSubject, Compilation> FACTORY =
+  private static final Subject.Factory<CompilationSubject, Compilation> FACTORY =
       new CompilationSubjectFactory();
 
-  /** Returns a {@link SubjectFactory} for a {@link Compilation}. */
-  public static SubjectFactory<CompilationSubject, Compilation> compilations() {
+  /** Returns a {@link Subject.Factory} for a {@link Compilation}. */
+  public static Subject.Factory<CompilationSubject, Compilation> compilations() {
     return FACTORY;
   }
 
@@ -70,8 +69,8 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
     return assertAbout(compilations()).that(actual);
   }
 
-  CompilationSubject(FailureStrategy failureStrategy, Compilation actual) {
-    super(failureStrategy, actual);
+  CompilationSubject(FailureMetadata failureMetadata, Compilation actual) {
+    super(failureMetadata, actual);
   }
 
   /** Asserts that the compilation succeeded. */

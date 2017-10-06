@@ -15,19 +15,19 @@
  */
 package com.google.testing.compile;
 
-import com.google.common.truth.FailureStrategy;
-import com.google.common.truth.SubjectFactory;
+import com.google.common.truth.FailureMetadata;
+import com.google.common.truth.Subject;
 
 import javax.tools.JavaFileObject;
 
 /**
- * A <a href="https://github.com/truth0/truth">Truth</a> {@link SubjectFactory} for creating
+ * A <a href="https://github.com/truth0/truth">Truth</a> {@link Subject.Factory} for creating
  * {@link JavaSourcesSubject} instances.
  *
  * @author Gregory Kick
  */
 public final class JavaSourcesSubjectFactory
-    extends SubjectFactory<JavaSourcesSubject, Iterable<? extends JavaFileObject>> {
+    implements Subject.Factory<JavaSourcesSubject, Iterable<? extends JavaFileObject>> {
   public static JavaSourcesSubjectFactory javaSources() {
     return new JavaSourcesSubjectFactory();
   }
@@ -35,8 +35,8 @@ public final class JavaSourcesSubjectFactory
   private JavaSourcesSubjectFactory() {}
 
   @Override
-  public JavaSourcesSubject getSubject(FailureStrategy failureStrategy,
+  public JavaSourcesSubject createSubject(FailureMetadata failureMetadata,
       Iterable<? extends JavaFileObject> subject) {
-    return new JavaSourcesSubject(failureStrategy, subject);
+    return new JavaSourcesSubject(failureMetadata, subject);
   }
 }

@@ -24,10 +24,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
-import com.google.common.truth.FailureStrategy;
+import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.StringSubject;
 import com.google.common.truth.Subject;
-import com.google.common.truth.SubjectFactory;
 import com.google.testing.compile.Parser.ParseResult;
 import com.sun.source.tree.CompilationUnitTree;
 import java.io.IOException;
@@ -38,11 +37,11 @@ import javax.tools.JavaFileObject;
 /** Assertions about {@link JavaFileObject}s. */
 public final class JavaFileObjectSubject extends Subject<JavaFileObjectSubject, JavaFileObject> {
 
-  private static final SubjectFactory<JavaFileObjectSubject, JavaFileObject> FACTORY =
+  private static final Subject.Factory<JavaFileObjectSubject, JavaFileObject> FACTORY =
       new JavaFileObjectSubjectFactory();
 
-  /** Returns a {@link SubjectFactory} for {@link JavaFileObjectSubject}s. */
-  public static SubjectFactory<JavaFileObjectSubject, JavaFileObject> javaFileObjects() {
+  /** Returns a {@link Subject.Factory} for {@link JavaFileObjectSubject}s. */
+  public static Subject.Factory<JavaFileObjectSubject, JavaFileObject> javaFileObjects() {
     return FACTORY;
   }
 
@@ -51,8 +50,8 @@ public final class JavaFileObjectSubject extends Subject<JavaFileObjectSubject, 
     return assertAbout(FACTORY).that(actual);
   }
 
-  JavaFileObjectSubject(FailureStrategy failureStrategy, JavaFileObject actual) {
-    super(failureStrategy, actual);
+  JavaFileObjectSubject(FailureMetadata failureMetadata, JavaFileObject actual) {
+    super(failureMetadata, actual);
   }
 
   @Override

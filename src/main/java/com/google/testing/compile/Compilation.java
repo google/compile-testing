@@ -24,12 +24,20 @@ import static javax.tools.Diagnostic.Kind.MANDATORY_WARNING;
 import static javax.tools.Diagnostic.Kind.NOTE;
 import static javax.tools.Diagnostic.Kind.WARNING;
 import static javax.tools.JavaFileObject.Kind.CLASS;
+import static javax.tools.StandardLocation.CLASS_OUTPUT;
 import static javax.tools.StandardLocation.SOURCE_OUTPUT;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
+import com.google.common.io.ByteStreams;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
+import java.net.URLConnection;
+import java.net.URLStreamHandler;
 import java.util.Optional;
 import java.util.stream.Collector;
 import javax.tools.Diagnostic;
@@ -201,6 +209,66 @@ public final class Compilation {
     String packageName = lastIndexOfDot == -1 ? "" : qualifiedName.substring(0, lastIndexOfDot);
     String fileName = qualifiedName.substring(lastIndexOfDot + 1) + ".java";
     return generatedFile(SOURCE_OUTPUT, packageName, fileName);
+  }
+
+  /**
+   * Returns a ClassLoader capable of loading the generated classes and resources.
+   */
+  public ClassLoader classLoader() {
+    return classLoader(ClassLoader.getSystemClassLoader());
+  }
+
+  /**
+   * Returns a ClassLoader with the supplied parent,
+   * capable of loading the generated classes and resources.
+   */
+  public ClassLoader classLoader(ClassLoader parent) {
+    return new ClassLoader(parent) {
+      @Override
+      protected Class<?> findClass(final String name) throws ClassNotFoundException {
+        String path = name.replace(".", "/").concat(".class");
+        JavaFileObject generatedClass = generatedFile(CLASS_OUTPUT, path).orElse(null);
+        if (generatedClass == null) {
+          return super.findClass(name);
+        }
+        try (InputStream is = generatedClass.openInputStream()) {
+          byte[] classBytes = ByteStreams.toByteArray(is);
+          return defineClass(name, classBytes, 0, classBytes.length);
+        } catch (IOException e) {
+          throw new ClassNotFoundException(name, e);
+        }
+      }
+
+      @Override
+      protected URL findResource(String name) {
+        JavaFileObject generatedResource = generatedFile(CLASS_OUTPUT, name).orElse(null);
+        if (generatedResource == null) {
+          return super.findResource(name);
+        }
+        try {
+          URI uri = generatedResource.toUri();
+          return new URL("compilation", "", -1, uri.getPath(), new URLStreamHandler() {
+            @Override
+            protected URLConnection openConnection(URL u) throws IOException {
+              return new URLConnection(u) {
+                @Override
+                public void connect() throws IOException {
+                  connected = true;
+                }
+
+                @Override
+                public InputStream getInputStream() throws IOException {
+                  return generatedResource.openInputStream();
+                }
+              };
+            }
+          });
+        } catch (MalformedURLException e) {
+          // Should never happen, since no validation is performed when stream handler is provided.
+          throw new RuntimeException(e);
+        }
+      }
+    };
   }
 
   @Override

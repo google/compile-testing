@@ -33,7 +33,6 @@ import com.sun.source.tree.Tree;
 import com.sun.source.util.JavacTask;
 import com.sun.source.util.TreeScanner;
 import com.sun.source.util.Trees;
-import com.sun.tools.javac.api.JavacTool;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
@@ -57,7 +56,7 @@ public final class Parser {
         new InMemoryJavaFileManager(
             compiler.getStandardFileManager(diagnosticCollector, Locale.getDefault(), UTF_8));
     JavacTask task =
-        ((JavacTool) compiler)
+        (JavacTask) compiler
             .getTask(
                 null, // explicitly use the default because old javac logs some output on stderr
                 fileManager,

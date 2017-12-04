@@ -151,4 +151,49 @@ public final class JavaFileObjectSubjectTest {
     assertThat(expected.getMessage()).contains(CLASS_WITH_FIELD.getName());
     assertThat(expected.getMessage()).contains(CLASS_WITH_FIELD.getCharContent(false));
   }
+
+  private static final JavaFileObject SAMPLE_ACTUAL_FILE_FOR_MATCHING =
+      JavaFileObjects.forSourceLines(
+          "test.SomeFile",
+          "package test;",
+          "",
+          "import pkg.AnAnnotation;",
+          "import static another.something.Special.CONSTANT;",
+          "",
+          "@AnAnnotation(with = @Some(values = {1,2,3}), and = \"a string\")",
+          "public class SomeFile {",
+          "  private static final int CONSTANT_TIMES_2 = CONSTANT * 2;",
+          "  private static final int CONSTANT_TIMES_3 = CONSTANT * 3;",
+          "  private static final int CONSTANT_TIMES_4 = CONSTANT * 4;",
+          "",
+          "  @Nullable private MaybeNull field;",
+          "",
+          "  @Inject SomeFile() {",
+          "    this.field = MaybeNull.constructorBody();",
+          "  }",
+          "",
+          "  protected int method(Parameter p, OtherParam o) {",
+          "    return CONSTANT_TIMES_4 / p.hashCode() + o.hashCode();",
+          "  }",
+          "",
+          "  public static class InnerClass {",
+          "    private static final int CONSTANT_TIMES_8 = CONSTANT_TIMES_4 * 2;",
+          "",
+          "    @Nullable private MaybeNull innerClassField;",
+          "",
+          "    @Inject",
+          "    InnerClass() {",
+          "      this.innerClassField = MaybeNull.constructorBody();",
+          "    }",
+          "",
+          "    protected int innerClassMethod(Parameter p, OtherParam o) {",
+          "      return CONSTANT_TIMES_8 / p.hashCode() + o.hashCode();",
+          "    }",
+          "  }",
+          "}");
+
+  @Test
+  public void containsElementsIn_completeMatch() {
+    assertThat(SAMPLE_ACTUAL_FILE_FOR_MATCHING).containsElementsIn(SAMPLE_ACTUAL_FILE_FOR_MATCHING);
+  }
 }

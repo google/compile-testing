@@ -15,6 +15,7 @@
   <description>Utilities for testing compilation.</description>
 
   <properties>
+    <auto-common.version>0.8</auto-common.version>
     <auto-value.version>1.5</auto-value.version>
     <guava.version>23.1-jre</guava.version>
     <truth.version>0.36</truth.version>
@@ -81,6 +82,11 @@
       <groupId>com.google.auto.value</groupId>
       <artifactId>auto-value</artifactId>
       <version>${auto-value.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.auto</groupId>
+      <artifactId>auto-common</artifactId>
+      <version>${auto-common.version}</version>
     </dependency>
   </dependencies>
   <build>

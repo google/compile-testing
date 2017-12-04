@@ -16,10 +16,17 @@
 package com.google.testing.compile;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.ImmutableSet.toImmutableSet;
 
+import com.google.auto.common.MoreTypes;
+import com.google.auto.value.AutoValue;
+import com.google.common.base.Equivalence;
+import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
 import com.google.common.base.Optional;
-
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.ArrayAccessTree;
 import com.sun.source.tree.ArrayTypeTree;
@@ -64,6 +71,7 @@ import com.sun.source.tree.SynchronizedTree;
 import com.sun.source.tree.ThrowTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.Tree.Kind;
+import com.sun.source.tree.TreeVisitor;
 import com.sun.source.tree.TryTree;
 import com.sun.source.tree.TypeCastTree;
 import com.sun.source.tree.TypeParameterTree;
@@ -73,11 +81,14 @@ import com.sun.source.tree.WhileLoopTree;
 import com.sun.source.tree.WildcardTree;
 import com.sun.source.util.SimpleTreeVisitor;
 import com.sun.source.util.TreePath;
-
+import com.sun.source.util.Trees;
+import java.util.HashSet;
 import java.util.Iterator;
-
+import java.util.Set;
 import javax.annotation.Nullable;
 import javax.lang.model.element.Name;
+import javax.lang.model.type.TypeMirror;
+import javax.tools.JavaFileObject;
 
 /**
  * A class for determining how two compilation {@code Tree}s differ from each other.
@@ -98,13 +109,37 @@ final class TreeDiffer {
   private TreeDiffer() {}
 
   /**
-   * Returns a {@code TreeDifference} describing the difference between the two
-   * {@code CompilationUnitTree}s provided.
+   * Returns a {@code TreeDifference} describing the difference between the two {@code
+   * CompilationUnitTree}s provided.
    */
-  static final TreeDifference diffCompilationUnits(@Nullable CompilationUnitTree expected,
-      @Nullable CompilationUnitTree actual) {
+  static TreeDifference diffCompilationUnits(
+      CompilationUnitTree expected, CompilationUnitTree actual) {
+    return createDiff(checkNotNull(expected), checkNotNull(actual), TreeFilter.KEEP_ALL);
+  }
+
+  /**
+   * Returns a {@code TreeDifference} describing the difference between the actual {@code
+   * CompilationUnitTree} provided and the pattern. See {@link
+   * JavaFileObjectSubject#containsElementsIn(JavaFileObject)} for more details on how the pattern
+   * is used.
+   */
+  static TreeDifference matchCompilationUnits(
+      CompilationUnitTree pattern,
+      Trees patternTrees,
+      CompilationUnitTree actual,
+      Trees actualTrees) {
+    checkNotNull(pattern);
+    checkNotNull(actual);
+    return createDiff(
+        pattern, actual, new MatchExpectedTreesFilter(pattern, patternTrees, actual, actualTrees));
+  }
+
+  private static TreeDifference createDiff(
+      @Nullable CompilationUnitTree expected,
+      @Nullable CompilationUnitTree actual,
+      TreeFilter treeFilter) {
     TreeDifference.Builder diffBuilder = new TreeDifference.Builder();
-    DiffVisitor diffVisitor = new DiffVisitor(diffBuilder);
+    DiffVisitor diffVisitor = new DiffVisitor(diffBuilder, treeFilter);
     diffVisitor.scan(expected, actual);
     return diffBuilder.build();
   }
@@ -119,8 +154,8 @@ final class TreeDiffer {
   static final TreeDifference diffSubtrees(@Nullable TreePath pathToExpected,
       @Nullable TreePath pathToActual) {
     TreeDifference.Builder diffBuilder = new TreeDifference.Builder();
-    DiffVisitor diffVisitor = new DiffVisitor(diffBuilder,
-        pathToExpected, pathToActual);
+    DiffVisitor diffVisitor =
+        new DiffVisitor(diffBuilder, TreeFilter.KEEP_ALL, pathToExpected, pathToActual);
     diffVisitor.scan(pathToExpected.getLeaf(), pathToActual.getLeaf());
     return diffBuilder.build();
   }
@@ -135,20 +170,20 @@ final class TreeDiffer {
     private TreePath actualPath;
 
     private final TreeDifference.Builder diffBuilder;
+    private final TreeFilter filter;
 
-    public DiffVisitor(TreeDifference.Builder diffBuilder) {
-      this.diffBuilder = diffBuilder;
-      expectedPath = null;
-      actualPath = null;
+    DiffVisitor(TreeDifference.Builder diffBuilder, TreeFilter filter) {
+      this(diffBuilder, filter, null, null);
     }
 
     /**
      * Constructs a DiffVisitor whose {@code TreePath}s are initialized with the paths
      * provided.
      */
-    public DiffVisitor(TreeDifference.Builder diffBuilder,
+    private DiffVisitor(TreeDifference.Builder diffBuilder, TreeFilter filter,
         TreePath pathToExpected, TreePath pathToActual) {
       this.diffBuilder = diffBuilder;
+      this.filter = filter;
       expectedPath = pathToExpected;
       actualPath = pathToActual;
     }
@@ -209,7 +244,7 @@ final class TreeDiffer {
           : (actual != null && expected.contentEquals(actual));
     }
 
-    public Void scan(@Nullable Tree expected, @Nullable Tree actual) {
+    private void scan(@Nullable Tree expected, @Nullable Tree actual) {
       if (expected == null && actual != null) {
         diffBuilder.addExtraActualNode(actualPathPlus(actual));
       } else if (expected != null && actual == null) {
@@ -217,11 +252,10 @@ final class TreeDiffer {
       } else if (actual != null && expected != null) {
         pushPathAndAccept(expected, actual);
       }
-      return null;
     }
 
-    private Void parallelScan(Iterable<? extends Tree> expecteds,
-        Iterable<? extends Tree> actuals) {
+    private void parallelScan(
+        Iterable<? extends Tree> expecteds, Iterable<? extends Tree> actuals) {
       if (expecteds != null && actuals != null) {
         Iterator<? extends Tree> expectedsIterator = expecteds.iterator();
         Iterator<? extends Tree> actualsIterator = actuals.iterator();
@@ -238,7 +272,6 @@ final class TreeDiffer {
       } else if (actuals == null && !isEmptyOrNull(expecteds)) {
         diffBuilder.addExtraExpectedNode(expectedPathPlus(expecteds.iterator().next()));
       }
-      return null;
     }
 
     private boolean isEmptyOrNull(Iterable<?> iterable) {
@@ -425,7 +458,11 @@ final class TreeDiffer {
       parallelScan(expected.getTypeParameters(), other.get().getTypeParameters());
       scan(expected.getExtendsClause(), other.get().getExtendsClause());
       parallelScan(expected.getImplementsClause(), other.get().getImplementsClause());
-      parallelScan(expected.getMembers(), other.get().getMembers());
+      parallelScan(
+          expected.getMembers(),
+          filter.filterActualMembers(
+              ImmutableList.copyOf(expected.getMembers()),
+              ImmutableList.copyOf(other.get().getMembers())));
       return null;
     }
 
@@ -776,7 +813,11 @@ final class TreeDiffer {
 
       parallelScan(expected.getPackageAnnotations(), other.get().getPackageAnnotations());
       scan(expected.getPackageName(), other.get().getPackageName());
-      parallelScan(expected.getImports(), other.get().getImports());
+      parallelScan(
+          expected.getImports(),
+          filter.filterImports(
+              ImmutableList.copyOf(expected.getImports()),
+              ImmutableList.copyOf(other.get().getImports())));
       parallelScan(expected.getTypeDecls(), other.get().getTypeDecls());
       return null;
     }
@@ -936,6 +977,7 @@ final class TreeDiffer {
       throw new UnsupportedOperationException("cannot compare unknown trees");
     }
 
+    // TODO(dpb,ronshapiro): rename this method and document which one is cast
     private <T extends Tree> Optional<T> checkTypeAndCast(T expected, Tree actual) {
       Kind expectedKind = checkNotNull(expected).getKind();
       Kind treeKind = checkNotNull(actual).getKind();
@@ -946,6 +988,177 @@ final class TreeDiffer {
       } else {
         return Optional.absent();
       }
+    }
+  }
+
+  /** Strategy for determining which {link Tree}s should be diffed in {@link DiffVisitor}. */
+  private interface TreeFilter {
+
+    /** Returns the subset of {@code actualMembers} that should be diffed by {@link DiffVisitor}. */
+    ImmutableList<Tree> filterActualMembers(
+        ImmutableList<Tree> expectedMembers, ImmutableList<Tree> actualMembers);
+
+    /** Returns the subset of {@code actualImports} that should be diffed by {@link DiffVisitor}. */
+    ImmutableList<ImportTree> filterImports(
+        ImmutableList<ImportTree> expectedImports, ImmutableList<ImportTree> actualImports);
+
+    /** A {@link TreeFilter} that doesn't filter any subtrees out of the actual source AST. */
+    TreeFilter KEEP_ALL =
+        new TreeFilter() {
+          @Override
+          public ImmutableList<Tree> filterActualMembers(
+              ImmutableList<Tree> expectedMembers, ImmutableList<Tree> actualMembers) {
+            return actualMembers;
+          }
+
+          @Override
+          public ImmutableList<ImportTree> filterImports(
+              ImmutableList<ImportTree> expectedImports, ImmutableList<ImportTree> actualImports) {
+            return actualImports;
+          }
+        };
+  }
+
+  /**
+   * A {@link TreeFilter} that ignores all {@link Tree}s that don't have a matching {@link Tree} in
+   * a pattern. For more information on what trees are filtered, see {@link
+   * JavaFileObjectSubject#containsElementsIn(JavaFileObject)}.
+   */
+  private static class MatchExpectedTreesFilter implements TreeFilter {
+    private final CompilationUnitTree pattern;
+    private final Trees patternTrees;
+    private final CompilationUnitTree actual;
+    private final Trees actualTrees;
+
+    MatchExpectedTreesFilter(
+        CompilationUnitTree pattern,
+        Trees patternTrees,
+        CompilationUnitTree actual,
+        Trees actualTrees) {
+      this.pattern = pattern;
+      this.patternTrees = patternTrees;
+      this.actual = actual;
+      this.actualTrees = actualTrees;
+    }
+
+    @Override
+    public ImmutableList<Tree> filterActualMembers(
+        ImmutableList<Tree> patternMembers, ImmutableList<Tree> actualMembers) {
+      Set<String> patternVariableNames = new HashSet<>();
+      Set<String> patternNestedTypeNames = new HashSet<>();
+      Set<MethodSignature> patternMethods = new HashSet<>();
+      for (Tree patternTree : patternMembers) {
+        patternTree.accept(
+            new SimpleTreeVisitor<Void, Void>() {
+              @Override
+              public Void visitVariable(VariableTree variable, Void p) {
+                patternVariableNames.add(variable.getName().toString());
+                return null;
+              }
+
+              @Override
+              public Void visitMethod(MethodTree method, Void p) {
+                patternMethods.add(MethodSignature.create(pattern, method, patternTrees));
+                return null;
+              }
+
+              @Override
+              public Void visitClass(ClassTree clazz, Void p) {
+                patternNestedTypeNames.add(clazz.getSimpleName().toString());
+                return null;
+              }
+            },
+            null);
+      }
+
+      ImmutableList.Builder<Tree> filteredActualTrees = ImmutableList.builder();
+      for (Tree actualTree : actualMembers) {
+        actualTree.accept(new SimpleTreeVisitor<Void, Void>(){
+          @Override
+          public Void visitVariable(VariableTree variable, Void p) {
+            if (patternVariableNames.contains(variable.getName().toString())) {
+              filteredActualTrees.add(actualTree);
+            }
+            return null;
+          }
+
+          @Override
+          public Void visitMethod(MethodTree method, Void p) {
+            if (patternMethods.contains(MethodSignature.create(actual, method, actualTrees))) {
+              filteredActualTrees.add(method);
+            }
+            return null;
+          }
+
+          @Override
+          public Void visitClass(ClassTree clazz, Void p) {
+            if (patternNestedTypeNames.contains(clazz.getSimpleName().toString())) {
+              filteredActualTrees.add(clazz);
+            }
+            return null;
+          }
+
+          @Override
+          protected Void defaultAction(Tree tree, Void p) {
+            filteredActualTrees.add(tree);
+            return null;
+          }
+        }, null);
+      }
+      return filteredActualTrees.build();
+    }
+
+    @Override
+    public ImmutableList<ImportTree> filterImports(
+        ImmutableList<ImportTree> patternImports, ImmutableList<ImportTree> actualImports) {
+      ImmutableSet<String> patternImportsAsStrings =
+          patternImports.stream().map(this::fullyQualifiedImport).collect(toImmutableSet());
+      return actualImports
+          .stream()
+          .filter(importTree -> patternImportsAsStrings.contains(fullyQualifiedImport(importTree)))
+          .collect(toImmutableList());
+    }
+
+    private String fullyQualifiedImport(ImportTree importTree) {
+      ImmutableList.Builder<Name> names = ImmutableList.builder();
+      importTree.getQualifiedIdentifier().accept(IMPORT_NAMES_ACCUMULATOR, names);
+      return Joiner.on('.').join(names.build().reverse());
+    }
+  }
+
+  private static final TreeVisitor<Void, ImmutableList.Builder<Name>> IMPORT_NAMES_ACCUMULATOR =
+      new SimpleTreeVisitor<Void, ImmutableList.Builder<Name>>() {
+        @Override
+        public Void visitMemberSelect(
+            MemberSelectTree memberSelectTree, ImmutableList.Builder<Name> names) {
+          names.add(memberSelectTree.getIdentifier());
+          return memberSelectTree.getExpression().accept(this, names);
+        }
+
+        @Override
+        public Void visitIdentifier(
+            IdentifierTree identifierTree, ImmutableList.Builder<Name> names) {
+          names.add(identifierTree.getName());
+          return null;
+        }
+      };
+
+  @AutoValue
+  abstract static class MethodSignature {
+    abstract String name();
+    abstract ImmutableList<Equivalence.Wrapper<TypeMirror>> parameterTypes();
+
+    static MethodSignature create(
+        CompilationUnitTree compilationUnitTree, MethodTree tree, Trees trees) {
+      ImmutableList.Builder<Equivalence.Wrapper<TypeMirror>> parameterTypes =
+          ImmutableList.builder();
+      for (VariableTree parameter : tree.getParameters()) {
+        parameterTypes.add(
+            MoreTypes.equivalence()
+                .wrap(trees.getTypeMirror(trees.getPath(compilationUnitTree, parameter))));
+      }
+      return new AutoValue_TreeDiffer_MethodSignature(
+          tree.getName().toString(), parameterTypes.build());
     }
   }
 }

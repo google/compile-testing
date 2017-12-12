@@ -15,7 +15,7 @@
   <description>Utilities for testing compilation.</description>
 
   <properties>
-    <auto-common.version>0.8</auto-common.version>
+    <auto-common.version>0.9</auto-common.version>
     <auto-value.version>1.5</auto-value.version>
     <guava.version>23.1-jre</guava.version>
     <truth.version>0.36</truth.version>

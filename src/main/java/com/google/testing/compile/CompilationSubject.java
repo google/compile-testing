@@ -183,11 +183,18 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
   }
 
   private static String messageListing(
-      Iterable<? extends Diagnostic<?>> diagnostics, String headingFormat, Object... formatArgs) {
+      Iterable<? extends Diagnostic<? extends JavaFileObject>> diagnostics,
+      String headingFormat,
+      Object... formatArgs) {
     StringBuilder listing =
         new StringBuilder(String.format(headingFormat, formatArgs)).append('\n');
-    for (Diagnostic<?> diagnostic : diagnostics) {
-      listing.append(diagnostic.getMessage(null)).append('\n');
+    for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics) {
+      listing.append(
+          String.format(
+              "%s:%d - %s\n",
+              sourceFileName(diagnostic),
+              diagnostic.getLineNumber(),
+              diagnostic.getMessage(null)));
     }
     return listing.toString();
   }
@@ -416,13 +423,15 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
     }
 
     private ImmutableSet<String> sourceFilesWithDiagnostics() {
-      return mapDiagnostics(
-              diagnostic ->
-                  diagnostic.getSource() == null
-                      ? "(no associated file)"
-                      : diagnostic.getSource().getName())
+      return mapDiagnostics(CompilationSubject::sourceFileName)
           .collect(toImmutableSet());
     }
+  }
+
+  private static String sourceFileName(Diagnostic<? extends JavaFileObject> diagnostic) {
+    return diagnostic.getSource() == null
+            ? "(no associated file)"
+            : diagnostic.getSource().getName();
   }
 
   /** An object that can list the lines in a file. */

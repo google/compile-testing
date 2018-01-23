@@ -21,15 +21,14 @@ import static javax.tools.ToolProvider.getSystemJavaCompiler;
 
 import com.google.auto.value.AutoValue;
 import com.google.common.base.Joiner;
+import com.google.common.base.StandardSystemProperty;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.testing.compile.Compilation.Status;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.ArrayList;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import javax.annotation.processing.Processor;
@@ -166,35 +165,33 @@ public abstract class Compiler {
   private static String getClasspathFromClassloader(ClassLoader currentClassloader) {
     ClassLoader systemClassLoader = ClassLoader.getSystemClassLoader();
 
-    // Add all URLClassloaders in the hirearchy till the system classloader.
-    List<URLClassLoader> classloaders = new ArrayList<>();
-    while(true) {
+    // Concatenate search paths from all classloaders in the hierarchy 'till the system classloader.
+    Set<String> classpaths = new LinkedHashSet<>();
+    while (true) {
+      if (currentClassloader == systemClassLoader) {
+        classpaths.add(StandardSystemProperty.JAVA_CLASS_PATH.value());
+        break;
+      }
       if (currentClassloader instanceof URLClassLoader) {
         // We only know how to extract classpaths from URLClassloaders.
-        classloaders.add((URLClassLoader) currentClassloader);
+        for (URL url : ((URLClassLoader) currentClassloader).getURLs()) {
+          if (url.getProtocol().equals("file")) {
+            classpaths.add(url.getPath());
+          } else {
+            throw new IllegalArgumentException(
+                "Given classloader consists of classpaths which are "
+                    + "unsupported for compilation.");
+          }
+        }
       } else {
-        throw new IllegalArgumentException("Classpath for compilation could not be extracted "
-            + "since given classloader is not an instance of URLClassloader");
-      }
-      if (currentClassloader == systemClassLoader) {
-        break;
+        throw new IllegalArgumentException(
+            "Classpath for compilation could not be extracted "
+                + "since given classloader is not an instance of URLClassloader");
       }
       currentClassloader = currentClassloader.getParent();
     }
 
-    Set<String> classpaths = new LinkedHashSet<>();
-    for (URLClassLoader classLoader : classloaders) {
-      for (URL url : classLoader.getURLs()) {
-        if (url.getProtocol().equals("file")) {
-          classpaths.add(url.getPath());
-        } else {
-          throw new IllegalArgumentException("Given classloader consists of classpaths which are "
-              + "unsupported for compilation.");
-        }
-      }
-    }
-
-    return Joiner.on(':').join(classpaths);
+    return Joiner.on(StandardSystemProperty.PATH_SEPARATOR.value()).join(classpaths);
   }
 
   private Compiler copy(ImmutableList<Processor> processors, ImmutableList<String> options) {

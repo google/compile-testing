@@ -15,13 +15,18 @@
  */
 package com.google.testing.compile;
 
+import static com.google.testing.compile.Compiler.compiler;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.testing.compile.Compiler.javac;
+import static com.google.testing.compile.CompilationSubject.assertThat;
 
 import com.google.common.collect.ImmutableList;
+
 import java.util.Arrays;
 import javax.annotation.processing.Processor;
 import javax.tools.JavaFileObject;
+
+import org.eclipse.jdt.internal.compiler.tool.EclipseCompiler;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -87,5 +92,12 @@ public final class CompilerTest {
     assertThat(noopProcessor1.invoked).isTrue();
     assertThat(noopProcessor2.invoked).isTrue();
     assertThat(noopProcessor3.invoked).isFalse();
+  }
+  
+  @Test
+  public void compilingWithEjcWorks() {
+	Compilation compilation = compiler(new EclipseCompiler()).compile(HELLO_WORLD);
+	  
+	assertThat(compilation).succeeded();
   }
 }

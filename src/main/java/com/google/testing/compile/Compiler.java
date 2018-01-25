@@ -24,7 +24,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.StandardSystemProperty;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.testing.compile.Compilation.Status;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -139,7 +138,7 @@ public abstract class Compiler {
                 fileManager,
                 diagnosticCollector,
                 options(),
-                ImmutableSet.<String>of(),
+                null,
                 files);
     task.setProcessors(processors());
     boolean succeeded = task.call();

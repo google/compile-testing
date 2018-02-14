@@ -16,19 +16,35 @@
 package com.google.testing.compile;
 
 import static com.google.common.truth.Truth.assertThat;
+import static com.google.testing.compile.CompilationSubject.assertThat;
 import static com.google.testing.compile.Compiler.javac;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.common.collect.ImmutableList;
+import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.Arrays;
+import java.util.Locale;
 import javax.annotation.processing.Processor;
+import javax.tools.JavaCompiler;
+import javax.tools.JavaCompiler.CompilationTask;
 import javax.tools.JavaFileObject;
+import javax.tools.StandardJavaFileManager;
+import javax.tools.StandardLocation;
+import javax.tools.ToolProvider;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /** Tests for {@link Compiler}. */
 @RunWith(JUnit4.class)
 public final class CompilerTest {
+
+  @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
   private static final JavaFileObject HELLO_WORLD = JavaFileObjects.forResource("HelloWorld.java");
 
@@ -87,5 +103,96 @@ public final class CompilerTest {
     assertThat(noopProcessor1.invoked).isTrue();
     assertThat(noopProcessor2.invoked).isTrue();
     assertThat(noopProcessor3.invoked).isFalse();
+  }
+
+  @Test
+  public void classPath_default() {
+    Compilation compilation =
+        javac()
+            .compile(
+                JavaFileObjects.forSourceLines(
+                    "Test",
+                    "import com.google.testing.compile.CompilerTest;",
+                    "class Test {",
+                    "  CompilerTest t;",
+                    "}"));
+    assertThat(compilation).succeeded();
+  }
+
+  @Test
+  public void classPath_empty() {
+    Compilation compilation =
+        javac()
+            .withClasspath(ImmutableList.of())
+            .compile(
+                JavaFileObjects.forSourceLines(
+                    "Test",
+                    "import com.google.testing.compile.CompilerTest;",
+                    "class Test {",
+                    "  CompilerTest t;",
+                    "}"));
+    assertThat(compilation).hadErrorContaining("com.google.testing.compile does not exist");
+  }
+
+  /** Sets up a jar containing a single class 'Lib', for use in classpath tests. */
+  private File compileTestLib() throws IOException {
+    File lib = temporaryFolder.newFolder("tmp");
+    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+    StandardJavaFileManager fileManager =
+        compiler.getStandardFileManager(/* diagnosticListener= */ null, Locale.getDefault(), UTF_8);
+    fileManager.setLocation(StandardLocation.CLASS_OUTPUT, ImmutableList.of(lib));
+    CompilationTask task =
+        compiler.getTask(
+            /* out= */ null,
+            fileManager,
+            /* diagnosticListener= */ null,
+            /* options= */ ImmutableList.of(),
+            /* classes= */ null,
+            ImmutableList.of(JavaFileObjects.forSourceLines("Lib", "class Lib {}")));
+    assertThat(task.call()).isTrue();
+    return lib;
+  }
+
+  @Test
+  public void classPath_customFiles() throws Exception {
+    File lib = compileTestLib();
+    // compile with only 'Lib' on the classpath
+    Compilation compilation =
+        javac()
+            .withClasspath(ImmutableList.of(lib))
+            .withOptions("-verbose")
+            .compile(
+                JavaFileObjects.forSourceLines(
+                    "Test", //
+                    "class Test {",
+                    "  Lib lib;",
+                    "}"));
+    assertThat(compilation).succeeded();
+  }
+
+  @Test
+  public void classPath_empty_urlClassLoader() {
+    Compilation compilation =
+        javac()
+            .withClasspathFrom(new URLClassLoader(new URL[0], Compiler.platformClassLoader))
+            .compile(
+                JavaFileObjects.forSourceLines(
+                    "Test",
+                    "import com.google.testing.compile.CompilerTest;",
+                    "class Test {",
+                    "  CompilerTest t;",
+                    "}"));
+    assertThat(compilation).hadErrorContaining("com.google.testing.compile does not exist");
+  }
+
+  @Test
+  public void classPath_customFiles_urlClassLoader() throws Exception {
+    File lib = compileTestLib();
+    Compilation compilation =
+        javac()
+            .withClasspathFrom(new URLClassLoader(new URL[] {lib.toURI().toURL()}))
+            .withOptions("-verbose")
+            .compile(JavaFileObjects.forSourceLines("Test", "class Test {", "  Lib lib;", "}"));
+    assertThat(compilation).succeeded();
   }
 }

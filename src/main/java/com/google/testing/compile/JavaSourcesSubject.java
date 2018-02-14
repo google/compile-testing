@@ -40,6 +40,7 @@ import com.google.testing.compile.CompilationSubject.DiagnosticInFile;
 import com.google.testing.compile.CompilationSubject.DiagnosticOnLine;
 import com.google.testing.compile.Parser.ParseResult;
 import com.sun.source.tree.CompilationUnitTree;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -65,6 +66,7 @@ public final class JavaSourcesSubject
     implements CompileTester, ProcessedCompileTesterFactory {
   private final List<String> options = new ArrayList<String>(Arrays.asList("-Xlint"));
   @Nullable private ClassLoader classLoader;
+  @Nullable private ImmutableList<File> classPath;
 
   JavaSourcesSubject(FailureMetadata failureMetadata, Iterable<? extends JavaFileObject> subject) {
     super(failureMetadata, subject);
@@ -82,9 +84,21 @@ public final class JavaSourcesSubject
     return this;
   }
 
+  /**
+   * @deprecated prefer {@link #withClasspath(Iterable)}. This method only supports {@link
+   *     URLClassLoader} and the default system classloader, and {@link File}s are usually a more
+   *     natural way to expression compilation classpaths than class loaders.
+   */
+  @Deprecated
   @Override
   public JavaSourcesSubject withClasspathFrom(ClassLoader classLoader) {
     this.classLoader = classLoader;
+    return this;
+  }
+
+  @Override
+  public JavaSourcesSubject withClasspath(Iterable<File> classPath) {
+    this.classPath = ImmutableList.copyOf(classPath);
     return this;
   }
 
@@ -311,6 +325,9 @@ public final class JavaSourcesSubject
       Compiler compiler = javac().withProcessors(processors).withOptions(options);
       if (classLoader != null) {
         compiler = compiler.withClasspathFrom(classLoader);
+      }
+      if (classPath != null) {
+        compiler = compiler.withClasspath(classPath);
       }
       return compiler.compile(actual());
     }
@@ -577,9 +594,20 @@ public final class JavaSourcesSubject
       return delegate.withCompilerOptions(options);
     }
 
+    /**
+     * @deprecated prefer {@link #withClasspath(Iterable)}. This method only supports {@link
+     *     URLClassLoader} and the default system classloader, and {@link File}s are usually a more
+     *     natural way to expression compilation classpaths than class loaders.
+     */
+    @Deprecated
     @Override
     public JavaSourcesSubject withClasspathFrom(ClassLoader classLoader) {
       return delegate.withClasspathFrom(classLoader);
+    }
+
+    @Override
+    public JavaSourcesSubject withClasspath(Iterable<File> classPath) {
+      return delegate.withClasspath(classPath);
     }
 
     @Override

@@ -34,11 +34,10 @@ import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.Map.Entry;
 import javax.tools.FileObject;
-import javax.tools.ForwardingJavaFileManager;
-import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
 import javax.tools.SimpleJavaFileObject;
+import javax.tools.StandardJavaFileManager;
 import javax.tools.StandardLocation;
 
 /**
@@ -47,7 +46,7 @@ import javax.tools.StandardLocation;
  * @author Gregory Kick
  */
 // TODO(gak): under java 1.7 this could all be done with a PathFileManager
-final class InMemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileManager> {
+final class InMemoryJavaFileManager extends ForwardingStandardJavaFileManager {
   private final LoadingCache<URI, JavaFileObject> inMemoryFileObjects =
       CacheBuilder.newBuilder().build(new CacheLoader<URI, JavaFileObject>() {
         @Override
@@ -56,7 +55,7 @@ final class InMemoryJavaFileManager extends ForwardingJavaFileManager<JavaFileMa
         }
       });
 
-  InMemoryJavaFileManager(JavaFileManager fileManager) {
+  InMemoryJavaFileManager(StandardJavaFileManager fileManager) {
     super(fileManager);
   }
 

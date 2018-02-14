@@ -16,29 +16,39 @@
 package com.google.testing.compile;
 
 import static com.google.common.base.Functions.toStringFunction;
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static javax.tools.ToolProvider.getSystemJavaCompiler;
 
 import com.google.auto.value.AutoValue;
-import com.google.common.base.Joiner;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Splitter;
 import com.google.common.base.StandardSystemProperty;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Iterables;
 import com.google.testing.compile.Compilation.Status;
+import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import javax.annotation.processing.Processor;
 import javax.tools.DiagnosticCollector;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaCompiler.CompilationTask;
 import javax.tools.JavaFileObject;
+import javax.tools.StandardLocation;
 
 /** An object that can {@link #compile} Java source files. */
 @AutoValue
+// clashes with java.lang.Compiler (which is deprecated for removal in 9)
+@SuppressWarnings("JavaLangClash")
 public abstract class Compiler {
 
   /** Returns the {@code javac} compiler. */
@@ -48,7 +58,8 @@ public abstract class Compiler {
 
   /** Returns a {@link Compiler} that uses a given {@link JavaCompiler} instance. */
   public static Compiler compiler(JavaCompiler javaCompiler) {
-    return new AutoValue_Compiler(javaCompiler, ImmutableList.of(), ImmutableList.of());
+    return new AutoValue_Compiler(
+        javaCompiler, ImmutableList.of(), ImmutableList.of(), Optional.empty());
   }
 
   abstract JavaCompiler javaCompiler();
@@ -58,6 +69,9 @@ public abstract class Compiler {
 
   /** The options passed to the compiler. */
   public abstract ImmutableList<String> options();
+
+  /** The compilation class path. If not present, the system class path is used. */
+  public abstract Optional<ImmutableList<File>> classPath();
 
   /**
    * Uses annotation processors during compilation. These replace any previously specified.
@@ -78,7 +92,7 @@ public abstract class Compiler {
    * @return a new instance with the same options and the given processors
    */
   public final Compiler withProcessors(Iterable<? extends Processor> processors) {
-    return copy(ImmutableList.copyOf(processors), options());
+    return copy(ImmutableList.copyOf(processors), options(), classPath());
   }
 
   /**
@@ -96,21 +110,30 @@ public abstract class Compiler {
    * @return a new instance with the same processors and the given options
    */
   public final Compiler withOptions(Iterable<?> options) {
-    return copy(processors(), FluentIterable.from(options).transform(toStringFunction()).toList());
+    return copy(
+        processors(),
+        FluentIterable.from(options).transform(toStringFunction()).toList(),
+        classPath());
   }
 
   /**
-   * Uses the classpath from the passed on classloader (and its parents) for the compilation
-   * instead of the system classpath.
+   * Uses the classpath from the passed on classloader (and its parents) for the compilation instead
+   * of the system classpath.
    *
    * @throws IllegalArgumentException if the given classloader had classpaths which we could not
    *     determine or use for compilation.
+   * @deprecated prefer {@link #withClasspath(Iterable)}. This method only supports {@link
+   *     URLClassLoader} and the default system classloader, and {@link File}s are usually a more
+   *     natural way to expression compilation classpaths than class loaders.
    */
+  @Deprecated
   public final Compiler withClasspathFrom(ClassLoader classloader) {
-    String classpath = getClasspathFromClassloader(classloader);
-    ImmutableList<String> options =
-        ImmutableList.<String>builder().add("-classpath").add(classpath).addAll(options()).build();
-    return copy(processors(), options);
+    return copy(processors(), options(), Optional.of(getClasspathFromClassloader(classloader)));
+  }
+
+  /** Uses the given classpath for the compilation instead of the system classpath. */
+  public final Compiler withClasspath(Iterable<File> classPath) {
+    return copy(processors(), options(), Optional.of(ImmutableList.copyOf(classPath)));
   }
 
   /**
@@ -132,6 +155,16 @@ public abstract class Compiler {
     InMemoryJavaFileManager fileManager =
         new InMemoryJavaFileManager(
             javaCompiler().getStandardFileManager(diagnosticCollector, Locale.getDefault(), UTF_8));
+    classPath()
+        .ifPresent(
+            classPath -> {
+              try {
+                fileManager.setLocation(StandardLocation.CLASS_PATH, classPath);
+              } catch (IOException e) {
+                // impossible by specification
+                throw new UncheckedIOException(e);
+              }
+            });
     CompilationTask task =
         javaCompiler()
             .getTask(
@@ -156,20 +189,38 @@ public abstract class Compiler {
     return compilation;
   }
 
+  @VisibleForTesting static final ClassLoader platformClassLoader = getPlatformClassLoader();
+
+  private static ClassLoader getPlatformClassLoader() {
+    try {
+      // JDK >= 9
+      return (ClassLoader) ClassLoader.class.getMethod("getPlatformClassLoader").invoke(null);
+    } catch (ReflectiveOperationException e) {
+      // Java <= 8
+      return null;
+    }
+  }
+
   /**
    * Returns the current classpaths of the given classloader including its parents.
    *
    * @throws IllegalArgumentException if the given classloader had classpaths which we could not
    *     determine or use for compilation.
    */
-  private static String getClasspathFromClassloader(ClassLoader currentClassloader) {
+  private static ImmutableList<File> getClasspathFromClassloader(ClassLoader currentClassloader) {
     ClassLoader systemClassLoader = ClassLoader.getSystemClassLoader();
 
     // Concatenate search paths from all classloaders in the hierarchy 'till the system classloader.
     Set<String> classpaths = new LinkedHashSet<>();
     while (true) {
       if (currentClassloader == systemClassLoader) {
-        classpaths.add(StandardSystemProperty.JAVA_CLASS_PATH.value());
+        Iterables.addAll(
+            classpaths,
+            Splitter.on(StandardSystemProperty.PATH_SEPARATOR.value())
+                .split(StandardSystemProperty.JAVA_CLASS_PATH.value()));
+        break;
+      }
+      if (currentClassloader == platformClassLoader) {
         break;
       }
       if (currentClassloader instanceof URLClassLoader) {
@@ -185,16 +236,21 @@ public abstract class Compiler {
         }
       } else {
         throw new IllegalArgumentException(
-            "Classpath for compilation could not be extracted "
-                + "since given classloader is not an instance of URLClassloader");
+            String.format(
+                "Classpath for compilation could not be extracted "
+                    + "since %s is not an instance of URLClassloader",
+                currentClassloader));
       }
       currentClassloader = currentClassloader.getParent();
     }
 
-    return Joiner.on(StandardSystemProperty.PATH_SEPARATOR.value()).join(classpaths);
+    return classpaths.stream().map(File::new).collect(toImmutableList());
   }
 
-  private Compiler copy(ImmutableList<Processor> processors, ImmutableList<String> options) {
-    return new AutoValue_Compiler(javaCompiler(), processors, options);
+  private Compiler copy(
+      ImmutableList<Processor> processors,
+      ImmutableList<String> options,
+      Optional<ImmutableList<File>> classPath) {
+    return new AutoValue_Compiler(javaCompiler(), processors, options, classPath);
   }
 }

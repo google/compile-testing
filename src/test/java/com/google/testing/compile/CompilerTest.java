@@ -19,6 +19,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static com.google.testing.compile.CompilationSubject.assertThat;
 import static com.google.testing.compile.Compiler.javac;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.Assume.assumeTrue;
 
 import com.google.common.collect.ImmutableList;
 import java.io.File;
@@ -28,6 +29,7 @@ import java.net.URLClassLoader;
 import java.util.Arrays;
 import java.util.Locale;
 import javax.annotation.processing.Processor;
+import javax.lang.model.SourceVersion;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaCompiler.CompilationTask;
 import javax.tools.JavaFileObject;
@@ -194,5 +196,19 @@ public final class CompilerTest {
             .withOptions("-verbose")
             .compile(JavaFileObjects.forSourceLines("Test", "class Test {", "  Lib lib;", "}"));
     assertThat(compilation).succeeded();
+  }
+
+  @Test
+  public void releaseFlag() {
+    assumeTrue(isJdk9OrLater());
+    Compilation compilation =
+        javac()
+            .withOptions("--release", "8")
+            .compile(JavaFileObjects.forSourceString("HelloWorld", "final class HelloWorld {}"));
+    assertThat(compilation).succeeded();
+  }
+
+  static boolean isJdk9OrLater() {
+    return SourceVersion.latestSupported().compareTo(SourceVersion.RELEASE_8) > 0;
   }
 }

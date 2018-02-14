@@ -18,7 +18,11 @@ package com.google.testing.compile;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
+import java.nio.file.Path;
+import java.util.Collection;
 import javax.tools.ForwardingJavaFileManager;
+import javax.tools.JavaFileManager.Location;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 
@@ -67,5 +71,25 @@ class ForwardingStandardJavaFileManager extends ForwardingJavaFileManager<Standa
   @Override
   public Iterable<? extends File> getLocation(Location location) {
     return fileManager.getLocation(location);
+  }
+
+  // @Override for JDK 9 only
+  public void setLocationFromPaths(Location location, Collection<? extends Path> searchpath)
+      throws IOException {
+    Method setLocationFromPaths;
+    try {
+      setLocationFromPaths =
+          fileManager
+              .getClass()
+              .getMethod("setLocationFromPaths", Location.class, Collection.class);
+    } catch (ReflectiveOperationException e) {
+      // JDK < 9
+      return;
+    }
+    try {
+      setLocationFromPaths.invoke(fileManager, location, searchpath);
+    } catch (ReflectiveOperationException e) {
+      throw new LinkageError(e.getMessage(), e);
+    }
   }
 }

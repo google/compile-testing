@@ -12,11 +12,10 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 
 /**
- * Indicate the method is a compile period test. The test class must extends
- * {@link CompileTestCase}.
- *
- * The annotated method must be public void and one argument
- * {@link RoundEnvironment} .
+ * Indicate the test method is a compile period test.
+ * 
+ * The test class must extends {@link CompileTestCase}. The method also need annotated {@code @Test}
+ * and it must be public void and have one argument with type {@link RoundEnvironment}.
  *
  * @author Dean Xu (XDean@github.com)
  */
@@ -25,8 +24,7 @@ import javax.lang.model.SourceVersion;
 @Documented
 public @interface Compile {
   /**
-   * The source files to compile. Has same rule of
-   * {@link Class#getResource(String)}.
+   * The source files to compile. Has same rule of {@link Class#getResource(String)}.
    */
   String[] sources();
 

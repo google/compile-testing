@@ -18,8 +18,15 @@ import com.google.testing.compile.Compilation;
 import com.google.testing.compile.Compiler;
 import com.google.testing.compile.JavaFileObjects;
 
+/**
+ * Runner for compilation test. It can process {@code @Compile}, {@code @Compiled} and normal junit
+ * test method.
+ * 
+ * @see Compile
+ * @see Compiled
+ * @author Dean Xu (XDean@github.com)
+ */
 public class CompileTestRunner extends BlockJUnit4ClassRunner {
-
   public CompileTestRunner(Class<?> klass) throws InitializationError {
     super(klass);
   }

@@ -20,6 +20,13 @@ import org.junit.Ignore;
 import org.junit.runner.RunWith;
 import org.junit.runners.model.FrameworkMethod;
 
+/**
+ * Extends this class and use {@code @Compile} and {@code @Compiled} to do test for compilation.
+ * 
+ * @see Compile
+ * @see Compiled
+ * @author Dean Xu (XDean@github.com)
+ */
 @Ignore
 @RunWith(CompileTestRunner.class)
 public class CompileTestCase extends AbstractProcessor {

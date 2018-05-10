@@ -12,11 +12,10 @@ import javax.annotation.processing.Processor;
 import com.google.testing.compile.Compilation;
 
 /**
- * Indicate the method is a compiled test. The test class must extends
- * {@link CompileTestCase}.
- *
- * The annotated method must be public void and one argument
- * {@link Compilation}.
+ * Indicate the test method is a compiled test.
+ * 
+ * The test class must extends {@link CompileTestCase}. The method also need annotated {@code @Test}
+ * and it must be public void and have only one argument with type {@link Compilation}.
  *
  * @author Dean Xu (XDean@github.com)
  */
@@ -25,18 +24,17 @@ import com.google.testing.compile.Compilation;
 @Documented
 public @interface Compiled {
   /**
-   * The source files to compile. Has same rule of
-   * {@link Class#getResource(String)}.
+   * The source files to compile. Has same rule of {@link Class#getResource(String)}.
    */
   String[] sources();
 
   /**
-   * Processors to use in this compile.
+   * Processors to use in this compile. Every class must have public no-arg constructor.
    */
   Class<? extends Processor>[] processors() default {};
 
   /**
-   * Options to use in this compile. Should starts with "-A".
+   * Options to use in this compile. Should be like "-Akey=value".
    */
   String[] options() default {};
 }

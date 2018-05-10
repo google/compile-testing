@@ -28,7 +28,7 @@ public class CompileTestRunner extends BlockJUnit4ClassRunner {
   protected void collectInitializationErrors(List<Throwable> errors) {
     super.collectInitializationErrors(errors);
     if (!CompileTestCase.class.isAssignableFrom(getTestClass().getJavaClass())) {
-      errors.add(new Exception("CompileTestRunner must run with CompileTest"));
+      errors.add(new Exception("CompileTestRunner must run with CompileTestCase"));
     }
   }
 

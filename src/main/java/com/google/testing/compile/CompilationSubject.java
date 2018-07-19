@@ -19,6 +19,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.notNull;
 import static com.google.common.collect.Iterables.size;
 import static com.google.common.collect.Streams.mapWithIndex;
+import static com.google.common.truth.Fact.simpleFact;
 import static com.google.common.truth.Truth.assertAbout;
 import static com.google.testing.compile.Compilation.Status.FAILURE;
 import static com.google.testing.compile.Compilation.Status.SUCCESS;
@@ -76,8 +77,9 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
   /** Asserts that the compilation succeeded. */
   public void succeeded() {
     if (actual().status().equals(FAILURE)) {
-      failWithRawMessage(
-          actual().describeFailureDiagnostics() + actual().describeGeneratedSourceFiles());
+      failWithoutActual(
+          simpleFact(
+              actual().describeFailureDiagnostics() + actual().describeGeneratedSourceFiles()));
     }
   }
 
@@ -90,9 +92,10 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
   /** Asserts that the compilation failed. */
   public void failed() {
     if (actual().status().equals(SUCCESS)) {
-      failWithRawMessage(
-          "Compilation was expected to fail, but contained no errors.\n\n"
-              + actual().describeGeneratedSourceFiles());
+      failWithoutActual(
+          simpleFact(
+              "Compilation was expected to fail, but contained no errors.\n\n"
+                  + actual().describeGeneratedSourceFiles()));
     }
   }
 
@@ -171,14 +174,15 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
         actual().diagnosticsOfKind(kind, more);
     int actualCount = size(diagnostics);
     if (actualCount != expectedCount) {
-      failWithRawMessage(
-          messageListing(
-              diagnostics,
-              "Expected %d %s, but found the following %d %s:",
-              expectedCount,
-              kindPlural(kind),
-              actualCount,
-              kindPlural(kind)));
+      failWithoutActual(
+          simpleFact(
+              messageListing(
+                  diagnostics,
+                  "Expected %d %s, but found the following %d %s:",
+                  expectedCount,
+                  kindPlural(kind),
+                  actualCount,
+                  kindPlural(kind))));
     }
   }
 
@@ -283,8 +287,10 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
             .filter(diagnostic -> expectedPattern.matcher(diagnostic.getMessage(null)).find())
             .collect(toImmutableList());
     if (diagnosticsWithMessage.isEmpty()) {
-      failWithRawMessage(
-          messageListing(diagnosticsOfKind, "Expected %s, but only found:", expectedDiagnostic));
+      failWithoutActual(
+          simpleFact(
+              messageListing(
+                  diagnosticsOfKind, "Expected %s, but only found:", expectedDiagnostic)));
     }
     return diagnosticsWithMessage;
   }
@@ -375,11 +381,12 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
     }
 
     protected void failExpectingMatchingDiagnostic(String format, Object... args) {
-      failWithRawMessage(
-          new StringBuilder("Expected ")
-              .append(expectedDiagnostic)
-              .append(String.format(format, args))
-              .toString());
+      failWithoutActual(
+          simpleFact(
+              new StringBuilder("Expected ")
+                  .append(expectedDiagnostic)
+                  .append(String.format(format, args))
+                  .toString()));
     }
   }
 

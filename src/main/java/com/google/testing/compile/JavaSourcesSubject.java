@@ -15,6 +15,7 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.truth.Fact.simpleFact;
 import static com.google.common.truth.Truth.assertAbout;
 import static com.google.testing.compile.CompilationSubject.compilations;
 import static com.google.testing.compile.Compiler.javac;
@@ -150,8 +151,9 @@ public final class JavaSourcesSubject
     @Override
     public void parsesAs(JavaFileObject first, JavaFileObject... rest) {
       if (Iterables.isEmpty(actual())) {
-        failWithRawMessage(
-            "Compilation generated no additional source files, though some were expected.");
+        failWithoutActual(
+            simpleFact(
+                "Compilation generated no additional source files, though some were expected."));
         return;
       }
       ParseResult actualResult = Parser.parse(actual());
@@ -163,7 +165,7 @@ public final class JavaSourcesSubject
           message.append('\n');
           message.append(error);
         }
-        failWithRawMessage(message.toString());
+        failWithoutActual(simpleFact(message.toString()));
         return;
       }
       final ParseResult expectedResult = Parser.parse(Lists.asList(first, rest));
@@ -246,51 +248,54 @@ public final class JavaSourcesSubject
                             }
                           })
                       .toList());
-      failWithRawMessage(
-          Joiner.on('\n')
-              .join(
-                  "",
-                  "An expected source declared one or more top-level types that were not present.",
-                  "",
-                  String.format("Expected top-level types: <%s>", expectedTypes),
-                  String.format(
-                      "Declared by expected file: <%s>",
-                      expectedTree.getSourceFile().toUri().getPath()),
-                  "",
-                  "The top-level types that were present are as follows: ",
-                  "",
-                  generatedTypesReport,
-                  ""));
+      failWithoutActual(
+          simpleFact(
+              Joiner.on('\n')
+                  .join(
+                      "",
+                      "An expected source declared one or more top-level types that were not "
+                          + "present.",
+                      "",
+                      String.format("Expected top-level types: <%s>", expectedTypes),
+                      String.format(
+                          "Declared by expected file: <%s>",
+                          expectedTree.getSourceFile().toUri().getPath()),
+                      "",
+                      "The top-level types that were present are as follows: ",
+                      "",
+                      generatedTypesReport,
+                      "")));
     }
 
     /** Called when the {@code generatesSources()} verb fails with a diff candidate. */
     private void failWithCandidate(
         JavaFileObject expectedSource, JavaFileObject actualSource, String diffReport) {
       try {
-        failWithRawMessage(
-            Joiner.on('\n')
-                .join(
-                    "",
-                    "Source declared the same top-level types of an expected source, but",
-                    "didn't match exactly.",
-                    "",
-                    String.format("Expected file: <%s>", expectedSource.toUri().getPath()),
-                    String.format("Actual file: <%s>", actualSource.toUri().getPath()),
-                    "",
-                    "Diffs:",
-                    "======",
-                    "",
-                    diffReport,
-                    "",
-                    "Expected Source: ",
-                    "================",
-                    "",
-                    expectedSource.getCharContent(false).toString(),
-                    "",
-                    "Actual Source:",
-                    "=================",
-                    "",
-                    actualSource.getCharContent(false).toString()));
+        failWithoutActual(
+            simpleFact(
+                Joiner.on('\n')
+                    .join(
+                        "",
+                        "Source declared the same top-level types of an expected source, but",
+                        "didn't match exactly.",
+                        "",
+                        String.format("Expected file: <%s>", expectedSource.toUri().getPath()),
+                        String.format("Actual file: <%s>", actualSource.toUri().getPath()),
+                        "",
+                        "Diffs:",
+                        "======",
+                        "",
+                        diffReport,
+                        "",
+                        "Expected Source: ",
+                        "================",
+                        "",
+                        expectedSource.getCharContent(false).toString(),
+                        "",
+                        "Actual Source:",
+                        "=================",
+                        "",
+                        actualSource.getCharContent(false).toString())));
       } catch (IOException e) {
         throw new IllegalStateException(
             "Couldn't read from JavaFileObject when it was already " + "in memory.", e);
@@ -471,8 +476,8 @@ public final class JavaSourcesSubject
     public T generatesFiles(JavaFileObject first, JavaFileObject... rest) {
       for (JavaFileObject expected : Lists.asList(first, rest)) {
         if (!wasGenerated(expected)) {
-          failWithRawMessage(
-              "Did not find a generated file corresponding to " + expected.getName());
+          failWithoutActual(
+              simpleFact("Did not find a generated file corresponding to " + expected.getName()));
         }
       }
       return thisObject();

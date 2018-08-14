@@ -15,7 +15,7 @@
   <description>Utilities for testing compilation.</description>
 
   <properties>
-    <truth.version>0.41</truth.version>
+    <truth.version>0.42</truth.version>
   </properties>
 
   <url>http://github.com/google/compile-testing</url>
@@ -61,6 +61,7 @@
       <groupId>com.google.truth.extensions</groupId>
       <artifactId>truth-java8-extension</artifactId>
       <version>${truth.version}</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>

@@ -82,7 +82,7 @@ public class CompilationExtension
   private static final StoreAccessor<CompletionStage<Compilation>> RESULT_KEY =
       new StoreAccessor<>(Compilation.class);
 
-  private static final ExecutorService COMPILER_EXECUTOR = Executors.newSingleThreadExecutor(
+  private static final ExecutorService COMPILER_EXECUTOR = Executors.newCachedThreadPool(
       new ThreadFactoryBuilder().setDaemon(true).setNameFormat("async-compiler-%d").build()
   );
 

@@ -21,6 +21,7 @@ import static com.google.testing.compile.Compilation.Status.SUCCESS;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -81,6 +82,10 @@ public class CompilationExtension
   private static final StoreAccessor<CompletionStage<Compilation>> RESULT_KEY =
       new StoreAccessor<>(Compilation.class);
 
+  private static final ExecutorService COMPILER_EXECUTOR = Executors.newSingleThreadExecutor(
+      new ThreadFactoryBuilder().setDaemon(true).setNameFormat("async-compiler-%d").build()
+  );
+
   static {
     SUPPORTED_PARAMETERS = ImmutableMap.<Class<?>, Function<ProcessingEnvironment, ?>>builder()
         .put(Elements.class, ProcessingEnvironment::getElementUtils)
@@ -101,11 +106,12 @@ public class CompilationExtension
     final AtomicReference<ProcessingEnvironment> sharedState
         = new AtomicReference<>(null);
 
-    final CompletionStage<Compilation> futureResult = doOneShotExecution(() ->
-        Compiler.javac()
-            .withProcessors(new EvaluatingProcessor(sharedBarrier, sharedState))
-            .compile(DUMMY)
-    );
+
+    final CompletionStage<Compilation> futureResult = CompletableFuture.supplyAsync(() ->
+            Compiler.javac()
+                .withProcessors(new EvaluatingProcessor(sharedBarrier, sharedState))
+                .compile(DUMMY),
+        COMPILER_EXECUTOR);
 
     final ExtensionContext.Store store = context.getStore(NAMESPACE);
     PHASER_KEY.put(store, sharedBarrier);
@@ -161,14 +167,6 @@ public class CompilationExtension
         "ProcessingEnvironment not available: %s",
         RESULT_KEY.get(store)
     ));
-  }
-
-  private <R> CompletionStage<R> doOneShotExecution(Supplier<R> run) {
-    final ExecutorService service = Executors.newSingleThreadExecutor();
-    final CompletionStage<R> future = CompletableFuture.supplyAsync(run, service);
-    // Do not accept more actions, just execute the runnable and clean up
-    service.shutdown();
-    return future;
   }
 
   /**

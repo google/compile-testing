@@ -40,7 +40,6 @@ import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -73,8 +72,9 @@ public class CompilationExtension
       JavaFileObjects.forSourceLines("Dummy", "final class Dummy {}");
   private static final ExtensionContext.Namespace NAMESPACE =
       ExtensionContext.Namespace.create(CompilationExtension.class);
-  private static final Map<Class<?>, Function<ProcessingEnvironment, ?>> SUPPORTED_PARAMETERS;
-  private static final Function<ProcessingEnvironment, ?> RETURN_NULL = ignored -> null;
+  private static final Function<ProcessingEnvironment, ?> UNKNOWN_PARAMETER = ignored -> {
+    throw new IllegalArgumentException("Unknown parameter type");
+  };
 
   private static final StoreAccessor<Phaser> PHASER_KEY = new StoreAccessor<>(Phaser.class);
   private static final StoreAccessor<AtomicReference<ProcessingEnvironment>> PROCESSINGENV_KEY =
@@ -85,6 +85,8 @@ public class CompilationExtension
   private static final ExecutorService COMPILER_EXECUTOR = Executors.newSingleThreadExecutor(
       new ThreadFactoryBuilder().setDaemon(true).setNameFormat("async-compiler-%d").build()
   );
+
+  private static final Map<Class<?>, Function<ProcessingEnvironment, ?>> SUPPORTED_PARAMETERS;
 
   static {
     SUPPORTED_PARAMETERS = ImmutableMap.<Class<?>, Function<ProcessingEnvironment, ?>>builder()
@@ -105,7 +107,6 @@ public class CompilationExtension
 
     final AtomicReference<ProcessingEnvironment> sharedState
         = new AtomicReference<>(null);
-
 
     final CompletionStage<Compilation> futureResult = CompletableFuture.supplyAsync(() ->
             Compiler.javac()
@@ -137,7 +138,7 @@ public class CompilationExtension
         .toCompletableFuture().get(1, TimeUnit.SECONDS);
     checkState(compilation.status().equals(SUCCESS), compilation);
 
-    // Check precondition
+    // Check postcondition
     checkState(sharedPhaser.isTerminated(), "Phaser not terminated");
   }
 
@@ -161,7 +162,7 @@ public class CompilationExtension
 
     return SUPPORTED_PARAMETERS.getOrDefault(
         parameterContext.getParameter().getType(),
-        RETURN_NULL
+        UNKNOWN_PARAMETER
     ).apply(checkNotNull(
         processingEnvironment.get(),
         "ProcessingEnvironment not available: %s",

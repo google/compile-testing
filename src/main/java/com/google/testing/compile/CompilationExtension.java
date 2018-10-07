@@ -72,9 +72,6 @@ public class CompilationExtension
       JavaFileObjects.forSourceLines("Dummy", "final class Dummy {}");
   private static final ExtensionContext.Namespace NAMESPACE =
       ExtensionContext.Namespace.create(CompilationExtension.class);
-  private static final Function<ProcessingEnvironment, ?> UNKNOWN_PARAMETER = ignored -> {
-    throw new ParameterResolutionException("Unknown parameter type");
-  };
 
   private static final StoreAccessor<Phaser> PHASER_KEY = new StoreAccessor<>(Phaser.class);
   private static final StoreAccessor<AtomicReference<ProcessingEnvironment>> PROCESSINGENV_KEY =
@@ -96,7 +93,7 @@ public class CompilationExtension
   }
 
   @Override
-  public void beforeAll(ExtensionContext context) {
+  public void beforeAll(ExtensionContext context) throws Exception {
     final Phaser sharedBarrier = new Phaser(2) {
       @Override
       protected boolean onAdvance(int phase, int parties) {
@@ -108,21 +105,29 @@ public class CompilationExtension
     final AtomicReference<ProcessingEnvironment> sharedState
         = new AtomicReference<>(null);
 
-    final CompletionStage<Compilation> futureResult = CompletableFuture.supplyAsync(() ->
-            Compiler.javac()
+    final CompletionStage<Compilation> futureResult = CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            return Compiler.javac()
                 .withProcessors(new EvaluatingProcessor(sharedBarrier, sharedState))
-                .compile(DUMMY),
-        COMPILER_EXECUTOR);
+                .compile(DUMMY);
+          } finally {
+            sharedBarrier.forceTermination();
+          }
+        }, COMPILER_EXECUTOR);
 
     final ExtensionContext.Store store = context.getStore(NAMESPACE);
     PHASER_KEY.put(store, sharedBarrier);
     PROCESSINGENV_KEY.put(store, sharedState);
     RESULT_KEY.put(store, futureResult);
 
-    // Wait until the processor is ready for testing
-    sharedBarrier.arriveAndAwaitAdvance();
-
-    checkState(!sharedBarrier.isTerminated(), "Phaser terminated early");
+    // Wait until the processor is ready for testing, handle termination on error
+    if (sharedBarrier.arriveAndAwaitAdvance() < 0) {
+      // Rethrow the exception thrown by the compiler, otherwise throw based on the result.
+      final Compilation result = futureResult.toCompletableFuture()
+          .get(5, TimeUnit.SECONDS);
+      throw new IllegalStateException(result.toString());
+    }
   }
 
   @Override
@@ -162,7 +167,9 @@ public class CompilationExtension
 
     return SUPPORTED_PARAMETERS.getOrDefault(
         parameterContext.getParameter().getType(),
-        UNKNOWN_PARAMETER
+        ignored -> {
+          throw new ParameterResolutionException("Unknown parameter type");
+        }
     ).apply(checkNotNull(
         processingEnvironment.get(),
         "ProcessingEnvironment not available: %s",

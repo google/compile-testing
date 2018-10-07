@@ -73,7 +73,7 @@ public class CompilationExtension
   private static final ExtensionContext.Namespace NAMESPACE =
       ExtensionContext.Namespace.create(CompilationExtension.class);
   private static final Function<ProcessingEnvironment, ?> UNKNOWN_PARAMETER = ignored -> {
-    throw new IllegalArgumentException("Unknown parameter type");
+    throw new ParameterResolutionException("Unknown parameter type");
   };
 
   private static final StoreAccessor<Phaser> PHASER_KEY = new StoreAccessor<>(Phaser.class);

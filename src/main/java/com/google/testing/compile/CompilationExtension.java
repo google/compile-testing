@@ -24,6 +24,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.Extension;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -67,7 +68,7 @@ import javax.tools.JavaFileObject;
  * @author David van Leusen
  */
 public class CompilationExtension
-    implements BeforeAllCallback, AfterAllCallback, ParameterResolver {
+    implements BeforeAllCallback, BeforeEachCallback, AfterAllCallback, ParameterResolver {
   private static final JavaFileObject DUMMY =
       JavaFileObjects.forSourceLines("Dummy", "final class Dummy {}");
   private static final ExtensionContext.Namespace NAMESPACE =
@@ -128,6 +129,15 @@ public class CompilationExtension
           .get(5, TimeUnit.SECONDS);
       throw new IllegalStateException(result.toString());
     }
+  }
+
+  @Override
+  public void beforeEach(ExtensionContext extensionContext) {
+    checkState(
+        PHASER_KEY.get(extensionContext.getStore(NAMESPACE)) != null,
+        "CompilationExtension is only available as a class-level extension. " +
+            "Using it as an instance-level extension through @RegisterExtension is not supported"
+    );
   }
 
   @Override

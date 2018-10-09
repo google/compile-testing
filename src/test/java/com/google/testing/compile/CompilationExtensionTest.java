@@ -78,9 +78,6 @@ public class CompilationExtensionTest {
 
     // Prepare after termination should fail.
     assertThrows(IllegalStateException.class, state::prepareForTests);
-
-    // Since compilation has finished, the executor should also be idle
-    assertThat(executor.isTerminated()).isTrue();
   }
 
   @Nested

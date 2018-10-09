@@ -22,7 +22,9 @@ import static com.google.testing.compile.Compilation.Status.SUCCESS;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.AfterAllCallback;
+import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,13 +36,15 @@ import org.junit.jupiter.api.extension.ParameterResolver;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Phaser;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -67,20 +71,14 @@ import javax.tools.JavaFileObject;
  *
  * @author David van Leusen
  */
-public class CompilationExtension
-    implements BeforeAllCallback, BeforeEachCallback, AfterAllCallback, ParameterResolver {
+public class CompilationExtension implements BeforeAllCallback, BeforeEachCallback,
+    AfterAllCallback, AfterEachCallback, ParameterResolver {
   private static final JavaFileObject DUMMY =
       JavaFileObjects.forSourceLines("Dummy", "final class Dummy {}");
   private static final ExtensionContext.Namespace NAMESPACE =
       ExtensionContext.Namespace.create(CompilationExtension.class);
 
-  private static final StoreAccessor<Phaser> PHASER_KEY = new StoreAccessor<>(Phaser.class);
-  private static final StoreAccessor<AtomicReference<ProcessingEnvironment>> PROCESSINGENV_KEY =
-      new StoreAccessor<>(ProcessingEnvironment.class);
-  private static final StoreAccessor<CompletionStage<Compilation>> RESULT_KEY =
-      new StoreAccessor<>(Compilation.class);
-
-  private static final ExecutorService COMPILER_EXECUTOR = Executors.newCachedThreadPool(
+  private static final Executor DEFAULT_COMPILER_EXECUTOR = Executors.newCachedThreadPool(
       new ThreadFactoryBuilder().setDaemon(true).setNameFormat("async-compiler-%d").build()
   );
 
@@ -93,68 +91,63 @@ public class CompilationExtension
         .build();
   }
 
+  private final Executor compilerExecutor;
+
+  public CompilationExtension(Executor compilerExecutor) {
+    this.compilerExecutor = compilerExecutor;
+  }
+
+  public CompilationExtension() {
+    this(DEFAULT_COMPILER_EXECUTOR);
+  }
+
   @Override
-  public void beforeAll(ExtensionContext context) throws Exception {
-    final Phaser sharedBarrier = new Phaser(2) {
-      @Override
-      protected boolean onAdvance(int phase, int parties) {
-        // Terminate the phaser once all parties have deregistered
-        return parties == 0;
-      }
-    };
+  public void beforeAll(ExtensionContext context) throws InterruptedException {
+    final CompilerState state = context.getStore(NAMESPACE).getOrComputeIfAbsent(
+        CompilerState.class,
+        ignored -> new CompilerState(this.compilerExecutor, TestInstance.Lifecycle.PER_CLASS),
+        CompilerState.class
+    );
 
-    final AtomicReference<ProcessingEnvironment> sharedState
-        = new AtomicReference<>(null);
+    checkState(state.prepareForTests(), state);
+  }
 
-    final CompletionStage<Compilation> futureResult = CompletableFuture.supplyAsync(
-        () -> {
-          try {
-            return Compiler.javac()
-                .withProcessors(new EvaluatingProcessor(sharedBarrier, sharedState))
-                .compile(DUMMY);
-          } finally {
-            sharedBarrier.forceTermination();
-          }
-        }, COMPILER_EXECUTOR);
+  @Override
+  public void beforeEach(ExtensionContext context) throws InterruptedException {
+    final CompilerState state = context.getStore(NAMESPACE).getOrComputeIfAbsent(
+        CompilerState.class,
+        ignored -> new CompilerState(this.compilerExecutor, TestInstance.Lifecycle.PER_METHOD),
+        CompilerState.class
+    );
 
-    final ExtensionContext.Store store = context.getStore(NAMESPACE);
-    PHASER_KEY.put(store, sharedBarrier);
-    PROCESSINGENV_KEY.put(store, sharedState);
-    RESULT_KEY.put(store, futureResult);
+    checkState(state.prepareForTests(), state);
+  }
 
-    // Wait until the processor is ready for testing, handle termination on error
-    if (sharedBarrier.arriveAndAwaitAdvance() < 0) {
-      // Rethrow the exception thrown by the compiler, otherwise throw based on the result.
-      final Compilation result = futureResult.toCompletableFuture()
-          .get(5, TimeUnit.SECONDS);
-      throw new IllegalStateException(result.toString());
+  @Override
+  public void afterEach(ExtensionContext context) throws Exception {
+    final CompilerState state = checkNotNull(context.getStore(NAMESPACE).get(
+        CompilerState.class,
+        CompilerState.class
+    ));
+
+    if (state.getLifecycle() == TestInstance.Lifecycle.PER_METHOD) {
+      // Created on a per-method basis, must clean up as a mirror action
+      final Compilation compilation = state.allowTermination();
+      checkState(compilation.status().equals(SUCCESS), compilation);
     }
   }
 
   @Override
-  public void beforeEach(ExtensionContext extensionContext) {
-    checkState(
-        PHASER_KEY.get(extensionContext.getStore(NAMESPACE)) != null,
-        "CompilationExtension is only available as a class-level extension. " +
-            "Using it as an instance-level extension through @RegisterExtension is not supported"
-    );
-  }
+  public void afterAll(ExtensionContext context) throws ExecutionException, InterruptedException {
+    final CompilerState state = checkNotNull(context.getStore(NAMESPACE).get(
+        CompilerState.class,
+        CompilerState.class
+    ));
 
-  @Override
-  public void afterAll(ExtensionContext context) throws Exception {
-    final ExtensionContext.Store store = context.getStore(NAMESPACE);
-    final Phaser sharedPhaser = PHASER_KEY.get(store);
+    checkState(state.getLifecycle() == TestInstance.Lifecycle.PER_CLASS);
 
-    // Allow the processor to finish
-    sharedPhaser.arriveAndDeregister();
-
-    // Perform status checks, since processing is 'over' almost instantly
-    final Compilation compilation = RESULT_KEY.get(store)
-        .toCompletableFuture().get(1, TimeUnit.SECONDS);
+    final Compilation compilation = state.allowTermination();
     checkState(compilation.status().equals(SUCCESS), compilation);
-
-    // Check postcondition
-    checkState(sharedPhaser.isTerminated(), "Phaser not terminated");
   }
 
   @Override
@@ -171,52 +164,144 @@ public class CompilationExtension
       ParameterContext parameterContext,
       ExtensionContext extensionContext
   ) throws ParameterResolutionException {
-    final ExtensionContext.Store store = extensionContext.getStore(NAMESPACE);
-    final AtomicReference<ProcessingEnvironment> processingEnvironment
-        = PROCESSINGENV_KEY.get(store);
+    final CompilerState state = extensionContext.getStore(NAMESPACE).get(
+        CompilerState.class,
+        CompilerState.class
+    );
+
+    checkState(state != null, "CompilerState not initialized");
 
     return SUPPORTED_PARAMETERS.getOrDefault(
         parameterContext.getParameter().getType(),
         ignored -> {
           throw new ParameterResolutionException("Unknown parameter type");
         }
-    ).apply(checkNotNull(
-        processingEnvironment.get(),
-        "ProcessingEnvironment not available: %s",
-        RESULT_KEY.get(store)
-    ));
+    ).apply(state.getProcessingEnvironment());
   }
 
-  /**
-   * Utility class to safely access {@link ExtensionContext.Store} when dealing with
-   * parameterized types.
-   */
-  static final class StoreAccessor<R> {
-    private final Object key;
+  static final class CompilerState implements ExtensionContext.Store.CloseableResource {
+    private final AtomicReference<ProcessingEnvironment> sharedState;
+    private final Phaser syncBarrier;
+    private final CompletableFuture<Compilation> result;
+    private final TestInstance.Lifecycle lifecycle;
 
-    StoreAccessor(Object key) {
-      this.key = key;
+    CompilerState(Executor compilerExecutor, TestInstance.Lifecycle lifecycle) {
+      this.lifecycle = lifecycle;
+      this.sharedState = new AtomicReference<>(null);
+      this.syncBarrier = new Phaser(2) {
+        @Override
+        protected boolean onAdvance(int phase, int parties) {
+          // Terminate the phaser once all parties have deregistered
+          return parties == 0;
+        }
+      };
+      this.result = CompletableFuture.supplyAsync(
+          new EvaluatingProcessor(syncBarrier, sharedState),
+          compilerExecutor
+      );
     }
 
-    @SuppressWarnings("unchecked")
-    R get(ExtensionContext.Store store) {
-      return (R) store.get(key);
+    ProcessingEnvironment getProcessingEnvironment() throws ParameterResolutionException {
+      // Only while the phaser is in phase 1 should the ProcessingEnvironment be valid.
+      if (this.syncBarrier.getPhase() != 1) {
+        throw new ParameterResolutionException(this.toString());
+      }
+
+      final ProcessingEnvironment processingEnvironment = this.sharedState.get();
+      if (processingEnvironment != null) {
+        return processingEnvironment;
+      } else {
+        throw new ParameterResolutionException(
+            String.format("ProcessingEnvironment was not initialized: %s", this)
+        );
+      }
     }
 
-    void put(ExtensionContext.Store store, R value) {
-      store.put(key, value);
+    TestInstance.Lifecycle getLifecycle() {
+      return this.lifecycle;
+    }
+
+    boolean prepareForTests() throws InterruptedException {
+      switch (this.syncBarrier.getPhase()) {
+        case 0: // Compiler has been started, but might not yet be initialized
+          return checkNotTerminated(this.syncBarrier.arriveAndAwaitAdvance());
+        case 1: // Compiler has been initialized, ready for tests
+          return true;
+        default:
+          throw new IllegalStateException(this.toString());
+      }
+    }
+
+    Compilation allowTermination() throws InterruptedException, ExecutionException {
+      if (this.syncBarrier.getPhase() == 1) {
+        checkState(this.syncBarrier.arriveAndDeregister() == 1, this);
+      } else if (!this.syncBarrier.isTerminated()) {
+        throw new IllegalStateException(this.toString());
+      }
+
+      try {
+        final Compilation result = this.result.get(1, TimeUnit.SECONDS);
+        checkState(this.syncBarrier.isTerminated(), this);
+        return result;
+      } catch (TimeoutException e) {
+        // This really should never happen, since the 'syncBarrier' is the only thing the
+        //   processor blocks on, deregistering at this point should allow the processor
+        //   to run until it finishes.
+        throw new AssertionError("Timed out waiting for the compiler to finish");
+      }
+    }
+
+    private boolean checkNotTerminated(int phaseNumber) throws InterruptedException {
+      if (phaseNumber < 0) {
+        // Phaser has terminated unexpectedly, throw exception based on result.
+
+        try {
+          // 'Successful' result
+          final Compilation result = this.result.get(5, TimeUnit.SECONDS);
+          throw new IllegalStateException(
+              String.format("Anomalous compilation result: %s", result)
+          );
+        } catch (ExecutionException e) {
+          // Exception in the compiler
+          throw new IllegalStateException("Exception during annotation processing", e.getCause());
+        } catch (TimeoutException e) {
+          // This really should never happen, since the 'syncBarrier' is the only thing the
+          //   processor blocks on, termination should mean it runs until it finished,
+          //   resolving 'result'
+          throw new AssertionError("Timed out waiting for the cause of termination");
+        }
+      }
+
+      return true;
+    }
+
+    @Override
+    public void close() {
+      // If the owning ExtensionContext.Store is closed, ensure the compilation terminates as well
+      this.syncBarrier.forceTermination();
+    }
+
+    @Override
+    public String toString() {
+      return "CompilerState{" +
+          "sharedState=" + sharedState +
+          ", syncBarrier=" + syncBarrier +
+          ", result=" + result +
+          ", lifecycle=" + lifecycle +
+          '}';
     }
   }
 
-  static final class EvaluatingProcessor extends AbstractProcessor {
-    private final Phaser barrier;
+  static final class EvaluatingProcessor extends AbstractProcessor
+      implements Supplier<Compilation> {
+    private final Phaser syncBarrier;
     private final AtomicReference<ProcessingEnvironment> sharedState;
 
     EvaluatingProcessor(
-        Phaser barrier,
+        Phaser syncBarrier,
         AtomicReference<ProcessingEnvironment> sharedState
     ) {
-      this.barrier = barrier;
+      this.syncBarrier = syncBarrier;
       this.sharedState = sharedState;
     }
 
@@ -235,26 +320,34 @@ public class CompilationExtension
       super.init(processingEnvironment);
 
       // Share the processing environment
-      if (!sharedState.compareAndSet(null, processingEnvironment)) {
-        // Invalid state, init() run twice
-        barrier.forceTermination();
-        throw new IllegalStateException("Processor initialized twice");
-      }
+      checkState(
+          sharedState.compareAndSet(null, processingEnvironment),
+          "Shared ProcessingEnvironment was already initialized"
+      );
     }
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
       if (roundEnv.processingOver()) {
         // Synchronize on the beginning of the test run
-        barrier.arriveAndAwaitAdvance();
+        syncBarrier.arriveAndAwaitAdvance();
 
         // Now wait until testing is over
-        barrier.awaitAdvance(barrier.arriveAndDeregister());
+        syncBarrier.awaitAdvance(syncBarrier.arriveAndDeregister());
 
         // Clean up the shared state
-        sharedState.getAndSet(null);
+        sharedState.lazySet(null);
       }
       return false;
+    }
+
+    @Override
+    public Compilation get() {
+      try {
+        return Compiler.javac().withProcessors(this).compile(DUMMY);
+      } finally {
+        syncBarrier.forceTermination();
+      }
     }
   }
 }

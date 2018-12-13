@@ -337,7 +337,7 @@ public class JavaSourcesSubjectFactoryTest {
         .processedWith(new FailingGeneratingProcessor())
         .compilesWithoutError();
     AssertionError expected = expectFailure.getFailure();
-    assertThat(expected.getMessage()).contains("Compilation produced the following errors:\n");
+    assertThat(expected.getMessage()).contains("Compilation produced the following diagnostics:\n");
     assertThat(expected.getMessage()).contains(FailingGeneratingProcessor.GENERATED_CLASS_NAME);
     assertThat(expected.getMessage()).contains(FailingGeneratingProcessor.GENERATED_SOURCE);
   }
@@ -350,7 +350,7 @@ public class JavaSourcesSubjectFactoryTest {
         .that(JavaFileObjects.forResource("HelloWorld-broken.java"))
         .compilesWithoutError();
     AssertionError expected = expectFailure.getFailure();
-    assertThat(expected.getMessage()).startsWith("Compilation produced the following errors:\n");
+    assertThat(expected.getMessage()).startsWith("Compilation produced the following diagnostics:\n");
     assertThat(expected.getMessage()).contains("No files were generated.");
   }
 

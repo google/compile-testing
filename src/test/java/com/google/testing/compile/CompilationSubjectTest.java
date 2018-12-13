@@ -99,7 +99,8 @@ public class CompilationSubjectTest {
           .that(compilerWithGeneratorAndError().compile(HELLO_WORLD_RESOURCE))
           .succeeded();
       AssertionError expected = expectFailure.getFailure();
-      assertThat(expected.getMessage()).contains("Compilation produced the following errors:\n");
+      assertThat(expected.getMessage()).contains(
+          "Compilation produced the following diagnostics:\n");
       assertThat(expected.getMessage()).contains(FailingGeneratingProcessor.GENERATED_CLASS_NAME);
       assertThat(expected.getMessage()).contains(FailingGeneratingProcessor.GENERATED_SOURCE);
     }
@@ -112,7 +113,8 @@ public class CompilationSubjectTest {
           .that(javac().compile(HELLO_WORLD_BROKEN_RESOURCE))
           .succeeded();
       AssertionError expected = expectFailure.getFailure();
-      assertThat(expected.getMessage()).startsWith("Compilation produced the following errors:\n");
+      assertThat(expected.getMessage()).startsWith(
+          "Compilation produced the following diagnostics:\n");
       assertThat(expected.getMessage()).contains("No files were generated.");
     }
 
@@ -130,6 +132,22 @@ public class CompilationSubjectTest {
         // newer jdks throw a runtime exception whose cause is the original exception
         assertThat(expected.getCause()).isEqualTo(e);
       }
+    }
+
+    @Test
+    public void succeeded_failureReportsWarnings() {
+      expectFailure
+          .whenTesting()
+          .about(compilations())
+          .that(compilerWithWarning().compile(HELLO_WORLD_BROKEN))
+          .succeeded();
+      AssertionError expected = expectFailure.getFailure();
+      assertThat(expected.getMessage())
+          .startsWith("Compilation produced the following diagnostics:\n");
+      assertThat(expected.getMessage()).contains("No files were generated.");
+      // "this is a message" is output by compilerWithWarning() since the source has
+      // @DiagnosticMessage
+      assertThat(expected.getMessage()).contains("warning: this is a message");
     }
 
     @Test

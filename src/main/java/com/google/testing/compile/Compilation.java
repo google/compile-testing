@@ -220,16 +220,12 @@ public final class Compilation {
 
   /** Returns a description of the why the compilation failed. */
   String describeFailureDiagnostics() {
-    ImmutableList<Diagnostic<? extends JavaFileObject>> errors = errors();
-    if (errors.isEmpty()) {
-      return "Compilation produced no errors.\n";
+    ImmutableList<Diagnostic<? extends JavaFileObject>> diagnostics = diagnostics();
+    if (diagnostics.isEmpty()) {
+      return "Compilation produced no diagnostics.\n";
     }
-    StringBuilder message = new StringBuilder("Compilation produced the following errors:\n");
-    errors.stream().forEach(error -> message.append(error).append('\n'));
-    // If we compiled with -Werror we should output the warnings too
-    if (compiler.options().contains("-Werror")) {
-      warnings().stream().forEach(warning -> message.append(warning).append('\n'));
-    }
+    StringBuilder message = new StringBuilder("Compilation produced the following diagnostics:\n");
+    diagnostics.forEach(diagnostic -> message.append(diagnostic).append('\n'));
     return message.toString();
   }
 

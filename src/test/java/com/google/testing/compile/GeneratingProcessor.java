@@ -29,9 +29,12 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.TypeElement;
+import org.intellij.lang.annotations.Language;
 
 final class GeneratingProcessor extends AbstractProcessor {
   static final String GENERATED_CLASS_NAME = "Blah";
+
+  @Language("JAVA")
   static final String GENERATED_SOURCE = "final class Blah {\n  String blah = \"blah\";\n}";
 
   static final String GENERATED_RESOURCE_NAME = "Foo";

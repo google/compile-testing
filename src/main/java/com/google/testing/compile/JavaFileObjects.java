@@ -40,6 +40,7 @@ import javax.tools.ForwardingJavaFileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
 import javax.tools.SimpleJavaFileObject;
+import org.intellij.lang.annotations.Language;
 
 /**
  * A utility class for creating {@link JavaFileObject} instances.
@@ -57,7 +58,8 @@ public final class JavaFileObjects {
    * <p>Note that this method makes no attempt to verify that the name matches the contents of the
    * source and compilation errors may result if they do not match.
    */
-  public static JavaFileObject forSourceString(String fullyQualifiedName, String source) {
+  public static JavaFileObject forSourceString(String fullyQualifiedName,
+      @Language("JAVA") String source) {
     checkNotNull(fullyQualifiedName);
     if (fullyQualifiedName.startsWith("package ")) {
       throw new IllegalArgumentException(
@@ -96,7 +98,8 @@ public final class JavaFileObjects {
     final String source;
     final long lastModified;
 
-    StringSourceJavaFileObject(String fullyQualifiedName, String source) {
+    StringSourceJavaFileObject(String fullyQualifiedName,
+        @Language("JAVA") String source) {
       super(createUri(fullyQualifiedName), SOURCE);
       // TODO(gak): check that fullyQualifiedName looks like a fully qualified class name
       this.source = source;

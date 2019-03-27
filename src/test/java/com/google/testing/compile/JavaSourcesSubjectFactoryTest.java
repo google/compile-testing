@@ -30,6 +30,7 @@ import com.google.common.truth.Truth;
 import java.util.Arrays;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
+import org.intellij.lang.annotations.Language;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -810,6 +811,8 @@ public class JavaSourcesSubjectFactoryTest {
   @Test
   public void generatesSources_failWithNoCandidates() {
     String failingExpectationName = "ThisIsNotTheRightFile";
+
+    @Language("JAVA")
     String failingExpectationSource = "abstract class ThisIsNotTheRightFile {}";
     expectFailure
         .whenTesting()

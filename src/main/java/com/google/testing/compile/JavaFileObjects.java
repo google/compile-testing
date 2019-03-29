@@ -98,8 +98,7 @@ public final class JavaFileObjects {
     final String source;
     final long lastModified;
 
-    StringSourceJavaFileObject(String fullyQualifiedName,
-        @Language("JAVA") String source) {
+    StringSourceJavaFileObject(String fullyQualifiedName, String source) {
       super(createUri(fullyQualifiedName), SOURCE);
       // TODO(gak): check that fullyQualifiedName looks like a fully qualified class name
       this.source = source;

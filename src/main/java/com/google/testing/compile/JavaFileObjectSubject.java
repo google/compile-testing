@@ -74,7 +74,7 @@ public final class JavaFileObjectSubject extends Subject<JavaFileObjectSubject, 
     JavaFileObject otherFile = (JavaFileObject) other;
     try {
       if (!asByteSource(actual()).contentEquals(asByteSource(otherFile))) {
-        fail("is equal to", other);
+        failWithActual("expected to be equal to", other);
       }
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -85,7 +85,7 @@ public final class JavaFileObjectSubject extends Subject<JavaFileObjectSubject, 
   public void hasContents(ByteSource expected) {
     try {
       if (!asByteSource(actual()).contentEquals(expected)) {
-        fail("has contents", expected);
+        failWithActual("expected to have contents", expected);
       }
     } catch (IOException e) {
       throw new RuntimeException(e);

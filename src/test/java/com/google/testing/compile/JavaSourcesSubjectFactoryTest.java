@@ -350,7 +350,8 @@ public class JavaSourcesSubjectFactoryTest {
         .that(JavaFileObjects.forResource("HelloWorld-broken.java"))
         .compilesWithoutError();
     AssertionError expected = expectFailure.getFailure();
-    assertThat(expected.getMessage()).startsWith("Compilation produced the following diagnostics:\n");
+    assertThat(expected.getMessage()).startsWith("Compilation produced the following"
+                                                     + " diagnostics:\n");
     assertThat(expected.getMessage()).contains("No files were generated.");
   }
 
@@ -883,7 +884,7 @@ public class JavaSourcesSubjectFactoryTest {
         .withContents(ByteSource.wrap("Bogus".getBytes(UTF_8)));
     AssertionError expected = expectFailure.getFailure();
     assertThat(expected.getMessage()).contains("Foo");
-    assertThat(expected.getMessage()).contains(" has contents ");
+    assertThat(expected.getMessage()).contains(" have contents");
   }
 
   @Test

@@ -87,8 +87,8 @@ public final class JavaSourcesSubject
 
   /**
    * @deprecated prefer {@link #withClasspath(Iterable)}. This method only supports {@link
-   *     URLClassLoader} and the default system classloader, and {@link File}s are usually a more
-   *     natural way to expression compilation classpaths than class loaders.
+   *     java.net.URLClassLoader} and the default system classloader, and {@link File}s are usually
+   *     a more natural way to expression compilation classpaths than class loaders.
    */
   @Deprecated
   @Override
@@ -601,8 +601,8 @@ public final class JavaSourcesSubject
 
     /**
      * @deprecated prefer {@link #withClasspath(Iterable)}. This method only supports {@link
-     *     URLClassLoader} and the default system classloader, and {@link File}s are usually a more
-     *     natural way to expression compilation classpaths than class loaders.
+     *     java.net.URLClassLoader} and the default system classloader, and {@link File}s are
+     *     usually a more natural way to expression compilation classpaths than class loaders.
      */
     @Deprecated
     @Override

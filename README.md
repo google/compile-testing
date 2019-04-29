@@ -1,21 +1,9 @@
 Compile Testing
 ===============
 
+[![Maven Release][maven-shield]][maven-link]
+
 A library for testing javac compilation with or without annotation processors. See the [javadoc][package-info] for usage examples.
-
-Latest Release
---------------
-
-The latest release is version `0.15`.  Include it as a [Maven](http://maven.apache.org/) dependency with the following snippet:
-
-```
-<dependency>
-  <groupId>com.google.testing.compile</groupId>
-  <artifactId>compile-testing</artifactId>
-  <version>0.15</version>
-  <scope>test</scope>
-</dependency>
-```
 
 License
 -------
@@ -35,3 +23,5 @@ License
     limitations under the License.
 
 [package-info]: https://github.com/google/compile-testing/blob/master/src/main/java/com/google/testing/compile/package-info.java
+[maven-shield]: https://img.shields.io/maven-central/v/com.google.testing.compile/compile-testing.png
+[maven-link]: https://search.maven.org/artifact/com.google.testing.compile/compile-testing

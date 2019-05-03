@@ -306,7 +306,7 @@ public final class JavaSourcesSubject
     @Override
     public SuccessfulCompilationClause compilesWithoutError() {
       Compilation compilation = compilation();
-      check().about(compilations()).that(compilation).succeeded();
+      check("compilation()").about(compilations()).that(compilation).succeeded();
       return new SuccessfulCompilationBuilder(compilation);
     }
 
@@ -314,7 +314,7 @@ public final class JavaSourcesSubject
     @Override
     public CleanCompilationClause compilesWithoutWarnings() {
       Compilation compilation = compilation();
-      check().about(compilations()).that(compilation).succeededWithoutWarnings();
+      check("compilation()").about(compilations()).that(compilation).succeededWithoutWarnings();
       return new CleanCompilationBuilder(compilation);
     }
 
@@ -322,7 +322,7 @@ public final class JavaSourcesSubject
     @Override
     public UnsuccessfulCompilationClause failsToCompile() {
       Compilation compilation = compilation();
-      check().about(compilations()).that(compilation).failed();
+      check("compilation()").about(compilations()).that(compilation).failed();
       return new UnsuccessfulCompilationBuilder(compilation);
     }
 
@@ -362,7 +362,7 @@ public final class JavaSourcesSubject
     @CanIgnoreReturnValue
     @Override
     public T withNoteCount(int noteCount) {
-      check().about(compilations()).that(compilation).hadNoteCount(noteCount);
+      check("compilation()").about(compilations()).that(compilation).hadNoteCount(noteCount);
       return thisObject();
     }
 
@@ -370,13 +370,16 @@ public final class JavaSourcesSubject
     @Override
     public FileClause<T> withNoteContaining(String messageFragment) {
       return new FileBuilder(
-          check().about(compilations()).that(compilation).hadNoteContaining(messageFragment));
+          check("compilation()")
+              .about(compilations())
+              .that(compilation)
+              .hadNoteContaining(messageFragment));
     }
 
     @CanIgnoreReturnValue
     @Override
     public T withWarningCount(int warningCount) {
-      check().about(compilations()).that(compilation).hadWarningCount(warningCount);
+      check("compilation()").about(compilations()).that(compilation).hadWarningCount(warningCount);
       return thisObject();
     }
 
@@ -384,19 +387,25 @@ public final class JavaSourcesSubject
     @Override
     public FileClause<T> withWarningContaining(String messageFragment) {
       return new FileBuilder(
-          check().about(compilations()).that(compilation).hadWarningContaining(messageFragment));
+          check("compilation()")
+              .about(compilations())
+              .that(compilation)
+              .hadWarningContaining(messageFragment));
     }
 
     @CanIgnoreReturnValue
     public T withErrorCount(int errorCount) {
-      check().about(compilations()).that(compilation).hadErrorCount(errorCount);
+      check("compilation()").about(compilations()).that(compilation).hadErrorCount(errorCount);
       return thisObject();
     }
 
     @CanIgnoreReturnValue
     public FileClause<T> withErrorContaining(String messageFragment) {
       return new FileBuilder(
-          check().about(compilations()).that(compilation).hadErrorContaining(messageFragment));
+          check("compilation()")
+              .about(compilations())
+              .that(compilation)
+              .hadErrorContaining(messageFragment));
     }
 
     /** Returns this object, cast to {@code T}. */
@@ -466,7 +475,9 @@ public final class JavaSourcesSubject
     @CanIgnoreReturnValue
     @Override
     public T generatesSources(JavaFileObject first, JavaFileObject... rest) {
-      check().about(javaSources()).that(compilation.generatedSourceFiles())
+      check("generatedSourceFiles()")
+          .about(javaSources())
+          .that(compilation.generatedSourceFiles())
           .parsesAs(first, rest);
       return thisObject();
     }
@@ -503,7 +514,7 @@ public final class JavaSourcesSubject
     public SuccessfulFileClause<T> generatesFileNamed(
         JavaFileManager.Location location, String packageName, String relativeName) {
       final JavaFileObjectSubject javaFileObjectSubject =
-          check()
+          check("compilation()")
               .about(compilations())
               .that(compilation)
               .generatedFile(location, packageName, relativeName);
@@ -586,7 +597,16 @@ public final class JavaSourcesSubject
 
     SingleSourceAdapter(FailureMetadata failureMetadata, JavaFileObject subject) {
       super(failureMetadata, subject);
-      this.delegate = check().about(javaSources()).that(ImmutableList.of(subject));
+      /*
+       * TODO(b/131918061): It would make more sense to eliminate SingleSourceAdapter entirely.
+       * Users can already use assertThat(JavaFileObject, JavaFileObject...) above for a single
+       * file. Anyone who needs a Subject.Factory could fall back to
+       * `about(javaSources()).that(ImmutableSet.of(source))`.
+       *
+       * We could take that on, or we could wait for JavaSourcesSubject to go away entirely in favor
+       * of CompilationSubject.
+       */
+      this.delegate = check("delegate()").about(javaSources()).that(ImmutableList.of(subject));
     }
 
     @Override

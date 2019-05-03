@@ -98,8 +98,7 @@ public final class JavaFileObjectSubject extends Subject<JavaFileObjectSubject, 
    */
   public StringSubject contentsAsString(Charset charset) {
     try {
-      return check()
-          .withMessage("the contents of " + actualAsString())
+      return check("contents()")
           .that(JavaFileObjects.asByteSource(actual()).asCharSource(charset).read());
     } catch (IOException e) {
       throw new RuntimeException(e);

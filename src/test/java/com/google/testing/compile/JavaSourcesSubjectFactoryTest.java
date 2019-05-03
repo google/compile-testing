@@ -134,9 +134,9 @@ public class JavaSourcesSubjectFactoryTest {
         .withWarningContaining("what is it?");
     AssertionError expected = expectFailure.getFailure();
     assertThat(expected.getMessage())
-        .startsWith("Expected a warning containing \"what is it?\", but only found:\n");
+        .contains("Expected a warning containing \"what is it?\", but only found:\n");
     // some versions of javac wedge the file and position in the middle
-    assertThat(expected.getMessage()).endsWith("this is a message\n");
+    assertThat(expected).hasMessageThat().contains("this is a message\n");
   }
 
   @Test
@@ -246,9 +246,9 @@ public class JavaSourcesSubjectFactoryTest {
         .withNoteContaining("what is it?");
     AssertionError expected = expectFailure.getFailure();
     assertThat(expected.getMessage())
-        .startsWith("Expected a note containing \"what is it?\", but only found:\n");
+        .contains("Expected a note containing \"what is it?\", but only found:\n");
     // some versions of javac wedge the file and position in the middle
-    assertThat(expected.getMessage()).endsWith("this is a message\n");
+    assertThat(expected).hasMessageThat().contains("this is a message\n");
   }
 
   @Test
@@ -350,8 +350,9 @@ public class JavaSourcesSubjectFactoryTest {
         .that(JavaFileObjects.forResource("HelloWorld-broken.java"))
         .compilesWithoutError();
     AssertionError expected = expectFailure.getFailure();
-    assertThat(expected.getMessage()).startsWith("Compilation produced the following"
-                                                     + " diagnostics:\n");
+    assertThat(expected)
+        .hasMessageThat()
+        .contains("Compilation produced the following" + " diagnostics:\n");
     assertThat(expected.getMessage()).contains("No files were generated.");
   }
 
@@ -421,7 +422,7 @@ public class JavaSourcesSubjectFactoryTest {
         .failsToCompile();
     AssertionError expected = expectFailure.getFailure();
     assertThat(expected.getMessage())
-        .startsWith("Compilation was expected to fail, but contained no errors");
+        .contains("Compilation was expected to fail, but contained no errors");
     assertThat(expected.getMessage()).contains("No files were generated.");
   }
 
@@ -436,9 +437,9 @@ public class JavaSourcesSubjectFactoryTest {
         .withErrorContaining("some error");
     AssertionError expected = expectFailure.getFailure();
     assertThat(expected.getMessage())
-        .startsWith("Expected an error containing \"some error\", but only found:\n");
+        .contains("Expected an error containing \"some error\", but only found:\n");
     // some versions of javac wedge the file and position in the middle
-    assertThat(expected.getMessage()).endsWith("expected error!\n");
+    assertThat(expected).hasMessageThat().contains("expected error!\n");
   }
 
   @Test
@@ -534,9 +535,9 @@ public class JavaSourcesSubjectFactoryTest {
         .withWarningContaining("what is it?");
     AssertionError expected = expectFailure.getFailure();
     assertThat(expected.getMessage())
-        .startsWith("Expected a warning containing \"what is it?\", but only found:\n");
+        .contains("Expected a warning containing \"what is it?\", but only found:\n");
     // some versions of javac wedge the file and position in the middle
-    assertThat(expected.getMessage()).endsWith("this is a message\n");
+    assertThat(expected).hasMessageThat().contains("this is a message\n");
   }
 
   @Test
@@ -627,9 +628,9 @@ public class JavaSourcesSubjectFactoryTest {
         .withNoteContaining("what is it?");
     AssertionError expected = expectFailure.getFailure();
     assertThat(expected.getMessage())
-        .startsWith("Expected a note containing \"what is it?\", but only found:\n");
+        .contains("Expected a note containing \"what is it?\", but only found:\n");
     // some versions of javac wedge the file and position in the middle
-    assertThat(expected.getMessage()).endsWith("this is a message\n");
+    assertThat(expected).hasMessageThat().contains("this is a message\n");
   }
 
   @Test

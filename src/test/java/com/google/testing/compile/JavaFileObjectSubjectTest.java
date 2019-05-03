@@ -16,6 +16,7 @@
 
 package com.google.testing.compile;
 
+import static com.google.common.truth.ExpectFailure.assertThat;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.testing.compile.JavaFileObjectSubject.assertThat;
 import static com.google.testing.compile.JavaFileObjectSubject.javaFileObjects;
@@ -23,7 +24,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.common.truth.ExpectFailure;
 import java.io.IOException;
-import java.util.regex.Pattern;
 import javax.tools.JavaFileObject;
 import org.junit.Rule;
 import org.junit.Test;
@@ -96,9 +96,9 @@ public final class JavaFileObjectSubjectTest {
         .contentsAsString(UTF_8)
         .containsMatch("bad+");
     AssertionError expected = expectFailure.getFailure();
-    assertThat(expected.getMessage())
-        .containsMatch("the contents of .*" + Pattern.quote(CLASS.getName()));
-    assertThat(expected.getMessage()).contains("bad+");
+    assertThat(expected).factValue("value of").isEqualTo("javaFileObject.contents()");
+    assertThat(expected).factValue("javaFileObject was").startsWith(CLASS.getName());
+    assertThat(expected).factValue("expected to contain a match for").isEqualTo("bad+");
   }
 
   @Test

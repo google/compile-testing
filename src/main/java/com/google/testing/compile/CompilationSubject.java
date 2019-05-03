@@ -331,9 +331,10 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
 
   private JavaFileObjectSubject checkGeneratedFile(
       Optional<JavaFileObject> generatedFile, Location location, String format, Object... args) {
+    String name = args.length == 0 ? format : String.format(format, args);
     if (!generatedFile.isPresent()) {
       StringBuilder builder = new StringBuilder("generated the file ");
-      builder.append(args.length == 0 ? format : String.format(format, args));
+      builder.append(name);
       builder.append("; it generated:\n");
       for (JavaFileObject generated : actual().generatedFiles()) {
         if (generated.toUri().getPath().contains(location.getName())) {
@@ -343,7 +344,7 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
       fail(builder.toString());
       return ignoreCheck().about(javaFileObjects()).that(ALREADY_FAILED);
     }
-    return check().about(javaFileObjects()).that(generatedFile.get());
+    return check("generatedFile(%s)", name).about(javaFileObjects()).that(generatedFile.get());
   }
 
   private static <T> Collector<T, ?, ImmutableList<T>> toImmutableList() {

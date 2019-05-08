@@ -15,6 +15,7 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.truth.ExpectFailure.assertThat;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.testing.compile.CompilationSubject.assertThat;
 import static com.google.testing.compile.CompilationSubject.compilations;
@@ -796,7 +797,9 @@ public class CompilationSubjectTest {
           .that(compilerWithGenerator().compile(HELLO_WORLD_RESOURCE))
           .generatedSourceFile("ThisIsNotTheRightFile");
       AssertionError expected = expectFailure.getFailure();
-      assertThat(expected.getMessage()).contains("generated the file ThisIsNotTheRightFile.java");
+      assertThat(expected)
+          .factValue("expected to generate file")
+          .isEqualTo("/ThisIsNotTheRightFile.java");
       assertThat(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
     }
 
@@ -815,8 +818,9 @@ public class CompilationSubjectTest {
           .that(compilerWithGenerator().compile(HELLO_WORLD_RESOURCE))
           .generatedFile(CLASS_OUTPUT, "com/google/testing/compile/Bogus.class");
       AssertionError expected = expectFailure.getFailure();
-      assertThat(expected.getMessage())
-          .contains("generated the file com/google/testing/compile/Bogus.class");
+      assertThat(expected)
+          .factValue("expected to generate file")
+          .isEqualTo("/com/google/testing/compile/Bogus.class");
     }
 
     @Test
@@ -834,10 +838,9 @@ public class CompilationSubjectTest {
           .that(compilerWithGenerator().compile(HELLO_WORLD_RESOURCE))
           .generatedFile(CLASS_OUTPUT, "com.google.testing.compile", "Bogus.class");
       AssertionError expected = expectFailure.getFailure();
-      assertThat(expected.getMessage())
-          .contains(
-              "generated the file named \"Bogus.class\" "
-                  + "in package \"com.google.testing.compile\"");
+      assertThat(expected)
+          .factValue("expected to generate file")
+          .isEqualTo("/com/google/testing/compile/Bogus.class");
     }
 
     @Test
@@ -848,8 +851,7 @@ public class CompilationSubjectTest {
           .that(compilerWithGenerator().compile(HELLO_WORLD_RESOURCE))
           .generatedFile(CLASS_OUTPUT, "", "File.java");
       AssertionError expected = expectFailure.getFailure();
-      assertThat(expected.getMessage())
-          .contains("generated the file named \"File.java\" in the default package");
+      assertThat(expected).factValue("expected to generate file").isEqualTo("/File.java");
       assertThat(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
     }
   }

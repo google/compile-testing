@@ -15,6 +15,7 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.truth.ExpectFailure.assertThat;
 import static com.google.common.truth.Truth.assertAbout;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
@@ -868,7 +869,9 @@ public class JavaSourcesSubjectFactoryTest {
         .generatesFileNamed(CLASS_OUTPUT, "com.google.testing.compile", "Bogus")
         .withContents(ByteSource.wrap("Bar".getBytes(UTF_8)));
     AssertionError expected = expectFailure.getFailure();
-    assertThat(expected.getMessage()).contains("generated the file named \"Bogus\"");
+    assertThat(expected)
+        .factValue("expected to generate file")
+        .isEqualTo("/com/google/testing/compile/Bogus");
     assertThat(expected.getMessage()).contains(GeneratingProcessor.GENERATED_RESOURCE_NAME);
   }
 

@@ -19,6 +19,7 @@ import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.notNull;
 import static com.google.common.collect.Iterables.size;
 import static com.google.common.collect.Streams.mapWithIndex;
+import static com.google.common.truth.Fact.fact;
 import static com.google.common.truth.Fact.simpleFact;
 import static com.google.common.truth.Truth.assertAbout;
 import static com.google.testing.compile.Compilation.Status.FAILURE;
@@ -36,6 +37,7 @@ import static javax.tools.Diagnostic.Kind.WARNING;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.truth.Fact;
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
 import com.google.common.truth.Truth;
@@ -302,14 +304,8 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
   @CanIgnoreReturnValue
   public JavaFileObjectSubject generatedFile(
       Location location, String packageName, String fileName) {
-    return checkGeneratedFile(
-        actual().generatedFile(location, packageName, fileName),
-        location,
-        "named \"%s\" in %s",
-        fileName,
-        packageName.isEmpty()
-            ? "the default package"
-            : String.format("package \"%s\"", packageName));
+    String path = packageName.isEmpty() ? fileName : packageName.replace('.', '/') + '/' + fileName;
+    return generatedFile(location, path);
   }
 
   /** Asserts that compilation generated a file at {@code path}. */
@@ -330,21 +326,22 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
           "compile.Failure", "package compile;", "", "final class Failure {}");
 
   private JavaFileObjectSubject checkGeneratedFile(
-      Optional<JavaFileObject> generatedFile, Location location, String format, Object... args) {
-    String name = args.length == 0 ? format : String.format(format, args);
+      Optional<JavaFileObject> generatedFile, Location location, String path) {
     if (!generatedFile.isPresent()) {
-      StringBuilder builder = new StringBuilder("generated the file ");
-      builder.append(name);
-      builder.append("; it generated:\n");
+      // TODO(b/132162475): Use Facts if it becomes public API.
+      ImmutableList.Builder<Fact> facts = ImmutableList.builder();
+      facts.add(fact("in location", location.getName()));
+      facts.add(simpleFact("it generated:"));
       for (JavaFileObject generated : actual().generatedFiles()) {
         if (generated.toUri().getPath().contains(location.getName())) {
-          builder.append("  ").append(generated.toUri().getPath()).append('\n');
+          facts.add(simpleFact("  " + generated.toUri().getPath()));
         }
       }
-      fail(builder.toString());
+      failWithoutActual(
+          fact("expected to generate file", "/" + path), facts.build().toArray(new Fact[0]));
       return ignoreCheck().about(javaFileObjects()).that(ALREADY_FAILED);
     }
-    return check("generatedFile(%s)", name).about(javaFileObjects()).that(generatedFile.get());
+    return check("generatedFile(/%s)", path).about(javaFileObjects()).that(generatedFile.get());
   }
 
   private static <T> Collector<T, ?, ImmutableList<T>> toImmutableList() {

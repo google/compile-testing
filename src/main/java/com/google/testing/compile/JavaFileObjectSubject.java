@@ -16,13 +16,13 @@
 package com.google.testing.compile;
 
 import static com.google.common.collect.Iterables.getOnlyElement;
+import static com.google.common.truth.Fact.fact;
 import static com.google.common.truth.Truth.assertAbout;
 import static com.google.testing.compile.JavaFileObjects.asByteSource;
 import static com.google.testing.compile.TreeDiffer.diffCompilationUnits;
 import static com.google.testing.compile.TreeDiffer.matchCompilationUnits;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
 import com.google.common.truth.FailureMetadata;
@@ -121,8 +121,8 @@ public final class JavaFileObjectSubject extends Subject<JavaFileObjectSubject, 
   public void hasSourceEquivalentTo(JavaFileObject expectedSource) {
     performTreeDifference(
         expectedSource,
-        "is equivalent to",
-        "Expected Source",
+        "expected to be equivalent to",
+        "expected",
         (expectedResult, actualResult) ->
             diffCompilationUnits(
                 getOnlyElement(expectedResult.compilationUnits()),
@@ -151,8 +151,8 @@ public final class JavaFileObjectSubject extends Subject<JavaFileObjectSubject, 
   public void containsElementsIn(JavaFileObject expectedPattern) {
     performTreeDifference(
         expectedPattern,
-        "contains elements in",
-        "Expected Pattern",
+        "expected to contain elements in",
+        "expected pattern",
         (expectedResult, actualResult) ->
             matchCompilationUnits(
                 getOnlyElement(expectedResult.compilationUnits()),
@@ -180,25 +180,12 @@ public final class JavaFileObjectSubject extends Subject<JavaFileObjectSubject, 
               new TreeContext(expectedTree, expectedResult.trees()),
               new TreeContext(actualTree, actualResult.trees()));
       try {
-        fail(
-            Joiner.on('\n')
-                .join(
-                    String.format("%s <%s>.", failureVerb, expected.toUri().getPath()),
-                    "",
-                    "Diffs:",
-                    "======",
-                    "",
-                    diffReport,
-                    "",
-                    expectedTitle + ":",
-                    "================",
-                    "",
-                    expected.getCharContent(false),
-                    "",
-                    "Actual Source:",
-                    "==============",
-                    "",
-                    actual().getCharContent(false)));
+        failWithoutActual(
+            fact("for file", actual().toUri().getPath()),
+            fact(failureVerb, expected.toUri().getPath()),
+            fact("diff", diffReport),
+            fact(expectedTitle, expected.getCharContent(false)),
+            fact("but was", actual().getCharContent(false)));
       } catch (IOException e) {
         throw new IllegalStateException(
             "Couldn't read from JavaFileObject when it was already in memory.", e);

@@ -65,12 +65,14 @@ import javax.tools.JavaFileObject;
 public final class JavaSourcesSubject
     extends Subject<JavaSourcesSubject, Iterable<? extends JavaFileObject>>
     implements CompileTester, ProcessedCompileTesterFactory {
+  private final Iterable<? extends JavaFileObject> actual;
   private final List<String> options = new ArrayList<String>(Arrays.asList("-Xlint"));
   @Nullable private ClassLoader classLoader;
   @Nullable private ImmutableList<File> classPath;
 
   JavaSourcesSubject(FailureMetadata failureMetadata, Iterable<? extends JavaFileObject> subject) {
     super(failureMetadata, subject);
+    this.actual = subject;
   }
 
   @Override
@@ -150,13 +152,13 @@ public final class JavaSourcesSubject
 
     @Override
     public void parsesAs(JavaFileObject first, JavaFileObject... rest) {
-      if (Iterables.isEmpty(actual())) {
+      if (Iterables.isEmpty(actual)) {
         failWithoutActual(
             simpleFact(
                 "Compilation generated no additional source files, though some were expected."));
         return;
       }
-      ParseResult actualResult = Parser.parse(actual());
+      ParseResult actualResult = Parser.parse(actual);
       ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
           actualResult.diagnosticsByKind().get(Kind.ERROR);
       if (!errors.isEmpty()) {
@@ -334,7 +336,7 @@ public final class JavaSourcesSubject
       if (classPath != null) {
         compiler = compiler.withClasspath(classPath);
       }
-      return compiler.compile(actual());
+      return compiler.compile(actual);
     }
   }
 

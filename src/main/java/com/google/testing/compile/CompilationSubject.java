@@ -72,16 +72,18 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
     return assertAbout(compilations()).that(actual);
   }
 
+  private final Compilation actual;
+
   CompilationSubject(FailureMetadata failureMetadata, Compilation actual) {
     super(failureMetadata, actual);
+    this.actual = actual;
   }
 
   /** Asserts that the compilation succeeded. */
   public void succeeded() {
-    if (actual().status().equals(FAILURE)) {
+    if (actual.status().equals(FAILURE)) {
       failWithoutActual(
-          simpleFact(
-              actual().describeFailureDiagnostics() + actual().describeGeneratedSourceFiles()));
+          simpleFact(actual.describeFailureDiagnostics() + actual.describeGeneratedSourceFiles()));
     }
   }
 
@@ -93,11 +95,11 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
 
   /** Asserts that the compilation failed. */
   public void failed() {
-    if (actual().status().equals(SUCCESS)) {
+    if (actual.status().equals(SUCCESS)) {
       failWithoutActual(
           simpleFact(
               "Compilation was expected to fail, but contained no errors.\n\n"
-                  + actual().describeGeneratedSourceFiles()));
+                  + actual.describeGeneratedSourceFiles()));
     }
   }
 
@@ -173,7 +175,7 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
   private void checkDiagnosticCount(
       int expectedCount, Diagnostic.Kind kind, Diagnostic.Kind... more) {
     Iterable<Diagnostic<? extends JavaFileObject>> diagnostics =
-        actual().diagnosticsOfKind(kind, more);
+        actual.diagnosticsOfKind(kind, more);
     int actualCount = size(diagnostics);
     if (actualCount != expectedCount) {
       failWithoutActual(
@@ -282,7 +284,7 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
       Diagnostic.Kind kind,
       Diagnostic.Kind... more) {
     ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsOfKind =
-        actual().diagnosticsOfKind(kind, more);
+        actual.diagnosticsOfKind(kind, more);
     ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsWithMessage =
         diagnosticsOfKind
             .stream()
@@ -311,7 +313,7 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
   /** Asserts that compilation generated a file at {@code path}. */
   @CanIgnoreReturnValue
   public JavaFileObjectSubject generatedFile(Location location, String path) {
-    return checkGeneratedFile(actual().generatedFile(location, path), location, path);
+    return checkGeneratedFile(actual.generatedFile(location, path), location, path);
   }
 
   /** Asserts that compilation generated a source file for a type with a given qualified name. */
@@ -332,7 +334,7 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
       ImmutableList.Builder<Fact> facts = ImmutableList.builder();
       facts.add(fact("in location", location.getName()));
       facts.add(simpleFact("it generated:"));
-      for (JavaFileObject generated : actual().generatedFiles()) {
+      for (JavaFileObject generated : actual.generatedFiles()) {
         if (generated.toUri().getPath().contains(location.getName())) {
           facts.add(simpleFact("  " + generated.toUri().getPath()));
         }

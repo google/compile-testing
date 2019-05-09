@@ -52,13 +52,16 @@ public final class JavaFileObjectSubject extends Subject<JavaFileObjectSubject, 
     return assertAbout(FACTORY).that(actual);
   }
 
+  private final JavaFileObject actual;
+
   JavaFileObjectSubject(FailureMetadata failureMetadata, JavaFileObject actual) {
     super(failureMetadata, actual);
+    this.actual = actual;
   }
 
   @Override
   protected String actualCustomStringRepresentation() {
-    return actual().toUri().getPath();
+    return actual.toUri().getPath();
   }
 
   /**
@@ -73,7 +76,7 @@ public final class JavaFileObjectSubject extends Subject<JavaFileObjectSubject, 
 
     JavaFileObject otherFile = (JavaFileObject) other;
     try {
-      if (!asByteSource(actual()).contentEquals(asByteSource(otherFile))) {
+      if (!asByteSource(actual).contentEquals(asByteSource(otherFile))) {
         failWithActual("expected to be equal to", other);
       }
     } catch (IOException e) {
@@ -84,7 +87,7 @@ public final class JavaFileObjectSubject extends Subject<JavaFileObjectSubject, 
   /** Asserts that the actual file's contents are equal to {@code expected}. */
   public void hasContents(ByteSource expected) {
     try {
-      if (!asByteSource(actual()).contentEquals(expected)) {
+      if (!asByteSource(actual).contentEquals(expected)) {
         failWithActual("expected to have contents", expected);
       }
     } catch (IOException e) {
@@ -99,7 +102,7 @@ public final class JavaFileObjectSubject extends Subject<JavaFileObjectSubject, 
   public StringSubject contentsAsString(Charset charset) {
     try {
       return check("contents()")
-          .that(JavaFileObjects.asByteSource(actual()).asCharSource(charset).read());
+          .that(JavaFileObjects.asByteSource(actual).asCharSource(charset).read());
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -166,7 +169,7 @@ public final class JavaFileObjectSubject extends Subject<JavaFileObjectSubject, 
       String failureVerb,
       String expectedTitle,
       BiFunction<ParseResult, ParseResult, TreeDifference> differencingFunction) {
-    ParseResult actualResult = Parser.parse(ImmutableList.of(actual()));
+    ParseResult actualResult = Parser.parse(ImmutableList.of(actual));
     CompilationUnitTree actualTree = getOnlyElement(actualResult.compilationUnits());
 
     ParseResult expectedResult = Parser.parse(ImmutableList.of(expected));
@@ -181,11 +184,11 @@ public final class JavaFileObjectSubject extends Subject<JavaFileObjectSubject, 
               new TreeContext(actualTree, actualResult.trees()));
       try {
         failWithoutActual(
-            fact("for file", actual().toUri().getPath()),
+            fact("for file", actual.toUri().getPath()),
             fact(failureVerb, expected.toUri().getPath()),
             fact("diff", diffReport),
             fact(expectedTitle, expected.getCharContent(false)),
-            fact("but was", actual().getCharContent(false)));
+            fact("but was", actual.getCharContent(false)));
       } catch (IOException e) {
         throw new IllegalStateException(
             "Couldn't read from JavaFileObject when it was already in memory.", e);

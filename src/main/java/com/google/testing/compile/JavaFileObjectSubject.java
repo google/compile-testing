@@ -37,7 +37,7 @@ import javax.annotation.Nullable;
 import javax.tools.JavaFileObject;
 
 /** Assertions about {@link JavaFileObject}s. */
-public final class JavaFileObjectSubject extends Subject<JavaFileObjectSubject, JavaFileObject> {
+public final class JavaFileObjectSubject extends Subject {
 
   private static final Subject.Factory<JavaFileObjectSubject, JavaFileObject> FACTORY =
       new JavaFileObjectSubjectFactory();

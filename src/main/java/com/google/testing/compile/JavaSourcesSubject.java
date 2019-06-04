@@ -62,8 +62,7 @@ import javax.tools.JavaFileObject;
  * @author Gregory Kick
  */
 @SuppressWarnings("restriction") // Sun APIs usage intended
-public final class JavaSourcesSubject
-    extends Subject<JavaSourcesSubject, Iterable<? extends JavaFileObject>>
+public final class JavaSourcesSubject extends Subject
     implements CompileTester, ProcessedCompileTesterFactory {
   private final Iterable<? extends JavaFileObject> actual;
   private final List<String> options = new ArrayList<String>(Arrays.asList("-Xlint"));
@@ -593,7 +592,7 @@ public final class JavaSourcesSubject
                 .build());
   }
 
-  public static final class SingleSourceAdapter extends Subject<SingleSourceAdapter, JavaFileObject>
+  public static final class SingleSourceAdapter extends Subject
       implements CompileTester, ProcessedCompileTesterFactory {
     private final JavaSourcesSubject delegate;
 

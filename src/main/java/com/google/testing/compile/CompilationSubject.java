@@ -57,7 +57,7 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 
 /** A {@link Truth} subject for a {@link Compilation}. */
-public final class CompilationSubject extends Subject<CompilationSubject, Compilation> {
+public final class CompilationSubject extends Subject {
 
   private static final Subject.Factory<CompilationSubject, Compilation> FACTORY =
       new CompilationSubjectFactory();

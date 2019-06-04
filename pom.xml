@@ -15,7 +15,7 @@
   <description>Utilities for testing compilation.</description>
 
   <properties>
-    <truth.version>0.44</truth.version>
+    <truth.version>0.45</truth.version>
   </properties>
 
   <url>http://github.com/google/compile-testing</url>

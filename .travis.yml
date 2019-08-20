@@ -3,7 +3,8 @@ install: mvn -B -U install clean --fail-never --quiet -DskipTests=true -Dinvoker
 script: mvn -B verify
 
 jdk:
-  - oraclejdk8
+  - openjdk8
+  - openjdk11
 
 notifications:
   email: false

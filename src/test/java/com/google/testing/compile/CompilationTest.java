@@ -67,6 +67,8 @@ public class CompilationTest {
     Compiler compiler = compilerWithGenerator();
     Compilation compilation = compiler.compile(brokenSource);
     assertThat(compilation.status()).isEqualTo(Compilation.Status.FAILURE);
+    assertThat(compilation.errors()).hasSize(1);
+    assertThat(compilation.errors().get(0).getLineNumber()).isEqualTo(3);
   }
 
   @Test

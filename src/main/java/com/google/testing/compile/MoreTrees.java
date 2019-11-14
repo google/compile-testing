@@ -198,7 +198,7 @@ final class MoreTrees {
     /** Returns the first present value. If both values are absent, then returns absent .*/
     @Override
     public Optional<TreePath> reduce(Optional<TreePath> t1, Optional<TreePath> t2) {
-      return (t1.isPresent()) ? t1 : t2;
+      return t1.isPresent() ? t1 : t2;
     }
 
     @Override

@@ -500,6 +500,7 @@ public final class JavaSourcesSubject extends Subject
       for (JavaFileObject generated : compilation.generatedFiles()) {
         try {
           if (generated.getKind().equals(expected.getKind())
+              && 0 != generated.getLastModified()
               && expectedByteSource.contentEquals(JavaFileObjects.asByteSource(generated))) {
             return true;
           }

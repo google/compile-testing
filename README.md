@@ -1,6 +1,7 @@
 Compile Testing
 ===============
 
+[![Build Status][travis-shield]][travis-link]
 [![Maven Release][maven-shield]][maven-link]
 
 A library for testing javac compilation with or without annotation processors. See the [javadoc][package-info] for usage examples.
@@ -22,6 +23,8 @@ License
     See the License for the specific language governing permissions and
     limitations under the License.
 
+[travis-shield]: https://travis-ci.org/google/compile-testing.svg?branch=master
+[travis-link]: https://travis-ci.org/google/compile-testing
 [package-info]: https://github.com/google/compile-testing/blob/master/src/main/java/com/google/testing/compile/package-info.java
 [maven-shield]: https://img.shields.io/maven-central/v/com.google.testing.compile/compile-testing.png
 [maven-link]: https://search.maven.org/artifact/com.google.testing.compile/compile-testing

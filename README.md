@@ -2,8 +2,9 @@ Compile Testing
 ===============
 
 [![Maven Release][maven-shield]][maven-link]
+[![Javadoc][javadoc-shield]][javadoc-link]
 
-A library for testing javac compilation with or without annotation processors. See the [javadoc][package-info] for usage examples.
+A library for testing javac compilation with or without annotation processors. See the [javadoc][javadoc-link] for usage examples.
 
 License
 -------
@@ -22,6 +23,7 @@ License
     See the License for the specific language governing permissions and
     limitations under the License.
 
-[package-info]: https://github.com/google/compile-testing/blob/master/src/main/java/com/google/testing/compile/package-info.java
 [maven-shield]: https://img.shields.io/maven-central/v/com.google.testing.compile/compile-testing.png
 [maven-link]: https://search.maven.org/artifact/com.google.testing.compile/compile-testing
+[javadoc-shield]: https://javadoc.io/badge/com.google.testing.compile/compile-testing.svg?color=blue
+[javadoc-link]: https://javadoc.io/doc/com.google.testing.compile/compile-testing

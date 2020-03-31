@@ -466,9 +466,12 @@ public final class CompilationSubject extends Subject {
 
     /** Lists the line at a line number (1-based). */
     String listLine(long lineNumber) {
-      return lineNumber == Diagnostic.NOPOS
-          ? "(no associated line)"
-          : String.format("%4d: %s", lineNumber, linesInFile().get((int) (lineNumber - 1)));
+      if (lineNumber == Diagnostic.NOPOS) {
+        return "(no associated line)";
+      }
+      checkArgument(lineNumber > 0 && lineNumber <= linesInFile().size(),
+          "Invalid line number %s; number of lines is only %s", lineNumber, linesInFile().size());
+      return String.format("%4d: %s", lineNumber, linesInFile().get((int) (lineNumber - 1)));
     }
   }
 

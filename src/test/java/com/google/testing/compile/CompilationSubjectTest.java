@@ -24,12 +24,15 @@ import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
 import static javax.tools.StandardLocation.CLASS_OUTPUT;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
 import com.google.common.truth.ExpectFailure;
 import com.google.common.truth.Truth;
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import javax.tools.Diagnostic;
@@ -345,6 +348,22 @@ public class CompilationSubjectTest {
                       sourceFile.getName()),
                   "   1: "));
       assertThat(expected.getMessage()).contains("" + actualErrorLine);
+    }
+
+    @Test
+    public void hadWarningContainingInFileOnLine_lineTooBig() throws IOException {
+      long lineCount = new BufferedReader(sourceFile.openReader(false)).lines().count();
+      IllegalArgumentException exception =
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  assertThat(compilerWithWarning().compile(sourceFile))
+                      .hadWarningContainingMatch("this is a+ message")
+                      .inFile(sourceFile)
+                      .onLine(100));
+      assertThat(exception)
+          .hasMessageThat()
+          .isEqualTo("Invalid line number 100; number of lines is only " + lineCount);
     }
 
     /* TODO(dpb): Negative cases for onLineContaining for

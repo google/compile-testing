@@ -265,7 +265,6 @@ public final class Compilation {
     }
   }
 
-  // TODO(dpb): Use Guava's toImmutableList() once that's available. MOE:strip_line
   private static <T> Collector<T, ?, ImmutableList<T>> toImmutableList() {
     return collectingAndThen(toList(), ImmutableList::copyOf);
   }

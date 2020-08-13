@@ -63,17 +63,14 @@ public class JavaFileObjectsTest {
             + "}");
   }
 
-  @Test public void forSourceLinesWithoutName() {
-    try {
-      JavaFileObjects.forSourceLines(
-          "package example;",
-          "",
-          "final class HelloWorld {",
-          "  void sayHello() {",
-          "    System.out.println(\"hello!\");",
-          "  }",
-          "}");
-      fail("An exception should have been thrown.");
-    } catch (IllegalArgumentException expected) {}
+  @Test(expected = IllegalArgumentException.class) public void forSourceLinesWithoutName() {
+    JavaFileObjects.forSourceLines(
+        "package example;",
+        "",
+        "final class HelloWorld {",
+        "  void sayHello() {",
+        "    System.out.println(\"hello!\");",
+        "  }",
+        "}");
   }
 }

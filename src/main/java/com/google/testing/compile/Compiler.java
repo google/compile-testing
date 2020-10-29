@@ -59,7 +59,7 @@ public abstract class Compiler {
   /** Returns a {@link Compiler} that uses a given {@link JavaCompiler} instance. */
   public static Compiler compiler(JavaCompiler javaCompiler) {
     return new AutoValue_Compiler(
-        javaCompiler, ImmutableList.of(), ImmutableList.of(), Optional.empty());
+        javaCompiler, ImmutableList.of(), ImmutableList.of(), Optional.empty(), Optional.empty(), false);
   }
 
   abstract JavaCompiler javaCompiler();
@@ -72,6 +72,15 @@ public abstract class Compiler {
 
   /** The compilation class path. If not present, the system class path is used. */
   public abstract Optional<ImmutableList<File>> classPath();
+
+  /** The compilation sourcepath. */
+  public abstract Optional<ImmutableList<File>> sourcePath();
+
+  /**
+   * Indicates whether {@link InMemJavaFileObject}s passed for compilation will be added
+   * to {@link InMemoryJavaFileManager} or not.
+   */
+  abstract boolean inMemorySourcePath();
 
   /**
    * Uses annotation processors during compilation. These replace any previously specified.
@@ -92,7 +101,7 @@ public abstract class Compiler {
    * @return a new instance with the same options and the given processors
    */
   public final Compiler withProcessors(Iterable<? extends Processor> processors) {
-    return copy(ImmutableList.copyOf(processors), options(), classPath());
+    return copy(ImmutableList.copyOf(processors), options(), classPath(), sourcePath(), inMemorySourcePath());
   }
 
   /**
@@ -113,7 +122,9 @@ public abstract class Compiler {
     return copy(
         processors(),
         FluentIterable.from(options).transform(toStringFunction()).toList(),
-        classPath());
+        classPath(),
+        sourcePath(),
+        inMemorySourcePath());
   }
 
   /**
@@ -128,12 +139,24 @@ public abstract class Compiler {
    */
   @Deprecated
   public final Compiler withClasspathFrom(ClassLoader classloader) {
-    return copy(processors(), options(), Optional.of(getClasspathFromClassloader(classloader)));
+    return copy(processors(), options(), Optional.of(getClasspathFromClassloader(classloader)), sourcePath(), inMemorySourcePath());
   }
 
   /** Uses the given classpath for the compilation instead of the system classpath. */
   public final Compiler withClasspath(Iterable<File> classPath) {
-    return copy(processors(), options(), Optional.of(ImmutableList.copyOf(classPath)));
+    return copy(processors(), options(), Optional.of(ImmutableList.copyOf(classPath)), sourcePath(), inMemorySourcePath());
+  }
+
+  /** Passes sourcepath to the compiler. */
+  public final Compiler withSourcepath(Iterable<File> sourcePath) {
+    return copy(processors(), options(), classPath(), Optional.of(ImmutableList.copyOf(sourcePath)), inMemorySourcePath());
+  }
+
+  /**
+   * Adds all {@link InMemJavaFileObject}s passed for compilation to the {@link InMemoryJavaFileManager}.
+   */
+  public final Compiler withInMemorySourcePath() {
+    return copy(processors(), options(), classPath(), sourcePath(), true);
   }
 
   /**
@@ -165,6 +188,19 @@ public abstract class Compiler {
                 throw new UncheckedIOException(e);
               }
             });
+    sourcePath()
+        .ifPresent(
+            sourcePath -> {
+              try {
+                fileManager.setLocation(StandardLocation.SOURCE_PATH, sourcePath);
+              } catch (IOException e) {
+                // impossible by specification
+                throw new UncheckedIOException(e);
+              }
+            });
+    if (inMemorySourcePath()) {
+      fileManager.saveToInMemSourcePath(files);
+    }
     CompilationTask task =
         javaCompiler()
             .getTask(
@@ -250,7 +286,9 @@ public abstract class Compiler {
   private Compiler copy(
       ImmutableList<Processor> processors,
       ImmutableList<String> options,
-      Optional<ImmutableList<File>> classPath) {
-    return new AutoValue_Compiler(javaCompiler(), processors, options, classPath);
+      Optional<ImmutableList<File>> classPath,
+      Optional<ImmutableList<File>> sourcePath,
+      boolean inMemorySourcePath) {
+    return new AutoValue_Compiler(javaCompiler(), processors, options, classPath, sourcePath, inMemorySourcePath);
   }
 }

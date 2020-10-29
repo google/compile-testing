@@ -24,6 +24,7 @@ import static javax.tools.StandardLocation.SOURCE_OUTPUT;
 import static org.junit.Assert.fail;
 
 import com.google.common.collect.ImmutableList;
+import java.io.File;
 import javax.tools.JavaFileObject;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -95,7 +96,83 @@ public class CompilationTest {
   private static Compiler compilerWithGenerator() {
     return javac().withProcessors(new GeneratingProcessor("test.generated"));
   }
-  
+
+  public static final JavaFileObject GENERATED_CLASS_WITH_PACKAGE = JavaFileObjects.forSourceLines("test.SomeClass_Copy",
+      "package test;",
+      "class SomeClass_Copy {",
+      "  void copyMe() { System.out.println(\"You're good.\"); }",
+      "}"
+  );
+
+  public static final JavaFileObject GENERATED_CLASS_WITHOUT_PACKAGE =
+      JavaFileObjects.forSourceLines("SomeClass_Copy",
+          "class SomeClass_Copy {",
+          "  void copyMe() { System.out.println(\"You're good.\"); }",
+          "}"
+      );
+
+  @Test
+  public void copyInMemSourceFileWithPackage() {
+    assertThat(compilerWithCopyingProcessor()
+        .withInMemorySourcePath()
+        .compile(JavaFileObjects.forSourceLines("test.SomeClass",
+            "package test;",
+            "class SomeClass {",
+            "  void copyMe() { System.out.println(\"You're good.\"); }",
+            "}"
+        )))
+        .generatedSourceFile("test.SomeClass_Copy")
+        .hasSourceEquivalentTo(GENERATED_CLASS_WITH_PACKAGE);
+  }
+
+  @Test
+  public void copyInMemSourceFileWithoutPackage() {
+    assertThat(compilerWithCopyingProcessor()
+        .withInMemorySourcePath()
+        .compile(JavaFileObjects.forSourceLines("SomeClass",
+            "class SomeClass {",
+            "  void copyMe() { System.out.println(\"You're good.\"); }",
+            "}"
+        )))
+        .generatedSourceFile("SomeClass_Copy")
+        .hasSourceEquivalentTo(GENERATED_CLASS_WITHOUT_PACKAGE);
+  }
+
+  @Test
+  public void copySourceFileWithPackage() {
+    String className = "test/SomeClass.java";
+    JavaFileObject fileObject = JavaFileObjects.forResource(className);
+    assertThat(compilerWithCopyingProcessor()
+        .withSourcepath(ImmutableList.of(findSourcePathRootForFile(fileObject, className)))
+        .compile(fileObject))
+        .generatedSourceFile("test.SomeClass_Copy")
+        .hasSourceEquivalentTo(GENERATED_CLASS_WITH_PACKAGE);
+  }
+
+  @Test
+  public void copySourceFileWithoutPackage() {
+    String className = "SomeClass.java";
+    JavaFileObject fileObject = JavaFileObjects.forResource(className);
+    assertThat(compilerWithCopyingProcessor()
+        .withSourcepath(ImmutableList.of(findSourcePathRootForFile(fileObject, className)))
+        .compile(fileObject))
+        .generatedSourceFile("SomeClass_Copy")
+        .hasSourceEquivalentTo(GENERATED_CLASS_WITHOUT_PACKAGE);
+  }
+
+  private static Compiler compilerWithCopyingProcessor() {
+    return javac().withProcessors(new CopyingProcessor());
+  }
+
+  private static File findSourcePathRootForFile(JavaFileObject fileObject, String name) {
+    String[] parts = name.split("/");
+    File fileObjectPath = new File(fileObject.toUri());
+    for (String ignored : parts) {
+      fileObjectPath = fileObjectPath.getParentFile();
+    }
+    return fileObjectPath;
+  }
+
   @Test
   public void generatedFiles_unsuccessfulCompilationThrows() {
     Compilation compilation =

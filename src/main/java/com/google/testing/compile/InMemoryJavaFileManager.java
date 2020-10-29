@@ -33,6 +33,7 @@ import java.io.Writer;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.Map.Entry;
+import javax.annotation.Nonnull;
 import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
@@ -51,6 +52,14 @@ final class InMemoryJavaFileManager extends ForwardingStandardJavaFileManager {
       CacheBuilder.newBuilder().build(new CacheLoader<URI, JavaFileObject>() {
         @Override
         public JavaFileObject load(URI key) {
+          return new InMemoryJavaFileObject(key);
+        }
+      });
+
+  private final LoadingCache<URI, JavaFileObject> inMemorySourceFiles =
+      CacheBuilder.newBuilder().build(new CacheLoader<URI, JavaFileObject>() {
+        @Override
+        public JavaFileObject load(@Nonnull URI key) {
           return new InMemoryJavaFileObject(key);
         }
       });
@@ -89,6 +98,11 @@ final class InMemoryJavaFileManager extends ForwardingStandardJavaFileManager {
       return inMemoryFileObjects.getIfPresent(
           uriForFileObject(location, packageName, relativeName));
     } else {
+      JavaFileObject fileObject = inMemorySourceFiles.getIfPresent(
+          uriForFileObject(location, packageName, relativeName));
+      if (fileObject != null) {
+        return fileObject;
+      }
       return super.getFileForInput(location, packageName, relativeName);
     }
   }
@@ -130,6 +144,17 @@ final class InMemoryJavaFileManager extends ForwardingStandardJavaFileManager {
 
   ImmutableList<JavaFileObject> getOutputFiles() {
     return ImmutableList.copyOf(inMemoryFileObjects.asMap().values());
+  }
+
+  void saveToInMemSourcePath(Iterable<? extends JavaFileObject> fileObjects) {
+    for (JavaFileObject fileObject : fileObjects) {
+      if (fileObject.getKind() != Kind.SOURCE) {
+        continue;
+      }
+      if (fileObject instanceof InMemJavaFileObject) {
+        inMemorySourceFiles.put(uriForFileObject(StandardLocation.SOURCE_PATH, "", fileObject.getName()), fileObject);
+      }
+    }
   }
 
   private static final class InMemoryJavaFileObject extends SimpleJavaFileObject

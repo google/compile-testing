@@ -92,7 +92,8 @@ public final class JavaFileObjects {
     return forSourceString(fullyQualifiedName, LINE_JOINER.join(lines));
   }
 
-  private static final class StringSourceJavaFileObject extends SimpleJavaFileObject {
+  private static final class StringSourceJavaFileObject extends SimpleJavaFileObject
+      implements InMemJavaFileObject {
     final String source;
     final long lastModified;
 

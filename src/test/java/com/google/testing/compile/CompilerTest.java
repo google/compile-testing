@@ -19,15 +19,19 @@ import static com.google.common.truth.Truth.assertThat;
 import static com.google.testing.compile.CompilationSubject.assertThat;
 import static com.google.testing.compile.Compiler.javac;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assume.assumeTrue;
 
 import com.google.common.collect.ImmutableList;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import javax.annotation.processing.Processor;
 import javax.lang.model.SourceVersion;
 import javax.tools.JavaCompiler;
@@ -196,6 +200,47 @@ public final class CompilerTest {
             .withOptions("-verbose")
             .compile(JavaFileObjects.forSourceLines("Test", "class Test {", "  Lib lib;", "}"));
     assertThat(compilation).succeeded();
+  }
+
+  @Test
+  public void annotationProcessorPath_empty() {
+    AnnotationFileProcessor processor = new AnnotationFileProcessor();
+    Compiler compiler =
+        javac().withProcessors(processor).withAnnotationProcessorPath(ImmutableList.of());
+    RuntimeException expected =
+        assertThrows(
+            RuntimeException.class,
+            () -> compiler.compile(JavaFileObjects.forSourceLines("Test", "class Test {}")));
+    assumeTrue(
+        isJdk9OrLater()); // with JDK 8, NullPointerException is thrown instead of the expected
+    // exception, and this bug is fixed after JDK 8
+    assertThat(expected).hasCauseThat().hasCauseThat().hasMessageThat().contains("tmp.txt");
+  }
+
+  @Test
+  public void annotationProcessorPath_customFiles() throws Exception {
+    AnnotationFileProcessor processor = new AnnotationFileProcessor();
+    File jar = compileTestJar();
+    // compile with only 'tmp.txt' on the annotation processor path
+    Compilation compilation =
+        javac()
+            .withProcessors(processor)
+            .withAnnotationProcessorPath(ImmutableList.of(jar))
+            .compile(JavaFileObjects.forSourceLines("Test", "class Test {}"));
+    assertThat(compilation).succeeded();
+  }
+
+  /**
+   * Sets up a jar containing a single file 'tmp.txt', for use in annotation processor path tests.
+   */
+  private static File compileTestJar() throws IOException {
+    File file = File.createTempFile("tmp", ".jar");
+    try (ZipOutputStream zipOutput = new ZipOutputStream(new FileOutputStream(file))) {
+      ZipEntry entry = new ZipEntry("tmp.txt");
+      zipOutput.putNextEntry(entry);
+      zipOutput.closeEntry();
+    }
+    return file;
   }
 
   @Test

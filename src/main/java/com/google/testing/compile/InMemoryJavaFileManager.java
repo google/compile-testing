@@ -32,7 +32,10 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.net.URI;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map.Entry;
+import java.util.Set;
 import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
@@ -66,6 +69,14 @@ final class InMemoryJavaFileManager extends ForwardingStandardJavaFileManager {
     }
     uri.append(relativeName);
     return URI.create(uri.toString());
+  }
+
+  @Override
+  public String inferBinaryName(Location location, JavaFileObject file) {
+    if (location == StandardLocation.CLASS_PATH && file instanceof SimpleJavaFileObject) {
+      return toBinaryName(file);
+    }
+    return super.inferBinaryName(location, file);
   }
 
   private static URI uriForJavaFileObject(Location location, String className, Kind kind) {
@@ -132,7 +143,49 @@ final class InMemoryJavaFileManager extends ForwardingStandardJavaFileManager {
     return ImmutableList.copyOf(inMemoryFileObjects.asMap().values());
   }
 
-  private static final class InMemoryJavaFileObject extends SimpleJavaFileObject
+  public void addToSourcePath(JavaFileObject... files) {
+    for (JavaFileObject file : files) {
+      String className = toBinaryName(file);
+      URI sourceUri = uriForJavaFileObject(StandardLocation.SOURCE_PATH, className, Kind.SOURCE);
+      inMemoryFileObjects.put(sourceUri, file);
+    }
+  }
+
+  public boolean deleteJavaFileObject(Location location, String className, Kind kind) {
+    URI key = uriForJavaFileObject(location, className, kind);
+    JavaFileObject fileObject = inMemoryFileObjects.asMap().remove(key);
+    return fileObject.delete();
+  }
+
+  //this won't work for inner classes
+  public static String toBinaryName(JavaFileObject file) {
+    String fileName = file.getName();
+    return fileName.substring(0, fileName.lastIndexOf('.')).replace('/', '.');
+  }
+
+  @Override
+  public boolean hasLocation(Location location) {
+    return location == StandardLocation.CLASS_PATH || location == StandardLocation.SOURCE_PATH || location == StandardLocation.PLATFORM_CLASS_PATH; // we don't care about source and other location types - not needed for compilation
+  }
+
+  @Override
+  public Iterable<JavaFileObject> list(Location location, String packageName, Set<Kind> kinds, boolean recurse) throws IOException {
+    List<JavaFileObject> result = new ArrayList();
+    if (location == StandardLocation.CLASS_PATH) {
+      String packageAsPath = packageName.replace('.', '/');
+      for (Entry<URI, JavaFileObject> entry : inMemoryFileObjects.asMap().entrySet()) {
+        if (entry.getKey().toString().contains("mem:///" + StandardLocation.CLASS_OUTPUT.getName() + '/' + packageAsPath)) {
+          result.add(entry.getValue());
+        }
+      }
+    }
+    for (JavaFileObject javaFileObject : super.list(location, packageName, kinds, recurse)) {
+      result.add(javaFileObject);
+    }
+    return result;
+  }
+
+  static final class InMemoryJavaFileObject extends SimpleJavaFileObject
       implements JavaFileObject {
     private long lastModified = 0L;
     private Optional<ByteSource> data = Optional.absent();

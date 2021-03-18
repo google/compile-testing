@@ -1,7 +1,7 @@
 Compile Testing
 ===============
 
-[![Build Status][travis-shield]][travis-link]
+[![Build Status][ci-shield]][ci-link]
 [![Maven Release][maven-shield]][maven-link]
 [![Javadoc][javadoc-shield]][javadoc-link]
 
@@ -24,8 +24,8 @@ License
     See the License for the specific language governing permissions and
     limitations under the License.
 
-[travis-shield]: https://travis-ci.org/google/compile-testing.svg?branch=master
-[travis-link]: https://travis-ci.org/google/compile-testing
+[ci-shield]: https://github.com/google/compile-testing/actions/workflows/ci.yml/badge.svg?branch=master
+[ci-link]: https://github.com/google/compile-testing/actions
 [maven-shield]: https://img.shields.io/maven-central/v/com.google.testing.compile/compile-testing.png
 [maven-link]: https://search.maven.org/artifact/com.google.testing.compile/compile-testing
 [javadoc-shield]: https://javadoc.io/badge/com.google.testing.compile/compile-testing.svg?color=blue

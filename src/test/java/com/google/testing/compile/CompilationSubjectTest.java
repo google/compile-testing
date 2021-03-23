@@ -77,13 +77,13 @@ public class CompilationSubjectTest {
           "}");
 
   private static final JavaFileObject HELLO_WORLD_RESOURCE =
-      JavaFileObjects.forResource("HelloWorld.java");
+      JavaFileObjects.forResource("test/HelloWorld.java");
 
   private static final JavaFileObject HELLO_WORLD_BROKEN_RESOURCE =
-      JavaFileObjects.forResource("HelloWorld-broken.java");
+      JavaFileObjects.forResource("test/HelloWorld-broken.java");
 
   private static final JavaFileObject HELLO_WORLD_DIFFERENT_RESOURCE =
-      JavaFileObjects.forResource("HelloWorld-different.java");
+      JavaFileObjects.forResource("test/HelloWorld-different.java");
 
   @RunWith(JUnit4.class)
   public static class StatusTest {

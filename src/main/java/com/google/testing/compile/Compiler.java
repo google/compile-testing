@@ -182,6 +182,7 @@ public abstract class Compiler {
     InMemoryJavaFileManager fileManager =
         new InMemoryJavaFileManager(
             javaCompiler().getStandardFileManager(diagnosticCollector, Locale.getDefault(), UTF_8));
+    fileManager.addSourceFiles(files);
     classPath().ifPresent(path -> setLocation(fileManager, StandardLocation.CLASS_PATH, path));
     annotationProcessorPath()
         .ifPresent(

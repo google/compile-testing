@@ -23,17 +23,27 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assume.assumeTrue;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Arrays;
 import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.Filer;
+import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.Processor;
+import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
+import javax.lang.model.element.TypeElement;
+import javax.tools.FileObject;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaCompiler.CompilationTask;
 import javax.tools.JavaFileObject;
@@ -52,7 +62,8 @@ public final class CompilerTest {
 
   @Rule public final TemporaryFolder temporaryFolder = new TemporaryFolder();
 
-  private static final JavaFileObject HELLO_WORLD = JavaFileObjects.forResource("HelloWorld.java");
+  private static final JavaFileObject HELLO_WORLD =
+      JavaFileObjects.forResource("test/HelloWorld.java");
 
   @Test
   public void options() {
@@ -228,6 +239,47 @@ public final class CompilerTest {
             .withAnnotationProcessorPath(ImmutableList.of(jar))
             .compile(JavaFileObjects.forSourceLines("Test", "class Test {}"));
     assertThat(compilation).succeeded();
+  }
+
+  @Test // See https://github.com/google/compile-testing/issues/189
+  public void readInputFile() throws IOException {
+    AtomicReference<String> content = new AtomicReference<>();
+    Compilation compilation =
+        javac()
+            .withProcessors(
+                new AbstractProcessor() {
+                  @Override
+                  public synchronized void init(ProcessingEnvironment processingEnv) {
+                    Filer filer = processingEnv.getFiler();
+                    try {
+                      FileObject helloWorld =
+                          filer.getResource(
+                              StandardLocation.SOURCE_PATH, "test", "HelloWorld.java");
+                      content.set(helloWorld.getCharContent(true).toString());
+                    } catch (IOException e) {
+                      throw new UncheckedIOException(e);
+                    }
+                  }
+
+                  @Override
+                  public boolean process(
+                      Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+                    return false;
+                  }
+
+                  @Override
+                  public ImmutableSet<String> getSupportedAnnotationTypes() {
+                    return ImmutableSet.of("*");
+                  }
+
+                  @Override
+                  public SourceVersion getSupportedSourceVersion() {
+                    return SourceVersion.latestSupported();
+                  }
+                })
+            .compile(HELLO_WORLD);
+    assertThat(compilation).succeeded();
+    assertThat(content.get()).isEqualTo(HELLO_WORLD.getCharContent(true).toString());
   }
 
   /**

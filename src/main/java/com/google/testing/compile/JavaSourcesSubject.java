@@ -21,17 +21,13 @@ import static com.google.testing.compile.CompilationSubject.compilations;
 import static com.google.testing.compile.Compiler.javac;
 import static com.google.testing.compile.JavaSourcesSubjectFactory.javaSources;
 
-import com.google.common.base.Function;
 import com.google.common.base.Joiner;
-import com.google.common.base.Optional;
-import com.google.common.base.Predicate;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 import com.google.common.io.ByteSource;
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
@@ -39,6 +35,16 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.testing.compile.CompilationSubject.DiagnosticAtColumn;
 import com.google.testing.compile.CompilationSubject.DiagnosticInFile;
 import com.google.testing.compile.CompilationSubject.DiagnosticOnLine;
+import com.google.testing.compile.CompileTester.ChainingClause;
+import com.google.testing.compile.CompileTester.CleanCompilationClause;
+import com.google.testing.compile.CompileTester.ColumnClause;
+import com.google.testing.compile.CompileTester.CompilationWithWarningsClause;
+import com.google.testing.compile.CompileTester.FileClause;
+import com.google.testing.compile.CompileTester.GeneratedPredicateClause;
+import com.google.testing.compile.CompileTester.LineClause;
+import com.google.testing.compile.CompileTester.SuccessfulCompilationClause;
+import com.google.testing.compile.CompileTester.SuccessfulFileClause;
+import com.google.testing.compile.CompileTester.UnsuccessfulCompilationClause;
 import com.google.testing.compile.Parser.ParseResult;
 import com.sun.source.tree.CompilationUnitTree;
 import java.io.File;
@@ -48,6 +54,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import javax.annotation.Nullable;
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
@@ -65,7 +72,7 @@ import javax.tools.JavaFileObject;
 public final class JavaSourcesSubject extends Subject
     implements CompileTester, ProcessedCompileTesterFactory {
   private final Iterable<? extends JavaFileObject> actual;
-  private final List<String> options = new ArrayList<String>(Arrays.asList("-Xlint"));
+  private final List<String> options = new ArrayList<>(Arrays.asList("-Xlint"));
   @Nullable private ClassLoader classLoader;
   @Nullable private ImmutableList<File> classPath;
 
@@ -142,7 +149,7 @@ public final class JavaSourcesSubject extends Subject
     private final ImmutableSet<Processor> processors;
 
     private CompilationClause() {
-      this(ImmutableSet.<Processor>of());
+      this(ImmutableSet.of());
     }
 
     private CompilationClause(Iterable<? extends Processor> processors) {
@@ -175,38 +182,23 @@ public final class JavaSourcesSubject extends Subject
       final FluentIterable<? extends CompilationUnitTree> expectedTrees =
           FluentIterable.from(expectedResult.compilationUnits());
 
-      Function<? super CompilationUnitTree, ImmutableSet<String>> getTypesFunction =
-          new Function<CompilationUnitTree, ImmutableSet<String>>() {
-            @Override
-            public ImmutableSet<String> apply(CompilationUnitTree compilationUnit) {
-              return TypeEnumerator.getTopLevelTypes(compilationUnit);
-            }
-          };
-
       final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> expectedTreeTypes =
-          Maps.toMap(expectedTrees, getTypesFunction);
+          expectedTrees.toMap(TypeEnumerator::getTopLevelTypes);
+
       final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> actualTreeTypes =
-          Maps.toMap(actualTrees, getTypesFunction);
+          actualTrees.toMap(TypeEnumerator::getTopLevelTypes);
+
       final ImmutableMap<? extends CompilationUnitTree, Optional<? extends CompilationUnitTree>>
           matchedTrees =
-              Maps.toMap(
-                  expectedTrees,
-                  new Function<CompilationUnitTree, Optional<? extends CompilationUnitTree>>() {
-                    @Override
-                    public Optional<? extends CompilationUnitTree> apply(
-                        final CompilationUnitTree expectedTree) {
-                      return Iterables.tryFind(
-                          actualTrees,
-                          new Predicate<CompilationUnitTree>() {
-                            @Override
-                            public boolean apply(CompilationUnitTree actualTree) {
-                              return expectedTreeTypes
-                                  .get(expectedTree)
-                                  .equals(actualTreeTypes.get(actualTree));
-                            }
-                          });
-                    }
-                  });
+              expectedTrees.toMap(
+                  expectedTree ->
+                      actualTrees.stream()
+                          .filter(
+                              actualTree ->
+                                  expectedTreeTypes
+                                      .get(expectedTree)
+                                      .equals(actualTreeTypes.get(actualTree)))
+                          .findFirst());
 
       for (Map.Entry<? extends CompilationUnitTree, Optional<? extends CompilationUnitTree>>
           matchedTreePair : matchedTrees.entrySet()) {
@@ -239,15 +231,11 @@ public final class JavaSourcesSubject extends Subject
               .join(
                   actualTrees
                       .transform(
-                          new Function<CompilationUnitTree, String>() {
-                            @Override
-                            public String apply(CompilationUnitTree generated) {
-                              return String.format(
+                          generated ->
+                              String.format(
                                   "- %s in <%s>",
                                   actualTypes.get(generated),
-                                  generated.getSourceFile().toUri().getPath());
-                            }
-                          })
+                                  generated.getSourceFile().toUri().getPath()))
                       .toList());
       failWithoutActual(
           simpleFact(
@@ -350,8 +338,8 @@ public final class JavaSourcesSubject extends Subject
   /**
    * Base implementation of {@link CompilationWithWarningsClause}.
    *
-   * @param T the type parameter for {@link CompilationWithWarningsClause}. {@code this} must be an
-   *     instance of {@code T}; otherwise some calls will throw {@link ClassCastException}.
+   * @param <T> the type parameter for {@link CompilationWithWarningsClause}. {@code this} must be
+   *     an instance of {@code T}; otherwise some calls will throw {@link ClassCastException}.
    */
   abstract class CompilationWithWarningsBuilder<T> implements CompilationWithWarningsClause<T> {
     protected final Compilation compilation;
@@ -463,7 +451,7 @@ public final class JavaSourcesSubject extends Subject
    * Base implementation of {@link GeneratedPredicateClause GeneratedPredicateClause<T>} and {@link
    * ChainingClause ChainingClause<GeneratedPredicateClause<T>>}.
    *
-   * @param T the type parameter to {@link GeneratedPredicateClause}. {@code this} must be an
+   * @param <T> the type parameter to {@link GeneratedPredicateClause}. {@code this} must be an
    *     instance of {@code T}.
    */
   private abstract class GeneratedCompilationBuilder<T> extends CompilationWithWarningsBuilder<T>

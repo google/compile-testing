@@ -15,7 +15,6 @@
  */
 package com.google.testing.compile;
 
-import com.google.common.base.Optional;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;
@@ -35,6 +34,7 @@ import com.sun.source.tree.VariableTree;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.TreePathScanner;
 import java.util.Arrays;
+import java.util.Optional;
 import javax.annotation.Nullable;
 
 /**
@@ -70,7 +70,7 @@ final class MoreTrees {
   /**
    * Finds the first instance of the given {@link Tree.Kind} that is a subtree of the root provided.
    *
-   * @throw IllegalArgumentException if no such subtree exists.
+   * @throws IllegalArgumentException if no such subtree exists.
    */
   static Tree findSubtree(CompilationUnitTree root, Tree.Kind treeKind) {
     return findSubtree(root, treeKind, null);
@@ -82,10 +82,10 @@ final class MoreTrees {
    *
    * <p>See the doc on {@link #findSubtreePath} for details on the identifier param.
    *
-   * @throw IllegalArgumentException if no such subtree exists.
+   * @throws IllegalArgumentException if no such subtree exists.
    */
-  static Tree findSubtree(CompilationUnitTree root, Tree.Kind treeKind,
-      @Nullable String identifier) {
+  static Tree findSubtree(
+      CompilationUnitTree root, Tree.Kind treeKind, @Nullable String identifier) {
     return findSubtreePath(root, treeKind, identifier).getLeaf();
   }
 
@@ -93,7 +93,7 @@ final class MoreTrees {
    * Finds a path to the first instance of the given {@link Tree.Kind} that is a subtree of the root
    * provided.
    *
-   * @throw IllegalArgumentException if no such subtree exists.
+   * @throws IllegalArgumentException if no such subtree exists.
    */
   static TreePath findSubtreePath(CompilationUnitTree root, Tree.Kind treeKind) {
     return findSubtreePath(root, treeKind, null);
@@ -121,8 +121,7 @@ final class MoreTrees {
    */
   static TreePath findSubtreePath(CompilationUnitTree root, Tree.Kind treeKind,
       @Nullable String identifier) {
-    SearchScanner subtreeFinder = new SearchScanner(treeKind,
-        (identifier == null) ? Optional.<String>absent() : Optional.of(identifier));
+    SearchScanner subtreeFinder = new SearchScanner(treeKind, Optional.ofNullable(identifier));
     Optional<TreePath> res = subtreeFinder.scan(root, null);
     Preconditions.checkArgument(res.isPresent(), "Couldn't find any subtree matching the given "
         + "criteria. Root: %s, Class: %s, Identifier: %s", root, treeKind, identifier);
@@ -152,8 +151,7 @@ final class MoreTrees {
       } else if (!idValue.isPresent()) {
         idsMatch = false;
       } else {
-        idsMatch = (idValue.get() == null && identifier.get() == null)
-            || identifier.get().equals(idValue.get().toString());
+        idsMatch = identifier.get().equals(idValue.get().toString());
       }
       return kindSought.equals(node.getKind()) && idsMatch;
     }
@@ -163,7 +161,7 @@ final class MoreTrees {
      * and kind sought.
      */
     private boolean isMatch(Tree node, Object idValue) {
-      return isMatch(node, Optional.fromNullable(idValue));
+      return isMatch(node, Optional.ofNullable(idValue));
     }
 
     /** Returns a TreePath that includes the current path plus the node provided */
@@ -172,27 +170,27 @@ final class MoreTrees {
     }
 
     /**
-     * Returns the {@code Optional} value given, or {@code Optional.absent()} if the value given
-     * was {@code null}.
+     * Returns the {@code Optional} value given, or {@code Optional.empty()} if the value given was
+     * {@code null}.
      */
     private Optional<TreePath> absentIfNull(Optional<TreePath> ret) {
-      return (ret != null) ? ret : Optional.<TreePath>absent();
+      return (ret != null) ? ret : Optional.empty();
     }
 
     @Override
     public Optional<TreePath> scan(Tree node, Void v) {
       if (node == null) {
-        return Optional.<TreePath>absent();
+        return Optional.empty();
       }
 
-      return isMatch(node, Optional.absent())
-          ? currentPathPlus(node) : absentIfNull(super.scan(node, v));
+      return isMatch(node, Optional.empty())
+          ? currentPathPlus(node)
+          : absentIfNull(super.scan(node, v));
     }
 
     @Override
     public Optional<TreePath> scan(Iterable<? extends Tree> nodes, Void v) {
-      Optional<TreePath> ret = super.scan(nodes, v);
-      return (ret != null) ? ret : Optional.<TreePath>absent();
+      return absentIfNull(super.scan(nodes, v));
     }
 
     /** Returns the first present value. If both values are absent, then returns absent .*/
@@ -204,16 +202,16 @@ final class MoreTrees {
     @Override
     public Optional<TreePath> visitBreak(@Nullable BreakTree node, Void v) {
       if (node == null) {
-        return Optional.absent();
+        return Optional.empty();
       }
 
-      return isMatch(node, node.getLabel()) ? currentPathPlus(node) : Optional.<TreePath>absent();
+      return isMatch(node, node.getLabel()) ? currentPathPlus(node) : Optional.empty();
     }
 
     @Override
     public Optional<TreePath> visitClass(@Nullable ClassTree node, Void v) {
       if (node == null) {
-        return Optional.absent();
+        return Optional.empty();
       } else if (isMatch(node, node.getSimpleName())) {
         return currentPathPlus(node);
       }
@@ -224,7 +222,7 @@ final class MoreTrees {
     @Override
     public Optional<TreePath> visitContinue(@Nullable ContinueTree node, Void v) {
       if (node == null) {
-        return Optional.absent();
+        return Optional.empty();
       } else if (isMatch(node, node.getLabel())) {
         return currentPathPlus(node);
       }
@@ -235,7 +233,7 @@ final class MoreTrees {
     @Override
     public Optional<TreePath> visitIdentifier(@Nullable IdentifierTree node, Void v) {
       if (node == null) {
-        return Optional.absent();
+        return Optional.empty();
       } else if (isMatch(node, node.getName())) {
         return currentPathPlus(node);
       }
@@ -246,7 +244,7 @@ final class MoreTrees {
     @Override
     public Optional<TreePath> visitLabeledStatement(@Nullable LabeledStatementTree node, Void v) {
       if (node == null) {
-        return Optional.absent();
+        return Optional.empty();
       } else if (isMatch(node, node.getLabel())) {
         return currentPathPlus(node);
       }
@@ -257,7 +255,7 @@ final class MoreTrees {
     @Override
     public Optional<TreePath> visitLiteral(@Nullable LiteralTree node, Void v) {
       if (node == null) {
-        return Optional.absent();
+        return Optional.empty();
       } else if (isMatch(node, node.getValue())) {
         return currentPathPlus(node);
       }
@@ -268,7 +266,7 @@ final class MoreTrees {
     @Override
     public Optional<TreePath> visitMethod(@Nullable MethodTree node, Void v) {
       if (node == null) {
-        return Optional.absent();
+        return Optional.empty();
       } else if (isMatch(node, node.getName())) {
         return currentPathPlus(node);
       }
@@ -279,7 +277,7 @@ final class MoreTrees {
     @Override
     public Optional<TreePath> visitMemberSelect(@Nullable MemberSelectTree node, Void v) {
       if (node == null) {
-        return Optional.absent();
+        return Optional.empty();
       } else if (isMatch(node, node.getIdentifier())) {
         return currentPathPlus(node);
       }
@@ -290,7 +288,7 @@ final class MoreTrees {
     @Override
     public Optional<TreePath> visitTypeParameter(@Nullable TypeParameterTree node, Void v) {
       if (node == null) {
-        return Optional.absent();
+        return Optional.empty();
       } else if (isMatch(node, node.getName())) {
         return currentPathPlus(node);
       }
@@ -301,7 +299,7 @@ final class MoreTrees {
     @Override
     public Optional<TreePath> visitVariable(@Nullable VariableTree node, Void v) {
       if (node == null) {
-        return Optional.absent();
+        return Optional.empty();
       } else if (isMatch(node, node.getName())) {
         return currentPathPlus(node);
       }

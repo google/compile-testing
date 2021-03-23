@@ -24,9 +24,9 @@ import com.google.auto.value.AutoValue;
 import com.google.common.base.Equivalence;
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
-import com.google.common.base.Optional;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.errorprone.annotations.FormatMethod;
 import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.ArrayAccessTree;
 import com.sun.source.tree.ArrayTypeTree;
@@ -84,6 +84,7 @@ import com.sun.source.util.TreePath;
 import com.sun.source.util.Trees;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Optional;
 import java.util.Set;
 import javax.annotation.Nullable;
 import javax.lang.model.element.Name;
@@ -145,14 +146,13 @@ final class TreeDiffer {
   }
 
   /**
-   * Returns a {@link TreeDifference} describing the difference between the two
-   * sub-{@code Tree}s. The trees diffed are the leaves of the {@link TreePath}s
-   * provided.
+   * Returns a {@link TreeDifference} describing the difference between the two sub-{@code Tree}s.
+   * The trees diffed are the leaves of the {@link TreePath}s provided.
    *
    * <p>Used for testing.
    */
-  static final TreeDifference diffSubtrees(@Nullable TreePath pathToExpected,
-      @Nullable TreePath pathToActual) {
+  static TreeDifference diffSubtrees(
+      @Nullable TreePath pathToExpected, @Nullable TreePath pathToActual) {
     TreeDifference.Builder diffBuilder = new TreeDifference.Builder();
     DiffVisitor diffVisitor =
         new DiffVisitor(diffBuilder, TreeFilter.KEEP_ALL, pathToExpected, pathToActual);
@@ -202,6 +202,7 @@ final class TreeDiffer {
      * Adds a {@code TwoWayDiff} if the predicate given evaluates to false. The {@code TwoWayDiff}
      * is parameterized by the {@code Tree}s and message format provided.
      */
+    @FormatMethod
     private void checkForDiff(boolean p, String message, Object... formatArgs) {
       if (!p) {
         diffBuilder.addDifferingNodes(expectedPath, actualPath, String.format(message, formatArgs));
@@ -986,7 +987,7 @@ final class TreeDiffer {
         T treeAsExpectedType = (T) actual;
         return Optional.of(treeAsExpectedType);
       } else {
-        return Optional.absent();
+        return Optional.empty();
       }
     }
   }

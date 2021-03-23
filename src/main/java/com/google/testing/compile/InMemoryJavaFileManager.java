@@ -18,7 +18,6 @@ package com.google.testing.compile;
 import static com.google.common.collect.MoreCollectors.toOptional;
 
 import com.google.common.base.MoreObjects;
-import com.google.common.base.Optional;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -36,6 +35,7 @@ import java.net.URI;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
@@ -127,11 +127,10 @@ final class InMemoryJavaFileManager extends ForwardingStandardJavaFileManager {
     // to the left.
     String suffix =
         packageName.isEmpty() ? relativeName : packageName.replace('.', '/') + "/" + relativeName;
-    return Optional.fromJavaUtil(
-        inMemoryInputs.entrySet().stream()
-            .filter(entry -> entry.getKey().getPath().endsWith(suffix))
-            .map(Map.Entry::getValue)
-            .collect(toOptional())); // Might have problems if more than one input file matches.
+    return inMemoryInputs.entrySet().stream()
+        .filter(entry -> entry.getKey().getPath().endsWith(suffix))
+        .map(Map.Entry::getValue)
+        .collect(toOptional()); // Might have problems if more than one input file matches.
   }
 
   @Override
@@ -173,7 +172,7 @@ final class InMemoryJavaFileManager extends ForwardingStandardJavaFileManager {
   private static final class InMemoryJavaFileObject extends SimpleJavaFileObject
       implements JavaFileObject {
     private long lastModified = 0L;
-    private Optional<ByteSource> data = Optional.absent();
+    private Optional<ByteSource> data = Optional.empty();
 
     InMemoryJavaFileObject(URI uri) {
       super(uri, JavaFileObjects.deduceKind(uri));
@@ -239,7 +238,7 @@ final class InMemoryJavaFileManager extends ForwardingStandardJavaFileManager {
 
     @Override
     public boolean delete() {
-      this.data = Optional.absent();
+      this.data = Optional.empty();
       this.lastModified = 0L;
       return true;
     }

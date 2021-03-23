@@ -20,14 +20,15 @@ import static com.google.common.truth.Truth.assertAbout;
 import static com.google.testing.compile.CompilationSubject.compilations;
 import static com.google.testing.compile.Compiler.javac;
 import static com.google.testing.compile.JavaSourcesSubjectFactory.javaSources;
+import static java.util.stream.Collectors.toList;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.common.io.ByteSource;
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
@@ -177,20 +178,21 @@ public final class JavaSourcesSubject extends Subject
         return;
       }
       final ParseResult expectedResult = Parser.parse(Lists.asList(first, rest));
-      final FluentIterable<? extends CompilationUnitTree> actualTrees =
-          FluentIterable.from(actualResult.compilationUnits());
-      final FluentIterable<? extends CompilationUnitTree> expectedTrees =
-          FluentIterable.from(expectedResult.compilationUnits());
+      final ImmutableList<? extends CompilationUnitTree> actualTrees =
+          actualResult.compilationUnits();
+      final ImmutableList<? extends CompilationUnitTree> expectedTrees =
+          expectedResult.compilationUnits();
 
       final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> expectedTreeTypes =
-          expectedTrees.toMap(TypeEnumerator::getTopLevelTypes);
+          Maps.toMap(expectedTrees, TypeEnumerator::getTopLevelTypes);
 
       final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> actualTreeTypes =
-          actualTrees.toMap(TypeEnumerator::getTopLevelTypes);
+          Maps.toMap(actualTrees, TypeEnumerator::getTopLevelTypes);
 
       final ImmutableMap<? extends CompilationUnitTree, Optional<? extends CompilationUnitTree>>
           matchedTrees =
-              expectedTrees.toMap(
+              Maps.toMap(
+                  expectedTrees,
                   expectedTree ->
                       actualTrees.stream()
                           .filter(
@@ -225,18 +227,18 @@ public final class JavaSourcesSubject extends Subject
         ImmutableSet<String> expectedTypes,
         CompilationUnitTree expectedTree,
         final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> actualTypes,
-        FluentIterable<? extends CompilationUnitTree> actualTrees) {
+        ImmutableList<? extends CompilationUnitTree> actualTrees) {
       String generatedTypesReport =
           Joiner.on('\n')
               .join(
-                  actualTrees
-                      .transform(
+                  actualTrees.stream()
+                      .map(
                           generated ->
                               String.format(
                                   "- %s in <%s>",
                                   actualTypes.get(generated),
                                   generated.getSourceFile().toUri().getPath()))
-                      .toList());
+                      .collect(toList()));
       failWithoutActual(
           simpleFact(
               Joiner.on('\n')

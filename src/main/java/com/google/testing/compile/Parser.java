@@ -172,7 +172,7 @@ public final class Parser {
       return diagnostics;
     }
 
-    Iterable<? extends CompilationUnitTree> compilationUnits() {
+    ImmutableList<? extends CompilationUnitTree> compilationUnits() {
       return compilationUnits;
     }
 

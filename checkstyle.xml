@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!DOCTYPE module PUBLIC
-    "-//Puppy Crawl//DTD Check Configuration 1.2//EN"
-    "http://www.puppycrawl.com/dtds/configuration_1_2.dtd">
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd">
 
 <module name="Checker">
     <!--module name="NewlineAtEndOfFile"/-->
@@ -30,7 +30,7 @@
         <property name="cacheFile" value="${checkstyle.cache.file}"/>
 
         <!-- Checks for Javadoc comments.                     -->
-        <!-- See http://checkstyle.sf.net/config_javadoc.html -->
+        <!-- See https://checkstyle.sf.net/config_javadoc.html -->
         <!--module name="JavadocMethod"/-->
         <!--module name="JavadocType"/-->
         <!--module name="JavadocVariable"/-->
@@ -38,7 +38,7 @@
 
 
         <!-- Checks for Naming Conventions.                  -->
-        <!-- See http://checkstyle.sf.net/config_naming.html -->
+        <!-- See https://checkstyle.sf.net/config_naming.html -->
         <!--<module name="ConstantName"/>-->
         <module name="LocalFinalVariableName"/>
         <module name="LocalVariableName"/>
@@ -51,7 +51,7 @@
 
 
         <!-- Checks for imports                              -->
-        <!-- See http://checkstyle.sf.net/config_import.html -->
+        <!-- See https://checkstyle.sf.net/config_import.html -->
         <module name="AvoidStarImport"/>
         <module name="IllegalImport"/> <!-- defaults to sun.* packages -->
         <module name="RedundantImport"/>
@@ -61,7 +61,7 @@
 
 
         <!-- Checks for Size Violations.                    -->
-        <!-- See http://checkstyle.sf.net/config_sizes.html -->
+        <!-- See https://checkstyle.sf.net/config_sizes.html -->
         <module name="LineLength">
             <property name="max" value="100"/>
         </module>
@@ -70,7 +70,7 @@
 
 
         <!-- Checks for whitespace                               -->
-        <!-- See http://checkstyle.sf.net/config_whitespace.html -->
+        <!-- See https://checkstyle.sf.net/config_whitespace.html -->
         <module name="GenericWhitespace"/>
         <module name="EmptyForIteratorPad"/>
         <module name="MethodParamPad"/>
@@ -87,13 +87,13 @@
 
 
         <!-- Modifier Checks                                    -->
-        <!-- See http://checkstyle.sf.net/config_modifiers.html -->
+        <!-- See https://checkstyle.sf.net/config_modifiers.html -->
         <!--module name="ModifierOrder"/-->
         <module name="RedundantModifier"/>
 
 
         <!-- Checks for blocks. You know, those {}'s         -->
-        <!-- See http://checkstyle.sf.net/config_blocks.html -->
+        <!-- See https://checkstyle.sf.net/config_blocks.html -->
         <!--module name="AvoidNestedBlocks"/-->
         <!--module name="EmptyBlock"/-->
         <module name="LeftCurly"/>
@@ -102,7 +102,7 @@
 
 
         <!-- Checks for common coding problems               -->
-        <!-- See http://checkstyle.sf.net/config_coding.html -->
+        <!-- See https://checkstyle.sf.net/config_coding.html -->
         <!--module name="AvoidInlineConditionals"/-->
         <module name="CovariantEquals"/>
         <module name="DoubleCheckedLocking"/>
@@ -119,7 +119,7 @@
         <module name="SimplifyBooleanReturn"/>
 
         <!-- Checks for class design                         -->
-        <!-- See http://checkstyle.sf.net/config_design.html -->
+        <!-- See https://checkstyle.sf.net/config_design.html -->
         <!--module name="DesignForExtension"/-->
         <!--module name="FinalClass"/-->
         <!--module name="HideUtilityClassConstructor"/-->
@@ -128,7 +128,7 @@
 
 
         <!-- Miscellaneous other checks.                   -->
-        <!-- See http://checkstyle.sf.net/config_misc.html -->
+        <!-- See https://checkstyle.sf.net/config_misc.html -->
         <!--module name="ArrayTypeStyle"/-->
         <!--module name="FinalParameters"/-->
         <!--module name="TodoComment"/-->

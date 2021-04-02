@@ -189,7 +189,7 @@ public final class JavaFileObjects {
 
     static final Splitter JAR_URL_SPLITTER = Splitter.on('!');
 
-    static final URI getPathUri(URL jarUrl) {
+    static URI getPathUri(URL jarUrl) {
       ImmutableList<String> parts = ImmutableList.copyOf(JAR_URL_SPLITTER.split(jarUrl.getPath()));
       checkArgument(parts.size() == 2,
           "The jar url separator (!) appeared more than once in the url: %s", jarUrl);

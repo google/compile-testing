@@ -93,19 +93,19 @@ final class TypeEnumerator {
 
     @Override
     public Set<String> visitCompilationUnit(CompilationUnitTree reference, Void v) {
-      Set<String> packageSet = reference.getPackageName() == null ?
-          ImmutableSet.of("") : scan(reference.getPackageName(), v);
+      Set<String> packageSet = reference.getPackageName() == null
+          ? ImmutableSet.of("") : scan(reference.getPackageName(), v);
       if (packageSet.size() != 1) {
-        throw new AssertionError("Internal error in NameFinder. Expected to find at most one " +
-            "package identifier. Found " + packageSet);
+        throw new AssertionError("Internal error in NameFinder. Expected to find at most one "
+            + "package identifier. Found " + packageSet);
       }
       final String packageName = packageSet.isEmpty() ? "" : packageSet.iterator().next();
       Set<String> typeDeclSet = scan(reference.getTypeDecls(), v);
       return FluentIterable.from(typeDeclSet)
           .transform(new Function<String, String>() {
             @Override public String apply(String typeName) {
-              return packageName.isEmpty() ? typeName :
-                  String.format("%s.%s", packageName, typeName);
+              return packageName.isEmpty() ? typeName
+                  : String.format("%s.%s", packageName, typeName);
             }
           }).toSet();
     }

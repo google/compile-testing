@@ -135,7 +135,7 @@ final class MoreTrees {
     private final Optional<String> identifier;
     private final Tree.Kind kindSought;
 
-    public SearchScanner(Tree.Kind kindSought, Optional<String> identifier) {
+    SearchScanner(Tree.Kind kindSought, Optional<String> identifier) {
       this.kindSought = kindSought;
       this.identifier = identifier;
     }

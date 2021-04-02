@@ -182,7 +182,8 @@ public final class Parser {
   }
 
   // JavaCompiler.compilerKey has protected access until Java 9, so this is a workaround.
-  private static final class DummyJavaCompilerSubclass extends com.sun.tools.javac.main.JavaCompiler {
+  private static final class DummyJavaCompilerSubclass
+    extends com.sun.tools.javac.main.JavaCompiler {
     private static void closeCompiler(Context context) {
       com.sun.tools.javac.main.JavaCompiler compiler = context.get(compilerKey);
       if (compiler != null) {

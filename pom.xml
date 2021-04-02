@@ -1,4 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="https://maven.apache.org/POM/4.0.0" xmlns:xsi="https://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="https://maven.apache.org/POM/4.0.0 httpd://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
@@ -18,11 +18,11 @@
     <truth.version>1.1.2</truth.version>
   </properties>
 
-  <url>http://github.com/google/compile-testing</url>
+  <url>https://github.com/google/compile-testing</url>
 
   <issueManagement>
     <system>GitHub</system>
-    <url>http://github.com/google/compile-testing/issues</url>
+    <url>https://github.com/google/compile-testing/issues</url>
   </issueManagement>
 
   <inceptionYear>2013</inceptionYear>
@@ -35,14 +35,10 @@
     </license>
   </licenses>
 
-  <prerequisites>
-    <maven>3.5.0</maven>
-  </prerequisites>
-
   <scm>
-    <connection>scm:git:http://github.com/google/compile-testing</connection>
+    <connection>scm:git:https://github.com/google/compile-testing</connection>
     <developerConnection>scm:git:git@github.com:google/compile-testing.git</developerConnection>
-    <url>http://github.com/google/compile-testing</url>
+    <url>https://github.com/google/compile-testing</url>
     <tag>HEAD</tag>
   </scm>
 
@@ -131,6 +127,44 @@
       <plugin>
         <artifactId>maven-site-plugin</artifactId>
         <version>3.9.1</version>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-enforcer-plugin</artifactId>
+        <version>3.0.0-M3</version>
+        <executions>
+          <execution>
+            <id>enforce-maven</id>
+            <goals>
+              <goal>enforce</goal>
+            </goals>
+            <configuration>
+              <rules>
+                <requireMavenVersion>
+                  <version>3.5.0</version>
+                </requireMavenVersion>
+              </rules>    
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+        <version>3.1.2</version>
+          <dependencies>
+            <dependency>
+              <groupId>com.puppycrawl.tools</groupId>
+              <artifactId>checkstyle</artifactId>
+              <version>8.41.1</version>
+            </dependency>
+          </dependencies>
+        <configuration>
+          <configLocation>checkstyle.xml</configLocation>
+          <consoleOutput>true</consoleOutput>
+          <failsOnError>false</failsOnError>
+          <linkXRef>false</linkXRef>
+        </configuration>
       </plugin>
     </plugins>
   </build>

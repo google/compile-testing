@@ -26,7 +26,7 @@ be accepted under the terms of that license.
 Checkstyle failures during compilation indicate errors in your style and will
 be displayed in the console output of the build (including in Travis-CI output),
 or can be viewed in the `checkstyle-result.xml` file.  To save yourself some
-hassle, consider executing checkstyle first per: 'mvn checkstyle:checkstyle'.
+hassle, consider executing checkstyle first per: `mvn checkstyle:checkstyle`.
 It's fast, and will catch style errors early.
 
 Before your code can be accepted into the project you must sign the

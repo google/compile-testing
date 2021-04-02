@@ -1074,7 +1074,7 @@ final class TreeDiffer {
 
       ImmutableList.Builder<Tree> filteredActualTrees = ImmutableList.builder();
       for (Tree actualTree : actualMembers) {
-        actualTree.accept(new SimpleTreeVisitor<Void, Void>(){
+        actualTree.accept(new SimpleTreeVisitor<Void, Void>() {
           @Override
           public Void visitVariable(VariableTree variable, Void p) {
             if (patternVariableNames.contains(variable.getName().toString())) {

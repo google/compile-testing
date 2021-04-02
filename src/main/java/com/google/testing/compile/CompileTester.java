@@ -192,12 +192,12 @@ public interface CompileTester {
   /** The clause in the fluent API for further tests on successful compilations. */
   public interface SuccessfulCompilationClause
       extends CompilationWithWarningsClause<SuccessfulCompilationClause>,
-          ChainingClause<GeneratedPredicateClause<SuccessfulCompilationClause>> {}
+          ChainingClause<GeneratedPredicateClause<SuccessfulCompilationClause>> { }
 
   /** The clause in the fluent API for further tests on successful compilations without warnings. */
   public interface CleanCompilationClause
       extends CompilationWithNotesClause<CleanCompilationClause>,
-          ChainingClause<GeneratedPredicateClause<CleanCompilationClause>> {}
+          ChainingClause<GeneratedPredicateClause<CleanCompilationClause>> { }
 
   /** The clause in the fluent API for further tests on unsuccessful compilations. */
   public interface UnsuccessfulCompilationClause

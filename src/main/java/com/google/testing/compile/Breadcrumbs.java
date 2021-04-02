@@ -121,8 +121,8 @@ final class Breadcrumbs {
 
     @Override
     public String visitImport(ImportTree reference, Void v) {
-      return (reference != null) ?
-          detailedKindString(reference, reference.isStatic() ? "static" : "non-static") : "";
+      return (reference != null)
+          ? detailedKindString(reference, reference.isStatic() ? "static" : "non-static") : "";
     }
 
     @Override

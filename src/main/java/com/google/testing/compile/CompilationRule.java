@@ -64,7 +64,7 @@ public final class CompilationRule implements TestRule {
       }
     };
   }
-  
+
   /**
    * Returns the {@link Elements} instance associated with the current execution of the rule.
    *

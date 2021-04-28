@@ -831,6 +831,7 @@ final class TreeDiffer {
         return null;
       }
 
+      parallelScan(expected.getResources(), other.get().getResources());
       scan(expected.getBlock(), other.get().getBlock());
       parallelScan(expected.getCatches(), other.get().getCatches());
       scan(expected.getFinallyBlock(), other.get().getFinallyBlock());

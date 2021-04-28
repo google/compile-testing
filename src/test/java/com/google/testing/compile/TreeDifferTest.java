@@ -155,6 +155,22 @@ public class TreeDifferTest {
           "  };",
           "}");
 
+  private static final CompilationUnitTree TRY_WITH_RESOURCES_1 =
+      MoreTrees.parseLinesToTree("package test;",
+          "final class TestClass {",
+          "  void f() {",
+          "    try (Resource1 r = new Resource1()) {}",
+          "  }",
+          "}");
+
+  private static final CompilationUnitTree TRY_WITH_RESOURCES_2 =
+      MoreTrees.parseLinesToTree("package test;",
+          "final class TestClass {",
+          "  void f() {",
+          "    try (Resource2 r = new Resource2()) {}",
+          "  }",
+          "}");
+
   @Test
   public void scan_differingCompilationUnits() {
     TreeDifference diff = TreeDiffer.diffCompilationUnits(EXPECTED_TREE, ACTUAL_TREE);
@@ -281,6 +297,20 @@ public class TreeDifferTest {
   public void scan_testLambdaVersusAnonymousClass() {
     TreeDifference diff =
         TreeDiffer.diffCompilationUnits(LAMBDA_1, ANONYMOUS_CLASS);
+    assertThat(diff.isEmpty()).isFalse();
+  }
+
+  @Test
+  public void scan_testTryWithResources() {
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(TRY_WITH_RESOURCES_1, TRY_WITH_RESOURCES_1);
+    assertThat(diff.isEmpty()).isTrue();
+  }
+
+  @Test
+  public void scan_testTryWithResourcesDifferent() {
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(TRY_WITH_RESOURCES_1, TRY_WITH_RESOURCES_2);
     assertThat(diff.isEmpty()).isFalse();
   }
 

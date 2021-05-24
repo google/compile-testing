@@ -742,6 +742,19 @@ public class JavaSourcesSubjectFactoryTest {
   }
 
   @Test
+  public void generatesSources_packageInfo() {
+    GeneratingProcessor generatingProcessor = new GeneratingProcessor("test.generated");
+    assertAbout(javaSource())
+        .that(HELLO_WORLD_RESOURCE)
+        .processedWith(generatingProcessor)
+        .compilesWithoutError()
+        .and()
+        .generatesSources(
+            JavaFileObjects.forSourceString(
+                "test.generated.package-info", generatingProcessor.generatedPackageInfoSource()));
+  }
+
+  @Test
   public void generatesSources_failOnUnexpected() {
     String failingExpectationSource = "abstract class Blah {}";
     expectFailure

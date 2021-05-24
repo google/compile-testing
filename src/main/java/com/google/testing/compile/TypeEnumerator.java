@@ -21,7 +21,6 @@ import com.google.common.base.Function;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
-
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.ExpressionStatementTree;
@@ -29,7 +28,6 @@ import com.sun.source.tree.IdentifierTree;
 import com.sun.source.tree.MemberSelectTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreeScanner;
-
 import java.util.Set;
 
 /**
@@ -100,7 +98,7 @@ final class TypeEnumerator {
             "package identifier. Found " + packageSet);
       }
       final String packageName = packageSet.isEmpty() ? "" : packageSet.iterator().next();
-      Set<String> typeDeclSet = scan(reference.getTypeDecls(), v);
+      Set<String> typeDeclSet = firstNonNull(scan(reference.getTypeDecls(), v), ImmutableSet.of());
       return FluentIterable.from(typeDeclSet)
           .transform(new Function<String, String>() {
             @Override public String apply(String typeName) {

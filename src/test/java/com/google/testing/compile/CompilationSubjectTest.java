@@ -809,6 +809,16 @@ public class CompilationSubjectTest {
     }
 
     @Test
+    public void generatedSourceFile_packageInfo() {
+      GeneratingProcessor generatingProcessor = new GeneratingProcessor("test");
+      assertThat(javac().withProcessors(generatingProcessor).compile(HELLO_WORLD_RESOURCE))
+          .generatedSourceFile("test.package-info")
+          .hasSourceEquivalentTo(
+              JavaFileObjects.forSourceString(
+                  "test.package-info", generatingProcessor.generatedPackageInfoSource()));
+    }
+
+    @Test
     public void generatedSourceFile_fail() {
       expectFailure
           .whenTesting()

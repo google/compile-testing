@@ -18,6 +18,7 @@ package com.google.testing.compile;
 import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.ImmutableSet.toImmutableSet;
+import static com.google.common.collect.Iterables.isEmpty;
 
 import com.google.auto.common.MoreTypes;
 import com.google.auto.value.AutoValue;
@@ -268,15 +269,11 @@ final class TreeDiffer {
         } else if (expectedsIterator.hasNext() && !actualsIterator.hasNext()) {
           diffBuilder.addExtraExpectedNode(expectedPathPlus(expectedsIterator.next()));
         }
-      } else if (expecteds == null && !isEmptyOrNull(actuals)) {
+      } else if (expecteds == null && actuals != null && !isEmpty(actuals)) {
         diffBuilder.addExtraActualNode(actualPathPlus(actuals.iterator().next()));
-      } else if (actuals == null && !isEmptyOrNull(expecteds)) {
+      } else if (actuals == null && expecteds != null && !isEmpty(expecteds)) {
         diffBuilder.addExtraExpectedNode(expectedPathPlus(expecteds.iterator().next()));
       }
-    }
-
-    private boolean isEmptyOrNull(Iterable<?> iterable) {
-      return iterable == null || !iterable.iterator().hasNext();
     }
 
     @Override

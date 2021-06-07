@@ -20,6 +20,7 @@ import static com.google.common.truth.Truth.assertAbout;
 import static com.google.testing.compile.CompilationSubject.compilations;
 import static com.google.testing.compile.Compiler.javac;
 import static com.google.testing.compile.JavaSourcesSubjectFactory.javaSources;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.base.Joiner;
@@ -197,8 +198,13 @@ public final class JavaSourcesSubject extends Subject
                       actualTrees.stream()
                           .filter(
                               actualTree ->
-                                  expectedTreeTypes
-                                      .get(expectedTree)
+                                  /*
+                                   * requireNonNull is safe -- that is, expectedTree must be a key
+                                   * of expectedTreeTypes: expectedTreeTypes was constructed from
+                                   * the expectedTrees list, the same collection that expectedTree
+                                   * came from.
+                                   */
+                                  requireNonNull(expectedTreeTypes.get(expectedTree))
                                       .equals(actualTreeTypes.get(actualTree)))
                           .findFirst());
 

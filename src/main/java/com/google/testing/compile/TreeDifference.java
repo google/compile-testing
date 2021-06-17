@@ -20,11 +20,9 @@ import static javax.tools.Diagnostic.NOPOS;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
-
-import javax.annotation.Nullable;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A data structure describing the set of syntactic differences between two {@link Tree}s.

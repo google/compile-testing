@@ -44,6 +44,7 @@ import javax.tools.JavaCompiler;
 import javax.tools.JavaCompiler.CompilationTask;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** An object that can {@link #compile} Java source files. */
 @AutoValue
@@ -211,9 +212,10 @@ public abstract class Compiler {
     return compilation;
   }
 
-  @VisibleForTesting static final ClassLoader platformClassLoader = getPlatformClassLoader();
+  @VisibleForTesting
+  static final @Nullable ClassLoader platformClassLoader = getPlatformClassLoader();
 
-  private static ClassLoader getPlatformClassLoader() {
+  private static @Nullable ClassLoader getPlatformClassLoader() {
     try {
       // JDK >= 9
       return (ClassLoader) ClassLoader.class.getMethod("getPlatformClassLoader").invoke(null);
@@ -229,12 +231,14 @@ public abstract class Compiler {
    * @throws IllegalArgumentException if the given classloader had classpaths which we could not
    *     determine or use for compilation.
    */
-  private static ImmutableList<File> getClasspathFromClassloader(ClassLoader currentClassloader) {
+  private static ImmutableList<File> getClasspathFromClassloader(ClassLoader classloader) {
     ClassLoader systemClassLoader = ClassLoader.getSystemClassLoader();
 
     // Concatenate search paths from all classloaders in the hierarchy 'till the system classloader.
     Set<String> classpaths = new LinkedHashSet<>();
-    while (true) {
+    for (ClassLoader currentClassloader = classloader;
+        ;
+        currentClassloader = currentClassloader.getParent()) {
       if (currentClassloader == systemClassLoader) {
         Iterables.addAll(
             classpaths,
@@ -263,7 +267,6 @@ public abstract class Compiler {
                     + "since %s is not an instance of URLClassloader",
                 currentClassloader));
       }
-      currentClassloader = currentClassloader.getParent();
     }
 
     return classpaths.stream().map(File::new).collect(toImmutableList());

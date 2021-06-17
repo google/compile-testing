@@ -42,6 +42,7 @@ import javax.tools.JavaFileObject.Kind;
 import javax.tools.SimpleJavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.StandardLocation;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A file manager implementation that stores all output in memory.
@@ -90,8 +91,8 @@ final class InMemoryJavaFileManager extends ForwardingStandardJavaFileManager {
   }
 
   @Override
-  public FileObject getFileForInput(Location location, String packageName,
-      String relativeName) throws IOException {
+  public @Nullable FileObject getFileForInput(
+      Location location, String packageName, String relativeName) throws IOException {
     if (location.isOutputLocation()) {
       return inMemoryOutputs.getIfPresent(uriForFileObject(location, packageName, relativeName));
     }
@@ -103,8 +104,8 @@ final class InMemoryJavaFileManager extends ForwardingStandardJavaFileManager {
   }
 
   @Override
-  public JavaFileObject getJavaFileForInput(Location location, String className, Kind kind)
-      throws IOException {
+  public @Nullable JavaFileObject getJavaFileForInput(
+      Location location, String className, Kind kind) throws IOException {
     if (location.isOutputLocation()) {
       return inMemoryOutputs.getIfPresent(uriForJavaFileObject(location, className, kind));
     }

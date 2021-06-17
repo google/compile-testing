@@ -33,8 +33,8 @@ import com.sun.source.tree.CompilationUnitTree;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.function.BiFunction;
-import javax.annotation.Nullable;
 import javax.tools.JavaFileObject;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** Assertions about {@link JavaFileObject}s. */
 public final class JavaFileObjectSubject extends Subject {
@@ -72,6 +72,7 @@ public final class JavaFileObjectSubject extends Subject {
   public void isEqualTo(@Nullable Object other) {
     if (!(other instanceof JavaFileObject)) {
       super.isEqualTo(other);
+      return;
     }
 
     JavaFileObject otherFile = (JavaFileObject) other;

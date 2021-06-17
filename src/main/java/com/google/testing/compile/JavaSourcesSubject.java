@@ -57,12 +57,12 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import javax.annotation.Nullable;
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A <a href="https://github.com/truth0/truth">Truth</a> {@link Subject} that evaluates the result
@@ -213,7 +213,11 @@ public final class JavaSourcesSubject extends Subject
         final CompilationUnitTree expectedTree = matchedTreePair.getKey();
         if (!matchedTreePair.getValue().isPresent()) {
           failNoCandidates(
-              expectedTreeTypes.get(expectedTree), expectedTree, actualTreeTypes, actualTrees);
+              // see comment above
+              requireNonNull(expectedTreeTypes.get(expectedTree)),
+              expectedTree,
+              actualTreeTypes,
+              actualTrees);
         } else {
           CompilationUnitTree actualTree = matchedTreePair.getValue().get();
           TreeDifference treeDifference = TreeDiffer.diffCompilationUnits(expectedTree, actualTree);

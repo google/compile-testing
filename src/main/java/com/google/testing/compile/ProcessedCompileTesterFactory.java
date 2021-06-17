@@ -16,7 +16,6 @@
 package com.google.testing.compile;
 
 import java.io.File;
-import javax.annotation.CheckReturnValue;
 import javax.annotation.processing.Processor;
 
 /**
@@ -25,7 +24,6 @@ import javax.annotation.processing.Processor;
  *
  * @author Gregory Kick
  */
-@CheckReturnValue
 public interface ProcessedCompileTesterFactory {
 
   /**

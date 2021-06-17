@@ -35,7 +35,7 @@ import com.sun.source.util.TreePath;
 import com.sun.source.util.TreePathScanner;
 import java.util.Arrays;
 import java.util.Optional;
-import javax.annotation.Nullable;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A class containing methods which are useful for gaining access to {@code Tree} instances from
@@ -128,10 +128,8 @@ final class MoreTrees {
     return res.get();
   }
 
-  /**
-   * A {@link TreePathScanner} to power the subtree searches in this class
-   */
-  static final class SearchScanner extends TreePathScanner<Optional<TreePath>, Void> {
+  /** A {@link TreePathScanner} to power the subtree searches in this class */
+  static final class SearchScanner extends TreePathScanner<Optional<TreePath>, @Nullable Void> {
     private final Optional<String> identifier;
     private final Tree.Kind kindSought;
 
@@ -178,7 +176,7 @@ final class MoreTrees {
     }
 
     @Override
-    public Optional<TreePath> scan(Tree node, Void v) {
+    public Optional<TreePath> scan(Tree node, @Nullable Void v) {
       if (node == null) {
         return Optional.empty();
       }
@@ -189,7 +187,7 @@ final class MoreTrees {
     }
 
     @Override
-    public Optional<TreePath> scan(Iterable<? extends Tree> nodes, Void v) {
+    public Optional<TreePath> scan(Iterable<? extends Tree> nodes, @Nullable Void v) {
       return absentIfNull(super.scan(nodes, v));
     }
 
@@ -200,7 +198,7 @@ final class MoreTrees {
     }
 
     @Override
-    public Optional<TreePath> visitBreak(@Nullable BreakTree node, Void v) {
+    public Optional<TreePath> visitBreak(@Nullable BreakTree node, @Nullable Void v) {
       if (node == null) {
         return Optional.empty();
       }
@@ -209,7 +207,7 @@ final class MoreTrees {
     }
 
     @Override
-    public Optional<TreePath> visitClass(@Nullable ClassTree node, Void v) {
+    public Optional<TreePath> visitClass(@Nullable ClassTree node, @Nullable Void v) {
       if (node == null) {
         return Optional.empty();
       } else if (isMatch(node, node.getSimpleName())) {
@@ -220,7 +218,7 @@ final class MoreTrees {
     }
 
     @Override
-    public Optional<TreePath> visitContinue(@Nullable ContinueTree node, Void v) {
+    public Optional<TreePath> visitContinue(@Nullable ContinueTree node, @Nullable Void v) {
       if (node == null) {
         return Optional.empty();
       } else if (isMatch(node, node.getLabel())) {
@@ -231,7 +229,7 @@ final class MoreTrees {
     }
 
     @Override
-    public Optional<TreePath> visitIdentifier(@Nullable IdentifierTree node, Void v) {
+    public Optional<TreePath> visitIdentifier(@Nullable IdentifierTree node, @Nullable Void v) {
       if (node == null) {
         return Optional.empty();
       } else if (isMatch(node, node.getName())) {
@@ -242,7 +240,8 @@ final class MoreTrees {
     }
 
     @Override
-    public Optional<TreePath> visitLabeledStatement(@Nullable LabeledStatementTree node, Void v) {
+    public Optional<TreePath> visitLabeledStatement(
+        @Nullable LabeledStatementTree node, @Nullable Void v) {
       if (node == null) {
         return Optional.empty();
       } else if (isMatch(node, node.getLabel())) {
@@ -253,7 +252,7 @@ final class MoreTrees {
     }
 
     @Override
-    public Optional<TreePath> visitLiteral(@Nullable LiteralTree node, Void v) {
+    public Optional<TreePath> visitLiteral(@Nullable LiteralTree node, @Nullable Void v) {
       if (node == null) {
         return Optional.empty();
       } else if (isMatch(node, node.getValue())) {
@@ -264,7 +263,7 @@ final class MoreTrees {
     }
 
     @Override
-    public Optional<TreePath> visitMethod(@Nullable MethodTree node, Void v) {
+    public Optional<TreePath> visitMethod(@Nullable MethodTree node, @Nullable Void v) {
       if (node == null) {
         return Optional.empty();
       } else if (isMatch(node, node.getName())) {
@@ -275,7 +274,7 @@ final class MoreTrees {
     }
 
     @Override
-    public Optional<TreePath> visitMemberSelect(@Nullable MemberSelectTree node, Void v) {
+    public Optional<TreePath> visitMemberSelect(@Nullable MemberSelectTree node, @Nullable Void v) {
       if (node == null) {
         return Optional.empty();
       } else if (isMatch(node, node.getIdentifier())) {
@@ -286,7 +285,8 @@ final class MoreTrees {
     }
 
     @Override
-    public Optional<TreePath> visitTypeParameter(@Nullable TypeParameterTree node, Void v) {
+    public Optional<TreePath> visitTypeParameter(
+        @Nullable TypeParameterTree node, @Nullable Void v) {
       if (node == null) {
         return Optional.empty();
       } else if (isMatch(node, node.getName())) {
@@ -297,7 +297,7 @@ final class MoreTrees {
     }
 
     @Override
-    public Optional<TreePath> visitVariable(@Nullable VariableTree node, Void v) {
+    public Optional<TreePath> visitVariable(@Nullable VariableTree node, @Nullable Void v) {
       if (node == null) {
         return Optional.empty();
       } else if (isMatch(node, node.getName())) {

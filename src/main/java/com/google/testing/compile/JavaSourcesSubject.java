@@ -15,13 +15,13 @@
  */
 package com.google.testing.compile;
 
-import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.truth.Fact.simpleFact;
 import static com.google.common.truth.Truth.assertAbout;
 import static com.google.testing.compile.CompilationSubject.compilations;
 import static com.google.testing.compile.Compiler.javac;
 import static com.google.testing.compile.JavaSourcesSubjectFactory.javaSources;
 import static com.google.testing.compile.TypeEnumerator.getTopLevelTypes;
+import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.toList;
 
 import com.google.auto.value.AutoValue;
@@ -48,6 +48,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collector;
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
 import javax.tools.Diagnostic.Kind;
@@ -577,6 +578,10 @@ public final class JavaSourcesSubject extends Subject
                 .add(javaFileObject)
                 .add(javaFileObjects)
                 .build());
+  }
+
+  private static <T> Collector<T, ?, ImmutableList<T>> toImmutableList() {
+    return collectingAndThen(toList(), ImmutableList::copyOf);
   }
 
   public static final class SingleSourceAdapter extends Subject

@@ -15,14 +15,16 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.truth.Fact.simpleFact;
 import static com.google.common.truth.Truth.assertAbout;
 import static com.google.testing.compile.CompilationSubject.compilations;
 import static com.google.testing.compile.Compiler.javac;
 import static com.google.testing.compile.JavaSourcesSubjectFactory.javaSources;
-import static java.util.Objects.requireNonNull;
+import static com.google.testing.compile.TypeEnumerator.getTopLevelTypes;
 import static java.util.stream.Collectors.toList;
 
+import com.google.auto.value.AutoValue;
 import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -37,16 +39,6 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.testing.compile.CompilationSubject.DiagnosticAtColumn;
 import com.google.testing.compile.CompilationSubject.DiagnosticInFile;
 import com.google.testing.compile.CompilationSubject.DiagnosticOnLine;
-import com.google.testing.compile.CompileTester.ChainingClause;
-import com.google.testing.compile.CompileTester.CleanCompilationClause;
-import com.google.testing.compile.CompileTester.ColumnClause;
-import com.google.testing.compile.CompileTester.CompilationWithWarningsClause;
-import com.google.testing.compile.CompileTester.FileClause;
-import com.google.testing.compile.CompileTester.GeneratedPredicateClause;
-import com.google.testing.compile.CompileTester.LineClause;
-import com.google.testing.compile.CompileTester.SuccessfulCompilationClause;
-import com.google.testing.compile.CompileTester.SuccessfulFileClause;
-import com.google.testing.compile.CompileTester.UnsuccessfulCompilationClause;
 import com.google.testing.compile.Parser.ParseResult;
 import com.sun.source.tree.CompilationUnitTree;
 import java.io.File;
@@ -55,7 +47,6 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
@@ -178,66 +169,51 @@ public final class JavaSourcesSubject extends Subject
         failWithoutActual(simpleFact(message.toString()));
         return;
       }
-      final ParseResult expectedResult = Parser.parse(Lists.asList(first, rest));
-      final ImmutableList<? extends CompilationUnitTree> actualTrees =
-          actualResult.compilationUnits();
-      final ImmutableList<? extends CompilationUnitTree> expectedTrees =
-          expectedResult.compilationUnits();
+      ParseResult expectedResult = Parser.parse(Lists.asList(first, rest));
+      ImmutableList<TypedCompilationUnit> actualTrees =
+          actualResult.compilationUnits().stream()
+              .map(TypedCompilationUnit::create)
+              .collect(toImmutableList());
+      ImmutableList<TypedCompilationUnit> expectedTrees =
+          expectedResult.compilationUnits().stream()
+              .map(TypedCompilationUnit::create)
+              .collect(toImmutableList());
 
-      final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> expectedTreeTypes =
-          Maps.toMap(expectedTrees, TypeEnumerator::getTopLevelTypes);
+      ImmutableMap<TypedCompilationUnit, Optional<TypedCompilationUnit>> matchedTrees =
+          Maps.toMap(
+              expectedTrees,
+              expectedTree ->
+                  actualTrees.stream()
+                      .filter(actualTree -> expectedTree.types().equals(actualTree.types()))
+                      .findFirst());
 
-      final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> actualTreeTypes =
-          Maps.toMap(actualTrees, TypeEnumerator::getTopLevelTypes);
-
-      final ImmutableMap<? extends CompilationUnitTree, Optional<? extends CompilationUnitTree>>
-          matchedTrees =
-              Maps.toMap(
-                  expectedTrees,
-                  expectedTree ->
-                      actualTrees.stream()
-                          .filter(
-                              actualTree ->
-                                  /*
-                                   * requireNonNull is safe -- that is, expectedTree must be a key
-                                   * of expectedTreeTypes: expectedTreeTypes was constructed from
-                                   * the expectedTrees list, the same collection that expectedTree
-                                   * came from.
-                                   */
-                                  requireNonNull(expectedTreeTypes.get(expectedTree))
-                                      .equals(actualTreeTypes.get(actualTree)))
-                          .findFirst());
-
-      for (Map.Entry<? extends CompilationUnitTree, Optional<? extends CompilationUnitTree>>
-          matchedTreePair : matchedTrees.entrySet()) {
-        final CompilationUnitTree expectedTree = matchedTreePair.getKey();
-        if (!matchedTreePair.getValue().isPresent()) {
-          failNoCandidates(
-              // see comment above
-              requireNonNull(expectedTreeTypes.get(expectedTree)),
-              expectedTree,
-              actualTreeTypes,
-              actualTrees);
-        } else {
-          CompilationUnitTree actualTree = matchedTreePair.getValue().get();
-          TreeDifference treeDifference = TreeDiffer.diffCompilationUnits(expectedTree, actualTree);
-          if (!treeDifference.isEmpty()) {
-            String diffReport =
-                treeDifference.getDiffReport(
-                    new TreeContext(expectedTree, expectedResult.trees()),
-                    new TreeContext(actualTree, actualResult.trees()));
-            failWithCandidate(expectedTree.getSourceFile(), actualTree.getSourceFile(), diffReport);
-          }
-        }
-      }
+      matchedTrees.forEach(
+          (expectedTree, maybeActualTree) -> {
+            if (!maybeActualTree.isPresent()) {
+              failNoCandidates(expectedTree.types(), expectedTree.tree(), actualTrees);
+              return;
+            }
+            TypedCompilationUnit actualTree = maybeActualTree.get();
+            TreeDifference treeDifference =
+                TreeDiffer.diffCompilationUnits(expectedTree.tree(), actualTree.tree());
+            if (!treeDifference.isEmpty()) {
+              String diffReport =
+                  treeDifference.getDiffReport(
+                      new TreeContext(expectedTree.tree(), expectedResult.trees()),
+                      new TreeContext(actualTree.tree(), actualResult.trees()));
+              failWithCandidate(
+                  expectedTree.tree().getSourceFile(),
+                  actualTree.tree().getSourceFile(),
+                  diffReport);
+            }
+          });
     }
 
     /** Called when the {@code generatesSources()} verb fails with no diff candidates. */
     private void failNoCandidates(
         ImmutableSet<String> expectedTypes,
         CompilationUnitTree expectedTree,
-        final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> actualTypes,
-        ImmutableList<? extends CompilationUnitTree> actualTrees) {
+        ImmutableList<TypedCompilationUnit> actualTrees) {
       String generatedTypesReport =
           Joiner.on('\n')
               .join(
@@ -246,8 +222,8 @@ public final class JavaSourcesSubject extends Subject
                           generated ->
                               String.format(
                                   "- %s in <%s>",
-                                  actualTypes.get(generated),
-                                  generated.getSourceFile().toUri().getPath()))
+                                  generated.types(),
+                                  generated.tree().getSourceFile().toUri().getPath()))
                       .collect(toList()));
       failWithoutActual(
           simpleFact(
@@ -336,6 +312,17 @@ public final class JavaSourcesSubject extends Subject
         compiler = compiler.withClasspath(classPath);
       }
       return compiler.compile(actual);
+    }
+  }
+
+  @AutoValue
+  abstract static class TypedCompilationUnit {
+    abstract CompilationUnitTree tree();
+
+    abstract ImmutableSet<String> types();
+
+    static TypedCompilationUnit create(CompilationUnitTree tree) {
+      return new AutoValue_JavaSourcesSubject_TypedCompilationUnit(tree, getTopLevelTypes(tree));
     }
   }
 

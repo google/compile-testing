@@ -18,7 +18,6 @@ package com.google.testing.compile;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.notNull;
 import static com.google.common.collect.Iterables.size;
-import static com.google.common.collect.Streams.mapWithIndex;
 import static com.google.common.truth.Fact.fact;
 import static com.google.common.truth.Fact.simpleFact;
 import static com.google.common.truth.Truth.assertAbout;
@@ -37,6 +36,7 @@ import static javax.tools.Diagnostic.Kind.WARNING;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Streams;
 import com.google.common.truth.Fact;
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
@@ -55,6 +55,7 @@ import javax.tools.Diagnostic;
 import javax.tools.JavaFileManager.Location;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** A {@link Truth} subject for a {@link Compilation}. */
 public final class CompilationSubject extends Subject {
@@ -510,8 +511,9 @@ public final class CompilationSubject extends Subject {
      *     expectedLineSubstring}
      */
     private long findLineContainingSubstring(String expectedLineSubstring) {
+      // The explicit type arguments below are needed by our nullness checker.
       ImmutableSet<Long> matchingLines =
-          mapWithIndex(
+          Streams.<String, @Nullable Long>mapWithIndex(
                   linesInFile.linesInFile().stream(),
                   (line, index) -> line.contains(expectedLineSubstring) ? index : null)
               .filter(notNull())

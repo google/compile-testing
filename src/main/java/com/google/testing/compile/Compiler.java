@@ -116,7 +116,7 @@ public abstract class Compiler {
    *
    * @return a new instance with the same processors and the given options
    */
-  public final Compiler withOptions(Iterable<?> options) {
+  public final Compiler withOptions(Iterable<? extends Object> options) {
     return copy(
         processors(),
         FluentIterable.from(options).transform(toStringFunction()).toList(),

@@ -32,6 +32,8 @@ import com.google.testing.compile.Parser.ParseResult;
 import com.sun.source.tree.CompilationUnitTree;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.Arrays;
+import java.util.List;
 import java.util.function.BiFunction;
 import javax.tools.JavaFileObject;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -115,6 +117,51 @@ public final class JavaFileObjectSubject extends Subject {
    */
   public StringSubject contentsAsUtf8String() {
     return contentsAsString(UTF_8);
+  }
+
+  /**
+   * Asserts that the lines of the actual file contain the lines of {@code expectedPattern} as a
+   * subsequence.
+   */
+  public void containsLines(JavaFileObject expectedPattern) {
+    try {
+      List<String> expected =
+              Arrays.asList(expectedPattern.getCharContent(false).toString().split("\\R", -1));
+      containsLines(expected);
+    } catch (IOException e) {
+      throw new IllegalStateException(
+              "Couldn't read from JavaFileObject when it was already in memory.", e);
+    }
+  }
+
+  /**
+   * Asserts that the lines of the actual file contain the lines of {@code expectedPattern} as a
+   * subsequence.
+   */
+  public void containsLines(String... expectedPattern) {
+    containsLines(Arrays.asList(expectedPattern));
+  }
+
+  /**
+   * Asserts that the lines of the actual file contain the lines of {@code expectedPattern} as a
+   * subsequence.
+   */
+  public void containsLines(List<String> expectedPattern) {
+    try {
+      List<String> actualList =
+              Arrays.asList(this.actual.getCharContent(false).toString().split("\\R", -1));
+      SubsequenceChecker.checkSubsequence(actualList, expectedPattern)
+              .ifPresent(
+                      subsequenceReport ->
+                              failWithoutActual(
+                                      fact("for file", this.actual.toUri().getPath()),
+                                      fact("unmatched", subsequenceReport.getUnmatched()),
+                                      fact("actual", subsequenceReport.getActual()),
+                                      fact("subsequence", subsequenceReport.getSubsequence())));
+    } catch (IOException e) {
+      throw new IllegalStateException(
+              "Couldn't read from JavaFileObject when it was already in memory.", e);
+    }
   }
 
   /**

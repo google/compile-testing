@@ -24,6 +24,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.common.truth.ExpectFailure;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.Collections;
 import javax.tools.JavaFileObject;
 import org.junit.Rule;
 import org.junit.Test;
@@ -195,5 +197,166 @@ public final class JavaFileObjectSubjectTest {
   @Test
   public void containsElementsIn_completeMatch() {
     assertThat(SAMPLE_ACTUAL_FILE_FOR_MATCHING).containsElementsIn(SAMPLE_ACTUAL_FILE_FOR_MATCHING);
+  }
+
+  @Test
+  public void containsLines_completeMatch() {
+    assertThat(SAMPLE_ACTUAL_FILE_FOR_MATCHING).containsLines(SAMPLE_ACTUAL_FILE_FOR_MATCHING);
+  }
+
+  @Test
+  public void containsLines_failOnEmpty() {
+    assertThat(SAMPLE_ACTUAL_FILE_FOR_MATCHING).containsLines(Collections.emptyList());
+  }
+
+  @Test
+  public void containsLines_fail_longSubsequence() {
+    expectFailure
+            .whenTesting()
+            .about(javaFileObjects())
+            .that(UNKNOWN_TYPES)
+            .containsLines(
+                    "package test;",
+                    "",
+                    "// extra line",
+                    "public class TestClass {",
+                    "  Bar badMethod(Baz baz) { return baz.what(); }",
+                    "}");
+    AssertionError expected = expectFailure.getFailure();
+    assertThat(expected.getMessage())
+            .contains(
+                    String.join(
+                            "\n",
+                            Arrays.asList(
+                                    "for file:",
+                                    "    test/TestClass.java",
+                                    "unmatched:",
+                                    "    2: \"// extra line\"",
+                                    "actual:",
+                                    "    \"package test;\", // 0",
+                                    "    \"\", // 1, last match",
+                                    "    \"public class TestClass {\",",
+                                    "    \"  Bar badMethod(Baz baz) { return baz.what(); }\",",
+                                    "    \"}\"",
+                                    "subsequence:",
+                                    "    \"package test;\", // 0",
+                                    "    \"\", // 1",
+                                    "    \"// extra line\", // no match",
+                                    "    \"public class TestClass {\",",
+                                    "    \"  Bar badMethod(Baz baz) { return baz.what(); }\",",
+                                    "    \"}\"")));
+  }
+
+  @Test
+  public void containsLines_fail_longSubsequenceTrailing() {
+    expectFailure
+            .whenTesting()
+            .about(javaFileObjects())
+            .that(UNKNOWN_TYPES)
+            .containsLines(
+                    "package test;",
+                    "",
+                    "public class TestClass {",
+                    "  Bar badMethod(Baz baz) { return baz.what(); }",
+                    "}",
+                    "// extra line");
+    AssertionError expected = expectFailure.getFailure();
+    assertThat(expected.getMessage())
+            .contains(
+                    String.join(
+                            "\n",
+                            Arrays.asList(
+                                    "for file:",
+                                    "    test/TestClass.java",
+                                    "unmatched:",
+                                    "    5: \"// extra line\"",
+                                    "actual:",
+                                    "    \"package test;\", // 0",
+                                    "    \"\", // 1",
+                                    "    \"public class TestClass {\", // 2",
+                                    "    \"  Bar badMethod(Baz baz) { return baz.what(); }\", // 3",
+                                    "    \"}\" // 4, last match",
+                                    "subsequence:",
+                                    "    \"package test;\", // 0",
+                                    "    \"\", // 1",
+                                    "    \"public class TestClass {\", // 2",
+                                    "    \"  Bar badMethod(Baz baz) { return baz.what(); }\", // 3",
+                                    "    \"}\", // 4",
+                                    "    \"// extra line\" // no match")));
+  }
+
+  @Test
+  public void containsLinesIn_match() {
+    assertThat(SAMPLE_ACTUAL_FILE_FOR_MATCHING)
+            .containsLines(
+                    "public class SomeFile {",
+                    "  private static final int CONSTANT_TIMES_3 = CONSTANT * 3;",
+                    "  private static final int CONSTANT_TIMES_4 = CONSTANT * 4;",
+                    "}");
+  }
+
+  @Test
+  public void containsLinesIn_failNoMatch() {
+    expectFailure
+            .whenTesting()
+            .about(javaFileObjects())
+            .that(SAMPLE_ACTUAL_FILE_FOR_MATCHING)
+            .containsLines(
+                    "public class SomeFile {",
+                    "  private static final int CONSTANT_TIMES_3 = CONSTANT * 3;",
+                    "  private static final int CONSTANT_TIMES_4 = CONSTANT * 4;",
+                    "  private static final int CONSTANT_TIMES_3 = CONSTANT * 3;",
+                    "}");
+    AssertionError expected = expectFailure.getFailure();
+    assertThat(expected.getMessage())
+            .contains(
+                    String.join(
+                            "\n",
+                            Arrays.asList(
+                                    "unmatched:",
+                                    "    3: \"  private static final int CONSTANT_TIMES_3 = CONSTANT * 3;\"",
+                                    "actual:",
+                                    "    \"package test;\",",
+                                    "    \"\",",
+                                    "    \"import pkg.AnAnnotation;\",",
+                                    "    \"import static another.something.Special.CONSTANT;\",",
+                                    "    \"\",",
+                                    "    \"@AnAnnotation(with = @Some(values = {1,2,3}), and = \\\"a string\\\")\",",
+                                    "    \"public class SomeFile {\", // 0",
+                                    "    \"  private static final int CONSTANT_TIMES_2 = CONSTANT * 2;\",",
+                                    "    \"  private static final int CONSTANT_TIMES_3 = CONSTANT * 3;\", // 1",
+                                    "    \"  private static final int CONSTANT_TIMES_4 = CONSTANT * 4;\", // 2, last match",
+                                    "    \"\",",
+                                    "    \"  @Nullable private MaybeNull field;\",",
+                                    "    \"\",",
+                                    "    \"  @Inject SomeFile() {\",",
+                                    "    \"    this.field = MaybeNull.constructorBody();\",",
+                                    "    \"  }\",",
+                                    "    \"\",",
+                                    "    \"  protected int method(Parameter p, OtherParam o) {\",",
+                                    "    \"    return CONSTANT_TIMES_4 / p.hashCode() + o.hashCode();\",",
+                                    "    \"  }\",",
+                                    "    \"\",",
+                                    "    \"  public static class InnerClass {\",",
+                                    "    \"    private static final int CONSTANT_TIMES_8 = CONSTANT_TIMES_4 * 2;\",",
+                                    "    \"\",",
+                                    "    \"    @Nullable private MaybeNull innerClassField;\",",
+                                    "    \"\",",
+                                    "    \"    @Inject\",",
+                                    "    \"    InnerClass() {\",",
+                                    "    \"      this.innerClassField = MaybeNull.constructorBody();\",",
+                                    "    \"    }\",",
+                                    "    \"\",",
+                                    "    \"    protected int innerClassMethod(Parameter p, OtherParam o) {\",",
+                                    "    \"      return CONSTANT_TIMES_8 / p.hashCode() + o.hashCode();\",",
+                                    "    \"    }\",",
+                                    "    \"  }\",",
+                                    "    \"}\"",
+                                    "subsequence:",
+                                    "    \"public class SomeFile {\", // 6",
+                                    "    \"  private static final int CONSTANT_TIMES_3 = CONSTANT * 3;\", // 8",
+                                    "    \"  private static final int CONSTANT_TIMES_4 = CONSTANT * 4;\", // 9",
+                                    "    \"  private static final int CONSTANT_TIMES_3 = CONSTANT * 3;\", // no match",
+                                    "    \"}\"")));
   }
 }

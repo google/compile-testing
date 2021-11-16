@@ -473,6 +473,35 @@ public final class JavaSourcesSubject extends Subject
 
     @CanIgnoreReturnValue
     @Override
+    public T containsLines(String qualifiedName, JavaFileObject file) {
+      try {
+        List<String> expectation =
+                Arrays.asList(file.getCharContent(false).toString().split("\\R", -1));
+        return containsLines(qualifiedName, expectation);
+      } catch (IOException e) {
+        throw new IllegalStateException(
+                "Couldn't read from JavaFileObject when it was already in memory.", e);
+      }
+    }
+
+    @CanIgnoreReturnValue
+    @Override
+    public T containsLines(String qualifiedName, String... expectedPattern) {
+      return containsLines(qualifiedName, Arrays.asList(expectedPattern));
+    }
+
+    @CanIgnoreReturnValue
+    @Override
+    public T containsLines(String qualifiedName, List<String> expectedPattern) {
+      CompilationSubject.assertThat(compilation).succeeded();
+      CompilationSubject.assertThat(compilation)
+              .generatedSourceFile(qualifiedName)
+              .containsLines(expectedPattern);
+      return thisObject();
+    }
+
+    @CanIgnoreReturnValue
+    @Override
     public T generatesFiles(JavaFileObject first, JavaFileObject... rest) {
       for (JavaFileObject expected : Lists.asList(first, rest)) {
         if (!wasGenerated(expected)) {

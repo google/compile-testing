@@ -20,6 +20,7 @@ import com.google.errorprone.annotations.CanIgnoreReturnValue;
 
 import java.nio.charset.Charset;
 
+import java.util.List;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
@@ -152,6 +153,27 @@ public interface CompileTester {
      */
     @CanIgnoreReturnValue
     T generatesSources(JavaFileObject first, JavaFileObject... rest);
+
+    /**
+     * Checks that the generated file with the qualified name {@code qualifiedName} exists and
+     * contains {@code expectation} as a subsequence.
+     */
+    @CanIgnoreReturnValue
+    T containsLines(String qualifiedName, JavaFileObject expectation);
+
+    /**
+     * Checks that the generated file with the qualified name {@code qualifiedName} exists and
+     * contains the {@code expectedPattern} as a subsequence.
+     */
+    @CanIgnoreReturnValue
+    T containsLines(String qualifiedName, List<String> expectedPattern);
+
+    /**
+     * Checks that the generated file with the qualified name {@code qualifiedName} exists and
+     * contains the {@code expectedPattern} as a subsequence.
+     */
+    @CanIgnoreReturnValue
+    T containsLines(String qualifiedName, String... expectedPattern);
 
     /**
      * Checks that a file with equivalent kind and content was generated for each of the given

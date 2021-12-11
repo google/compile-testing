@@ -130,4 +130,36 @@ public class CompilationTest {
     assertThat(compilation).failed();
     assertThat(compilation.describeFailureDiagnostics()).contains("[cast] redundant cast to int");
   }
+  @Test
+  public void testNotesandWarnings() {
+    Compilation compilation =
+            javac()
+                    .compile(
+                            JavaFileObjects.forSourceLines(
+                                    test.Bad, package test;, , this doesn't compile!));
+    compilation.notes();
+    compilation.warnings();
+    assertThat(compilation).failed();
+  }
+
+  @Test
+  public void testToString() {
+    Compilation compilation =
+            javac()
+                    .compile(
+                            JavaFileObjects.forSourceLines(
+                                    test.Bad, package test;, , this doesn't compile!));
+    compilation.toString();
+  }
+
+  @Test
+  public void testDescribeSourceFiles() {
+    Compilation compilation =
+            javac()
+                    .compile(
+                            JavaFileObjects.forSourceLines(
+                                    test.Bad, package test;, , this doesn't compile!));
+    compilation.describeGeneratedSourceFiles();
+  }
+}
 }

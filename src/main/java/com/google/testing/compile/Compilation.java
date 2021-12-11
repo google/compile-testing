@@ -278,3 +278,4 @@ public final class Compilation {
     /** Compilation finished with errors. */
     FAILURE,
   }
+}

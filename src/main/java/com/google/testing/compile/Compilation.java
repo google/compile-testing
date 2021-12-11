@@ -278,36 +278,3 @@ public final class Compilation {
     /** Compilation finished with errors. */
     FAILURE,
   }
-
-@Test
-  public void testNotesandWarnings() {
-    Compilation compilation =
-            javac()
-                    .compile(
-                            JavaFileObjects.forSourceLines(
-                                    test.Bad, package test;, , this doesn't compile!));
-    compilation.notes();
-    compilation.warnings();
-    assertThat(compilation).failed();
-  }
-
-  @Test
-  public void testToString() {
-    Compilation compilation =
-            javac()
-                    .compile(
-                            JavaFileObjects.forSourceLines(
-                                    test.Bad, package test;, , this doesn't compile!));
-    compilation.toString();
-  }
-
-  @Test
-  public void testDescribeSourceFiles() {
-    Compilation compilation =
-            javac()
-                    .compile(
-                            JavaFileObjects.forSourceLines(
-                                    test.Bad, package test;, , this doesn't compile!));
-    compilation.describeGeneratedSourceFiles();
-  }
-}

@@ -19,19 +19,18 @@ import static com.google.common.truth.Truth.assertThat;
 import static com.google.testing.compile.CompilationSubject.assertThat;
 import static com.google.testing.compile.Compiler.javac;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assume.assumeTrue;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.Arrays;
 import java.util.Locale;
+<<<<<<< HEAD
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.ZipEntry;
@@ -39,6 +38,8 @@ import java.util.zip.ZipOutputStream;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
+=======
+>>>>>>> parent of 80a9ee0 (Added annotation processor path to Compiler)
 import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
@@ -214,6 +215,7 @@ public final class CompilerTest {
   }
 
   @Test
+<<<<<<< HEAD
   public void annotationProcessorPath_empty() {
     AnnotationFileProcessor processor = new AnnotationFileProcessor();
     Compiler compiler =
@@ -296,6 +298,8 @@ public final class CompilerTest {
   }
 
   @Test
+=======
+>>>>>>> parent of 80a9ee0 (Added annotation processor path to Compiler)
   public void releaseFlag() {
     assumeTrue(isJdk9OrLater());
     Compilation compilation =

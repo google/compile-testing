@@ -13,7 +13,8 @@ before_script:
   - mvn -version
   
 script:
-  - mvn test   
+  - mvn test 
+  - mvn ekstazi:select
   
 before_install:
  

@@ -3,10 +3,10 @@ matrix:
   include:
     - os: linux
       arch: amd64
-      jdk: openjdk11
+      jdk: openjdk9
     - os: linux
       arch: ppc64le
-      jdk: openjdk11
+      jdk: openjdk9
       
 before_script:
   - java -version

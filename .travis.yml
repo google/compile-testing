@@ -8,6 +8,10 @@ matrix:
       arch: ppc64le
       jdk: openjdk8
       
+cache:
+  directories:
+    - "$HOME/.ekstazi"
+    
 before_script:
   - java -version
   - mvn -version
@@ -17,4 +21,8 @@ script:
   - mvn ekstazi:select
   
 before_install:
+
+    
+before_cache:
+- collect "$HOME/.ekstazi"
  

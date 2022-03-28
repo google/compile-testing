@@ -10,7 +10,7 @@ matrix:
       
 cache:
   directories:
-    - "$HOME/.ekstazi"
+    - $HOME/.ekstazi
     
 before_script:
   - java -version
@@ -24,5 +24,7 @@ before_install:
 
     
 before_cache:
-- collect "$HOME/.ekstazi"
+- find $TRAVIS_BUILD_DIR -name .ekstazi | while read line; do du -sh $line; \
+        DIR=$(dirname $HOME/CACHE$line); mkdir -p $DIR; cp -r $line $DIR; done
+- echo CACHESIZE $(du -sk $HOME/CACHE)'
  

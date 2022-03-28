@@ -24,7 +24,5 @@ before_install:
 
     
 before_cache:
-- find $TRAVIS_BUILD_DIR -name .ekstazi | while read line; do du -sh $line; \
-        DIR=$(dirname $HOME/CACHE$line); mkdir -p $DIR; cp -r $line $DIR; done
-- echo CACHESIZE $(du -sk $HOME/CACHE)'
+- echo CACHESIZE $(du -sk $HOME/CACHE)
  

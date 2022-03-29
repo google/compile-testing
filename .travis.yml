@@ -4,13 +4,10 @@ matrix:
     - os: linux
       arch: amd64
       jdk: openjdk8
-    - os: linux
-      arch: ppc64le
-      jdk: openjdk8
-      
+   
 cache:
   directories:
-    - $HOME/CACHE/.ekstazi
+    - $HOME/.ekstazi
     
 before_script:
   - java -version
@@ -21,8 +18,8 @@ script:
   - mvn ekstazi:select
   
 before_install:
-  - find $HOME/CACHE -name .ekstazi | while read line; do du -sh $line; \
-        DIR=$(dirname ${line#$HOME/CACHE}); if [[ -d ${DIR#.ekstazi} ]]; then cp -r $line $DIR; fi; done
+  - find $HOME -name .ekstazi | while read line; do du -sh $line; \
+        DIR=$(dirname ${line#$HOME}); if [[ -d ${DIR#.ekstazi/} ]]; then cp -r $line $DIR; fi; done
     
 before_cache:
 

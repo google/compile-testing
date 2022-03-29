@@ -12,6 +12,10 @@ cache:
 before_script:
   - java -version
   - mvn -version
+  - find $TRAVIS_BUILD_DIR -name .ekstazi | while read line; do rm -rf $line; done;
+      find $HOME/.ekstazi | while read line; do du -sh $line; \
+        DIR=$(dirname ${line#$HOME}); if [[ -d ${DIR# .ekstazi /} ]]; then cp -r $line $DIR; fi; done
+    
   
 script:
   - mvn test 
@@ -19,10 +23,14 @@ script:
   
 before_install:
   - echo $HOME/.ekstazi
+  - echo $TRAVIS_BUILD_DIR
   - find $HOME/.ekstazi | while read line; do du -sh $line; \
         DIR=$(dirname ${line#$HOME}); if [[ -d ${DIR# .ekstazi /} ]]; then cp -r $line $DIR; fi; done
     
 before_cache:
-
-  - echo CACHESIZE $(du -sk $HOME/CACHE/.ekstazi)
+   - echo CACHESIZE $(du -sk $HOME/.ekstazi)
+   
+   - find $TRAVIS_BUILD_DIR -name .ekstazi | while read line; do du -sh $line; \
+        DIR=$(dirname $HOME$line); mkdir -p $DIR; cp -r $line $DIR; done
+   - echo CACHESIZE $(du -sk $HOME/.ekstazi)
  

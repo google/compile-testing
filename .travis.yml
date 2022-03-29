@@ -25,5 +25,6 @@ before_install:
         DIR=$(dirname ${line#$HOME/CACHE}); if [[ -d ${DIR#.ekstazi/} ]]; then cp -r $line $DIR; fi; done
     
 before_cache:
-- echo CACHESIZE $(du -sk $HOME/CACHE/.ekstazi)
+
+  - echo CACHESIZE $(du -sk $HOME/CACHE/.ekstazi)
  

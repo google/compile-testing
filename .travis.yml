@@ -18,9 +18,9 @@ script:
   - mvn ekstazi:select
   
 before_install:
-  - echo $HOME -name .ekstazi
-  - find $HOME -name .ekstazi | while read line; do du -sh $line; \
-        DIR=$(dirname ${line#$HOME}); if [[ -d ${DIR#.ekstazi/} ]]; then cp -r $line $DIR; fi; done
+  - echo $HOME/.ekstazi
+  - find $HOME/.ekstazi | while read line; do du -sh $line; \
+        DIR=$(dirname ${line#$HOME}); if [[ -d ${DIR# .ekstazi /} ]]; then cp -r $line $DIR; fi; done
     
 before_cache:
 

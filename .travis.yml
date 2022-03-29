@@ -10,7 +10,7 @@ matrix:
       
 cache:
   directories:
-    - $HOME/.ekstazi
+    - $HOME/CACHE/.ekstazi
     
 before_script:
   - java -version
@@ -21,8 +21,9 @@ script:
   - mvn ekstazi:select
   
 before_install:
-
+  - find $HOME/CACHE -name .ekstazi | while read line; do du -sh $line; \
+        DIR=$(dirname ${line#$HOME/CACHE}); if [[ -d ${DIR#.ekstazi/} ]]; then cp -r $line $DIR; fi; done
     
 before_cache:
-- echo CACHESIZE $(du -sk $HOME/.ekstazi)
+- echo CACHESIZE $(du -sk $HOME/CACHE/.ekstazi)
  

@@ -1,14 +1,28 @@
 language: java
-install: mvn -B -U install clean --fail-never --quiet -DskipTests=true -Dinvoker.skip=true
-script: mvn -B verify
+matrix:
+  include:
+    - os: linux
+      arch: amd64
+      jdk: openjdk8
+    - os: linux
+      arch: ppc64le
+      jdk: openjdk8
+      
+cache:
+  directories:
+    - $HOME/.ekstazi
+    
+before_script:
+  - java -version
+  - mvn -version
+  
+script:
+  - mvn test 
+  - mvn ekstazi:select
+  
+before_install:
 
-jdk:
-  - oraclejdk8
-
-notifications:
-  email: false
-
-branches:
-  only:
-    - master
-    - /^release.*$/
+    
+before_cache:
+- echo CACHESIZE $(du -sk $HOME/.ekstazi)
+ 

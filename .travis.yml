@@ -22,7 +22,7 @@ script:
   
 before_install:
   - find $HOME/CACHE -name .ekstazi | while read line; do du -sh $line; \
-        DIR=$(dirname ${line#$HOME/CACHE}); if [[ -d ${DIR#.ekstazi/} ]]; then cp -r $line $DIR; fi; done
+        DIR=$(dirname ${line#$HOME/CACHE}); if [[ -d ${DIR# .ekstazi/} ]]; then cp -r $line $DIR; fi; done
     
 before_cache:
 

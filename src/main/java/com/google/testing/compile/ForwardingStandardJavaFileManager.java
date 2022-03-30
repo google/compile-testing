@@ -30,15 +30,15 @@ import javax.tools.StandardJavaFileManager;
  * Forwards calls to a given {@link StandardJavaFileManager}. Subclasses of this class might
  * override some of these methods and might also provide additional fields and methods.
  */
-class ForwardingStandardJavaFileManager extends ForwardingJavaFileManager<StandardJavaFileManager>
-    implements StandardJavaFileManager {
+public class ForwardingStandardJavaFileManager
+    extends ForwardingJavaFileManager<StandardJavaFileManager> implements StandardJavaFileManager {
 
   /**
    * Creates a new instance of ForwardingStandardJavaFileManager.
    *
    * @param fileManager delegate to this file manager
    */
-  ForwardingStandardJavaFileManager(StandardJavaFileManager fileManager) {
+  protected ForwardingStandardJavaFileManager(StandardJavaFileManager fileManager) {
     super(fileManager);
   }
 

@@ -34,6 +34,7 @@ import com.sun.source.util.JavacTask;
 import com.sun.source.util.TreeScanner;
 import com.sun.source.util.Trees;
 import com.sun.tools.javac.api.JavacTool;
+import com.sun.tools.javac.util.Context;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
@@ -56,6 +57,7 @@ public final class Parser {
     InMemoryJavaFileManager fileManager =
         new InMemoryJavaFileManager(
             compiler.getStandardFileManager(diagnosticCollector, Locale.getDefault(), UTF_8));
+    Context context = new Context();
     JavacTask task =
         ((JavacTool) compiler)
             .getTask(
@@ -64,7 +66,8 @@ public final class Parser {
                 diagnosticCollector,
                 ImmutableSet.<String>of(),
                 ImmutableSet.<String>of(),
-                sources);
+                sources,
+                context);
     try {
       Iterable<? extends CompilationUnitTree> parsedCompilationUnits = task.parse();
       List<Diagnostic<? extends JavaFileObject>> diagnostics = diagnosticCollector.getDiagnostics();
@@ -76,6 +79,8 @@ public final class Parser {
           sortDiagnosticsByKind(diagnostics), parsedCompilationUnits, Trees.instance(task));
     } catch (IOException e) {
       throw new RuntimeException(e);
+    } finally {
+      DummyJavaCompilerSubclass.closeCompiler(context);
     }
   }
 
@@ -167,12 +172,27 @@ public final class Parser {
       return diagnostics;
     }
 
-    Iterable<? extends CompilationUnitTree> compilationUnits() {
+    ImmutableList<? extends CompilationUnitTree> compilationUnits() {
       return compilationUnits;
     }
 
     Trees trees() {
       return trees;
+    }
+  }
+
+  // JavaCompiler.compilerKey has protected access until Java 9, so this is a workaround.
+  private static final class DummyJavaCompilerSubclass extends com.sun.tools.javac.main.JavaCompiler {
+    private static void closeCompiler(Context context) {
+      com.sun.tools.javac.main.JavaCompiler compiler = context.get(compilerKey);
+      if (compiler != null) {
+        compiler.close();
+      }
+    }
+
+    private DummyJavaCompilerSubclass() {
+      // not instantiable
+      super(null);
     }
   }
 }

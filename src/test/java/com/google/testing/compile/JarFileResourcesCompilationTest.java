@@ -19,20 +19,18 @@ import static com.google.common.truth.Truth.assert_;
 import static com.google.testing.compile.JavaSourceSubjectFactory.javaSource;
 
 import com.google.common.io.Resources;
-
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.runner.RunWith;
-import org.junit.runners.JUnit4;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+import org.junit.runner.RunWith;
+import org.junit.runners.JUnit4;
 
 /**
  * An integration test to ensure that testing works when resources are in jar files.
@@ -52,7 +50,7 @@ public class JarFileResourcesCompilationTest {
     JarOutputStream out = new JarOutputStream(new FileOutputStream(jarFile));
     JarEntry helloWorldEntry = new JarEntry("test/HelloWorld.java");
     out.putNextEntry(helloWorldEntry);
-    out.write(Resources.toByteArray(Resources.getResource("HelloWorld.java")));
+    out.write(Resources.toByteArray(Resources.getResource("test/HelloWorld.java")));
     out.close();
   }
 

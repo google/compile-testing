@@ -44,6 +44,7 @@ import javax.tools.JavaCompiler;
 import javax.tools.JavaCompiler.CompilationTask;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** An object that can {@link #compile} Java source files. */
 @AutoValue
@@ -59,7 +60,7 @@ public abstract class Compiler {
   /** Returns a {@link Compiler} that uses a given {@link JavaCompiler} instance. */
   public static Compiler compiler(JavaCompiler javaCompiler) {
     return new AutoValue_Compiler(
-        javaCompiler, ImmutableList.of(), ImmutableList.of(), Optional.empty());
+        javaCompiler, ImmutableList.of(), ImmutableList.of(), Optional.empty(), Optional.empty());
   }
 
   abstract JavaCompiler javaCompiler();
@@ -72,6 +73,11 @@ public abstract class Compiler {
 
   /** The compilation class path. If not present, the system class path is used. */
   public abstract Optional<ImmutableList<File>> classPath();
+
+  /**
+   * The annotation processor path. If not present, the system annotation processor path is used.
+   */
+  public abstract Optional<ImmutableList<File>> annotationProcessorPath();
 
   /**
    * Uses annotation processors during compilation. These replace any previously specified.
@@ -92,7 +98,8 @@ public abstract class Compiler {
    * @return a new instance with the same options and the given processors
    */
   public final Compiler withProcessors(Iterable<? extends Processor> processors) {
-    return copy(ImmutableList.copyOf(processors), options(), classPath());
+    return copy(
+        ImmutableList.copyOf(processors), options(), classPath(), annotationProcessorPath());
   }
 
   /**
@@ -109,11 +116,12 @@ public abstract class Compiler {
    *
    * @return a new instance with the same processors and the given options
    */
-  public final Compiler withOptions(Iterable<?> options) {
+  public final Compiler withOptions(Iterable<? extends Object> options) {
     return copy(
         processors(),
         FluentIterable.from(options).transform(toStringFunction()).toList(),
-        classPath());
+        classPath(),
+        annotationProcessorPath());
   }
 
   /**
@@ -128,12 +136,32 @@ public abstract class Compiler {
    */
   @Deprecated
   public final Compiler withClasspathFrom(ClassLoader classloader) {
-    return copy(processors(), options(), Optional.of(getClasspathFromClassloader(classloader)));
+    return copy(
+        processors(),
+        options(),
+        Optional.of(getClasspathFromClassloader(classloader)),
+        annotationProcessorPath());
   }
 
   /** Uses the given classpath for the compilation instead of the system classpath. */
   public final Compiler withClasspath(Iterable<File> classPath) {
-    return copy(processors(), options(), Optional.of(ImmutableList.copyOf(classPath)));
+    return copy(
+        processors(),
+        options(),
+        Optional.of(ImmutableList.copyOf(classPath)),
+        annotationProcessorPath());
+  }
+
+  /**
+   * Uses the given annotation processor path for the compilation instead of the system annotation
+   * processor path.
+   */
+  public final Compiler withAnnotationProcessorPath(Iterable<File> annotationProcessorPath) {
+    return copy(
+        processors(),
+        options(),
+        classPath(),
+        Optional.of(ImmutableList.copyOf(annotationProcessorPath)));
   }
 
   /**
@@ -155,16 +183,11 @@ public abstract class Compiler {
     InMemoryJavaFileManager fileManager =
         new InMemoryJavaFileManager(
             javaCompiler().getStandardFileManager(diagnosticCollector, Locale.getDefault(), UTF_8));
-    classPath()
+    fileManager.addSourceFiles(files);
+    classPath().ifPresent(path -> setLocation(fileManager, StandardLocation.CLASS_PATH, path));
+    annotationProcessorPath()
         .ifPresent(
-            classPath -> {
-              try {
-                fileManager.setLocation(StandardLocation.CLASS_PATH, classPath);
-              } catch (IOException e) {
-                // impossible by specification
-                throw new UncheckedIOException(e);
-              }
-            });
+            path -> setLocation(fileManager, StandardLocation.ANNOTATION_PROCESSOR_PATH, path));
     CompilationTask task =
         javaCompiler()
             .getTask(
@@ -189,9 +212,10 @@ public abstract class Compiler {
     return compilation;
   }
 
-  @VisibleForTesting static final ClassLoader platformClassLoader = getPlatformClassLoader();
+  @VisibleForTesting
+  static final @Nullable ClassLoader platformClassLoader = getPlatformClassLoader();
 
-  private static ClassLoader getPlatformClassLoader() {
+  private static @Nullable ClassLoader getPlatformClassLoader() {
     try {
       // JDK >= 9
       return (ClassLoader) ClassLoader.class.getMethod("getPlatformClassLoader").invoke(null);
@@ -207,12 +231,14 @@ public abstract class Compiler {
    * @throws IllegalArgumentException if the given classloader had classpaths which we could not
    *     determine or use for compilation.
    */
-  private static ImmutableList<File> getClasspathFromClassloader(ClassLoader currentClassloader) {
+  private static ImmutableList<File> getClasspathFromClassloader(ClassLoader classloader) {
     ClassLoader systemClassLoader = ClassLoader.getSystemClassLoader();
 
     // Concatenate search paths from all classloaders in the hierarchy 'till the system classloader.
     Set<String> classpaths = new LinkedHashSet<>();
-    while (true) {
+    for (ClassLoader currentClassloader = classloader;
+        ;
+        currentClassloader = currentClassloader.getParent()) {
       if (currentClassloader == systemClassLoader) {
         Iterables.addAll(
             classpaths,
@@ -241,16 +267,27 @@ public abstract class Compiler {
                     + "since %s is not an instance of URLClassloader",
                 currentClassloader));
       }
-      currentClassloader = currentClassloader.getParent();
     }
 
     return classpaths.stream().map(File::new).collect(toImmutableList());
   }
 
+  private static void setLocation(
+      InMemoryJavaFileManager fileManager, StandardLocation location, ImmutableList<File> path) {
+    try {
+      fileManager.setLocation(location, path);
+    } catch (IOException e) {
+      // impossible by specification
+      throw new UncheckedIOException(e);
+    }
+  }
+
   private Compiler copy(
       ImmutableList<Processor> processors,
       ImmutableList<String> options,
-      Optional<ImmutableList<File>> classPath) {
-    return new AutoValue_Compiler(javaCompiler(), processors, options, classPath);
+      Optional<ImmutableList<File>> classPath,
+      Optional<ImmutableList<File>> annotationProcessorPath) {
+    return new AutoValue_Compiler(
+        javaCompiler(), processors, options, classPath, annotationProcessorPath);
   }
 }

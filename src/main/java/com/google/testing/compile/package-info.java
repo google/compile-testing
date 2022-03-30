@@ -21,13 +21,13 @@
  * projects.
  *
  * <ul>
- * <li>{@link Compiler} lets you choose command-line options, annotation processors, and source
- *     files to compile.
- * <li>{@link Compilation} represents the immutable result of compiling source files: diagnostics
- *     and generated files.
- * <li>{@link CompilationSubject} lets you make assertions about {@link Compilation} objects.
- * <li>{@link JavaFileObjectSubject} lets you make assertions about {@link
- *     javax.tools.JavaFileObject} objects.
+ *   <li>{@link Compiler} lets you choose command-line options, annotation processors, and source
+ *       files to compile.
+ *   <li>{@link Compilation} represents the immutable result of compiling source files: diagnostics
+ *       and generated files.
+ *   <li>{@link CompilationSubject} lets you make assertions about {@link Compilation} objects.
+ *   <li>{@link JavaFileObjectSubject} lets you make assertions about {@link
+ *       javax.tools.JavaFileObject} objects.
  * </ul>
  *
  * <p>A simple example that tests that compiling a source file succeeded is:
@@ -85,4 +85,4 @@
 @CheckReturnValue
 package com.google.testing.compile;
 
-import javax.annotation.CheckReturnValue;
+import com.google.errorprone.annotations.CheckReturnValue;

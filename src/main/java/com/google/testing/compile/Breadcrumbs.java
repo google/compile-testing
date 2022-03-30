@@ -19,7 +19,6 @@ import com.google.common.base.Function;
 import com.google.common.base.Joiner;
 import com.google.common.collect.FluentIterable;
 import com.google.common.collect.Lists;
-
 import com.sun.source.tree.BlockTree;
 import com.sun.source.tree.BreakTree;
 import com.sun.source.tree.ClassTree;
@@ -37,7 +36,6 @@ import com.sun.source.tree.TypeParameterTree;
 import com.sun.source.tree.VariableTree;
 import com.sun.source.util.SimpleTreeVisitor;
 import com.sun.source.util.TreePath;
-
 import java.util.List;
 
 /**
@@ -54,9 +52,6 @@ final class Breadcrumbs {
    * Returns a string describing the {@link TreePath} given.
    */
   static String describeTreePath(TreePath path) {
-    // TODO(spratt) The number of extra strings this creates by building a list of strings,
-    // and then joining it is at least a little wasteful. Consider modifying the BreadcrumbVisitor
-    // to take a StringBuilder and traverse the whole path.
     return Joiner.on("->").join(getBreadcrumbList(path));
   }
 

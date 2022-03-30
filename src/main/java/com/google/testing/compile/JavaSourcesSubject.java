@@ -20,12 +20,12 @@ import static com.google.common.truth.Truth.assertAbout;
 import static com.google.testing.compile.CompilationSubject.compilations;
 import static com.google.testing.compile.Compiler.javac;
 import static com.google.testing.compile.JavaSourcesSubjectFactory.javaSources;
+import static com.google.testing.compile.TypeEnumerator.getTopLevelTypes;
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.toList;
 
-import com.google.common.base.Function;
+import com.google.auto.value.AutoValue;
 import com.google.common.base.Joiner;
-import com.google.common.base.Optional;
-import com.google.common.base.Predicate;
-import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -47,13 +47,14 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import javax.annotation.Nullable;
+import java.util.Optional;
+import java.util.stream.Collector;
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A <a href="https://github.com/truth0/truth">Truth</a> {@link Subject} that evaluates the result
@@ -62,15 +63,16 @@ import javax.tools.JavaFileObject;
  * @author Gregory Kick
  */
 @SuppressWarnings("restriction") // Sun APIs usage intended
-public final class JavaSourcesSubject
-    extends Subject<JavaSourcesSubject, Iterable<? extends JavaFileObject>>
+public final class JavaSourcesSubject extends Subject
     implements CompileTester, ProcessedCompileTesterFactory {
-  private final List<String> options = new ArrayList<String>(Arrays.asList("-Xlint"));
+  private final Iterable<? extends JavaFileObject> actual;
+  private final List<String> options = new ArrayList<>(Arrays.asList("-Xlint"));
   @Nullable private ClassLoader classLoader;
   @Nullable private ImmutableList<File> classPath;
 
   JavaSourcesSubject(FailureMetadata failureMetadata, Iterable<? extends JavaFileObject> subject) {
     super(failureMetadata, subject);
+    this.actual = subject;
   }
 
   @Override
@@ -87,8 +89,8 @@ public final class JavaSourcesSubject
 
   /**
    * @deprecated prefer {@link #withClasspath(Iterable)}. This method only supports {@link
-   *     URLClassLoader} and the default system classloader, and {@link File}s are usually a more
-   *     natural way to expression compilation classpaths than class loaders.
+   *     java.net.URLClassLoader} and the default system classloader, and {@link File}s are usually
+   *     a more natural way to expression compilation classpaths than class loaders.
    */
   @Deprecated
   @Override
@@ -141,7 +143,7 @@ public final class JavaSourcesSubject
     private final ImmutableSet<Processor> processors;
 
     private CompilationClause() {
-      this(ImmutableSet.<Processor>of());
+      this(ImmutableSet.of());
     }
 
     private CompilationClause(Iterable<? extends Processor> processors) {
@@ -150,13 +152,13 @@ public final class JavaSourcesSubject
 
     @Override
     public void parsesAs(JavaFileObject first, JavaFileObject... rest) {
-      if (Iterables.isEmpty(actual())) {
+      if (Iterables.isEmpty(actual)) {
         failWithoutActual(
             simpleFact(
                 "Compilation generated no additional source files, though some were expected."));
         return;
       }
-      ParseResult actualResult = Parser.parse(actual());
+      ParseResult actualResult = Parser.parse(actual);
       ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
           actualResult.diagnosticsByKind().get(Kind.ERROR);
       if (!errors.isEmpty()) {
@@ -168,86 +170,62 @@ public final class JavaSourcesSubject
         failWithoutActual(simpleFact(message.toString()));
         return;
       }
-      final ParseResult expectedResult = Parser.parse(Lists.asList(first, rest));
-      final FluentIterable<? extends CompilationUnitTree> actualTrees =
-          FluentIterable.from(actualResult.compilationUnits());
-      final FluentIterable<? extends CompilationUnitTree> expectedTrees =
-          FluentIterable.from(expectedResult.compilationUnits());
+      ParseResult expectedResult = Parser.parse(Lists.asList(first, rest));
+      ImmutableList<TypedCompilationUnit> actualTrees =
+          actualResult.compilationUnits().stream()
+              .map(TypedCompilationUnit::create)
+              .collect(toImmutableList());
+      ImmutableList<TypedCompilationUnit> expectedTrees =
+          expectedResult.compilationUnits().stream()
+              .map(TypedCompilationUnit::create)
+              .collect(toImmutableList());
 
-      Function<? super CompilationUnitTree, ImmutableSet<String>> getTypesFunction =
-          new Function<CompilationUnitTree, ImmutableSet<String>>() {
-            @Override
-            public ImmutableSet<String> apply(CompilationUnitTree compilationUnit) {
-              return TypeEnumerator.getTopLevelTypes(compilationUnit);
+      ImmutableMap<TypedCompilationUnit, Optional<TypedCompilationUnit>> matchedTrees =
+          Maps.toMap(
+              expectedTrees,
+              expectedTree ->
+                  actualTrees.stream()
+                      .filter(actualTree -> expectedTree.types().equals(actualTree.types()))
+                      .findFirst());
+
+      matchedTrees.forEach(
+          (expectedTree, maybeActualTree) -> {
+            if (!maybeActualTree.isPresent()) {
+              failNoCandidates(expectedTree.types(), expectedTree.tree(), actualTrees);
+              return;
             }
-          };
-
-      final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> expectedTreeTypes =
-          Maps.toMap(expectedTrees, getTypesFunction);
-      final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> actualTreeTypes =
-          Maps.toMap(actualTrees, getTypesFunction);
-      final ImmutableMap<? extends CompilationUnitTree, Optional<? extends CompilationUnitTree>>
-          matchedTrees =
-              Maps.toMap(
-                  expectedTrees,
-                  new Function<CompilationUnitTree, Optional<? extends CompilationUnitTree>>() {
-                    @Override
-                    public Optional<? extends CompilationUnitTree> apply(
-                        final CompilationUnitTree expectedTree) {
-                      return Iterables.tryFind(
-                          actualTrees,
-                          new Predicate<CompilationUnitTree>() {
-                            @Override
-                            public boolean apply(CompilationUnitTree actualTree) {
-                              return expectedTreeTypes
-                                  .get(expectedTree)
-                                  .equals(actualTreeTypes.get(actualTree));
-                            }
-                          });
-                    }
-                  });
-
-      for (Map.Entry<? extends CompilationUnitTree, Optional<? extends CompilationUnitTree>>
-          matchedTreePair : matchedTrees.entrySet()) {
-        final CompilationUnitTree expectedTree = matchedTreePair.getKey();
-        if (!matchedTreePair.getValue().isPresent()) {
-          failNoCandidates(
-              expectedTreeTypes.get(expectedTree), expectedTree, actualTreeTypes, actualTrees);
-        } else {
-          CompilationUnitTree actualTree = matchedTreePair.getValue().get();
-          TreeDifference treeDifference = TreeDiffer.diffCompilationUnits(expectedTree, actualTree);
-          if (!treeDifference.isEmpty()) {
-            String diffReport =
-                treeDifference.getDiffReport(
-                    new TreeContext(expectedTree, expectedResult.trees()),
-                    new TreeContext(actualTree, actualResult.trees()));
-            failWithCandidate(expectedTree.getSourceFile(), actualTree.getSourceFile(), diffReport);
-          }
-        }
-      }
+            TypedCompilationUnit actualTree = maybeActualTree.get();
+            TreeDifference treeDifference =
+                TreeDiffer.diffCompilationUnits(expectedTree.tree(), actualTree.tree());
+            if (!treeDifference.isEmpty()) {
+              String diffReport =
+                  treeDifference.getDiffReport(
+                      new TreeContext(expectedTree.tree(), expectedResult.trees()),
+                      new TreeContext(actualTree.tree(), actualResult.trees()));
+              failWithCandidate(
+                  expectedTree.tree().getSourceFile(),
+                  actualTree.tree().getSourceFile(),
+                  diffReport);
+            }
+          });
     }
 
     /** Called when the {@code generatesSources()} verb fails with no diff candidates. */
     private void failNoCandidates(
         ImmutableSet<String> expectedTypes,
         CompilationUnitTree expectedTree,
-        final ImmutableMap<? extends CompilationUnitTree, ImmutableSet<String>> actualTypes,
-        FluentIterable<? extends CompilationUnitTree> actualTrees) {
+        ImmutableList<TypedCompilationUnit> actualTrees) {
       String generatedTypesReport =
           Joiner.on('\n')
               .join(
-                  actualTrees
-                      .transform(
-                          new Function<CompilationUnitTree, String>() {
-                            @Override
-                            public String apply(CompilationUnitTree generated) {
-                              return String.format(
+                  actualTrees.stream()
+                      .map(
+                          generated ->
+                              String.format(
                                   "- %s in <%s>",
-                                  actualTypes.get(generated),
-                                  generated.getSourceFile().toUri().getPath());
-                            }
-                          })
-                      .toList());
+                                  generated.types(),
+                                  generated.tree().getSourceFile().toUri().getPath()))
+                      .collect(toList()));
       failWithoutActual(
           simpleFact(
               Joiner.on('\n')
@@ -306,7 +284,7 @@ public final class JavaSourcesSubject
     @Override
     public SuccessfulCompilationClause compilesWithoutError() {
       Compilation compilation = compilation();
-      check().about(compilations()).that(compilation).succeeded();
+      check("compilation()").about(compilations()).that(compilation).succeeded();
       return new SuccessfulCompilationBuilder(compilation);
     }
 
@@ -314,7 +292,7 @@ public final class JavaSourcesSubject
     @Override
     public CleanCompilationClause compilesWithoutWarnings() {
       Compilation compilation = compilation();
-      check().about(compilations()).that(compilation).succeededWithoutWarnings();
+      check("compilation()").about(compilations()).that(compilation).succeededWithoutWarnings();
       return new CleanCompilationBuilder(compilation);
     }
 
@@ -322,7 +300,7 @@ public final class JavaSourcesSubject
     @Override
     public UnsuccessfulCompilationClause failsToCompile() {
       Compilation compilation = compilation();
-      check().about(compilations()).that(compilation).failed();
+      check("compilation()").about(compilations()).that(compilation).failed();
       return new UnsuccessfulCompilationBuilder(compilation);
     }
 
@@ -334,7 +312,18 @@ public final class JavaSourcesSubject
       if (classPath != null) {
         compiler = compiler.withClasspath(classPath);
       }
-      return compiler.compile(actual());
+      return compiler.compile(actual);
+    }
+  }
+
+  @AutoValue
+  abstract static class TypedCompilationUnit {
+    abstract CompilationUnitTree tree();
+
+    abstract ImmutableSet<String> types();
+
+    static TypedCompilationUnit create(CompilationUnitTree tree) {
+      return new AutoValue_JavaSourcesSubject_TypedCompilationUnit(tree, getTopLevelTypes(tree));
     }
   }
 
@@ -349,8 +338,8 @@ public final class JavaSourcesSubject
   /**
    * Base implementation of {@link CompilationWithWarningsClause}.
    *
-   * @param T the type parameter for {@link CompilationWithWarningsClause}. {@code this} must be an
-   *     instance of {@code T}; otherwise some calls will throw {@link ClassCastException}.
+   * @param <T> the type parameter for {@link CompilationWithWarningsClause}. {@code this} must be
+   *     an instance of {@code T}; otherwise some calls will throw {@link ClassCastException}.
    */
   abstract class CompilationWithWarningsBuilder<T> implements CompilationWithWarningsClause<T> {
     protected final Compilation compilation;
@@ -362,7 +351,7 @@ public final class JavaSourcesSubject
     @CanIgnoreReturnValue
     @Override
     public T withNoteCount(int noteCount) {
-      check().about(compilations()).that(compilation).hadNoteCount(noteCount);
+      check("compilation()").about(compilations()).that(compilation).hadNoteCount(noteCount);
       return thisObject();
     }
 
@@ -370,13 +359,16 @@ public final class JavaSourcesSubject
     @Override
     public FileClause<T> withNoteContaining(String messageFragment) {
       return new FileBuilder(
-          check().about(compilations()).that(compilation).hadNoteContaining(messageFragment));
+          check("compilation()")
+              .about(compilations())
+              .that(compilation)
+              .hadNoteContaining(messageFragment));
     }
 
     @CanIgnoreReturnValue
     @Override
     public T withWarningCount(int warningCount) {
-      check().about(compilations()).that(compilation).hadWarningCount(warningCount);
+      check("compilation()").about(compilations()).that(compilation).hadWarningCount(warningCount);
       return thisObject();
     }
 
@@ -384,19 +376,25 @@ public final class JavaSourcesSubject
     @Override
     public FileClause<T> withWarningContaining(String messageFragment) {
       return new FileBuilder(
-          check().about(compilations()).that(compilation).hadWarningContaining(messageFragment));
+          check("compilation()")
+              .about(compilations())
+              .that(compilation)
+              .hadWarningContaining(messageFragment));
     }
 
     @CanIgnoreReturnValue
     public T withErrorCount(int errorCount) {
-      check().about(compilations()).that(compilation).hadErrorCount(errorCount);
+      check("compilation()").about(compilations()).that(compilation).hadErrorCount(errorCount);
       return thisObject();
     }
 
     @CanIgnoreReturnValue
     public FileClause<T> withErrorContaining(String messageFragment) {
       return new FileBuilder(
-          check().about(compilations()).that(compilation).hadErrorContaining(messageFragment));
+          check("compilation()")
+              .about(compilations())
+              .that(compilation)
+              .hadErrorContaining(messageFragment));
     }
 
     /** Returns this object, cast to {@code T}. */
@@ -453,7 +451,7 @@ public final class JavaSourcesSubject
    * Base implementation of {@link GeneratedPredicateClause GeneratedPredicateClause<T>} and {@link
    * ChainingClause ChainingClause<GeneratedPredicateClause<T>>}.
    *
-   * @param T the type parameter to {@link GeneratedPredicateClause}. {@code this} must be an
+   * @param <T> the type parameter to {@link GeneratedPredicateClause}. {@code this} must be an
    *     instance of {@code T}.
    */
   private abstract class GeneratedCompilationBuilder<T> extends CompilationWithWarningsBuilder<T>
@@ -466,7 +464,9 @@ public final class JavaSourcesSubject
     @CanIgnoreReturnValue
     @Override
     public T generatesSources(JavaFileObject first, JavaFileObject... rest) {
-      check().about(javaSources()).that(compilation.generatedSourceFiles())
+      check("generatedSourceFiles()")
+          .about(javaSources())
+          .that(compilation.generatedSourceFiles())
           .parsesAs(first, rest);
       return thisObject();
     }
@@ -503,7 +503,7 @@ public final class JavaSourcesSubject
     public SuccessfulFileClause<T> generatesFileNamed(
         JavaFileManager.Location location, String packageName, String relativeName) {
       final JavaFileObjectSubject javaFileObjectSubject =
-          check()
+          check("compilation()")
               .about(compilations())
               .that(compilation)
               .generatedFile(location, packageName, relativeName);
@@ -580,13 +580,26 @@ public final class JavaSourcesSubject
                 .build());
   }
 
-  public static final class SingleSourceAdapter extends Subject<SingleSourceAdapter, JavaFileObject>
+  private static <T> Collector<T, ?, ImmutableList<T>> toImmutableList() {
+    return collectingAndThen(toList(), ImmutableList::copyOf);
+  }
+
+  public static final class SingleSourceAdapter extends Subject
       implements CompileTester, ProcessedCompileTesterFactory {
     private final JavaSourcesSubject delegate;
 
     SingleSourceAdapter(FailureMetadata failureMetadata, JavaFileObject subject) {
       super(failureMetadata, subject);
-      this.delegate = check().about(javaSources()).that(ImmutableList.of(subject));
+      /*
+       * TODO(b/131918061): It would make more sense to eliminate SingleSourceAdapter entirely.
+       * Users can already use assertThat(JavaFileObject, JavaFileObject...) above for a single
+       * file. Anyone who needs a Subject.Factory could fall back to
+       * `about(javaSources()).that(ImmutableSet.of(source))`.
+       *
+       * We could take that on, or we could wait for JavaSourcesSubject to go away entirely in favor
+       * of CompilationSubject.
+       */
+      this.delegate = check("delegate()").about(javaSources()).that(ImmutableList.of(subject));
     }
 
     @Override
@@ -601,8 +614,8 @@ public final class JavaSourcesSubject
 
     /**
      * @deprecated prefer {@link #withClasspath(Iterable)}. This method only supports {@link
-     *     URLClassLoader} and the default system classloader, and {@link File}s are usually a more
-     *     natural way to expression compilation classpaths than class loaders.
+     *     java.net.URLClassLoader} and the default system classloader, and {@link File}s are
+     *     usually a more natural way to expression compilation classpaths than class loaders.
      */
     @Deprecated
     @Override

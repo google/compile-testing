@@ -16,7 +16,6 @@
 package com.google.testing.compile;
 
 import java.io.File;
-import javax.annotation.CheckReturnValue;
 import javax.annotation.processing.Processor;
 
 /**
@@ -25,7 +24,6 @@ import javax.annotation.processing.Processor;
  *
  * @author Gregory Kick
  */
-@CheckReturnValue
 public interface ProcessedCompileTesterFactory {
 
   /**
@@ -47,8 +45,8 @@ public interface ProcessedCompileTesterFactory {
    * <p>If not specified, we will use the System classpath for compilation.
    *
    * @deprecated prefer {@link #withClasspath(Iterable)}. This method only supports {@link
-   *     URLClassLoader} and the default system classloader, and {@link File}s are usually a more
-   *     natural way to expression compilation classpaths than class loaders.
+   *     java.net.URLClassLoader} and the default system classloader, and {@link File}s are usually
+   *     a more natural way to expression compilation classpaths than class loaders.
    */
   @Deprecated
   ProcessedCompileTesterFactory withClasspathFrom(ClassLoader classloader);
@@ -60,9 +58,9 @@ public interface ProcessedCompileTesterFactory {
    */
   ProcessedCompileTesterFactory withClasspath(Iterable<File> classPath);
 
-  /** Adds {@linkplain Processor annotation processors} to the compilation being tested.  */
+  /** Adds {@linkplain Processor annotation processors} to the compilation being tested. */
   CompileTester processedWith(Processor first, Processor... rest);
 
-  /** Adds {@linkplain Processor annotation processors} to the compilation being tested.  */
+  /** Adds {@linkplain Processor annotation processors} to the compilation being tested. */
   CompileTester processedWith(Iterable<? extends Processor> processors);
 }

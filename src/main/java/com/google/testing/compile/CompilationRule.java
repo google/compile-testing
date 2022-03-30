@@ -81,7 +81,7 @@ public final class CompilationRule implements TestRule {
    * @throws IllegalStateException if this method is invoked outside the execution of the rule.
    */
   public Types getTypes() {
-    checkState(elements != null, "Not running within the rule");
+    checkState(types != null, "Not running within the rule");
     return types;
   }
 

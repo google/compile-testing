@@ -144,6 +144,19 @@
           </execution>
         </executions>
       </plugin>
+      <plugin>
+        <groupId>org.ekstazi</groupId>
+        <artifactId>ekstazi-maven-plugin</artifactId>
+        <version>5.3.0</version> 
+        <executions>
+          <execution>
+            <id>ekstazi</id>
+            <goals>
+              <goal>select</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
     </plugins>
   </build>
 

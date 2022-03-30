@@ -1,14 +1,36 @@
 language: java
-install: mvn -B -U install clean --fail-never --quiet -DskipTests=true -Dinvoker.skip=true
-script: mvn -B verify
-
-jdk:
-  - oraclejdk8
-
-notifications:
-  email: false
-
-branches:
-  only:
-    - master
-    - /^release.*$/
+matrix:
+  include:
+    - os: linux
+      arch: amd64
+      jdk: openjdk8
+   
+cache:
+  directories:
+    - $HOME/.ekstazi
+    
+before_script:
+  - java -version
+  - mvn -version
+  - find $TRAVIS_BUILD_DIR -name .ekstazi | while read line; do rm -rf $line; done;
+      find $HOME/.ekstazi | while read line; do du -sh $line; \
+        DIR=$(dirname ${line#$HOME}); if [[ -d ${DIR# .ekstazi /} ]]; then cp -r $line $DIR; fi; done
+    
+  
+script:
+  - mvn test 
+  - mvn ekstazi:select
+  
+before_install:
+  - echo $HOME/.ekstazi
+  - echo $TRAVIS_BUILD_DIR
+  - find $HOME/.ekstazi | while read line; do du -sh $line; \
+        DIR=$(dirname ${line#$HOME}); if [[ -d ${DIR# .ekstazi /} ]]; then cp -r $line $DIR; fi; done
+    
+before_cache:
+   - echo CACHESIZE $(du -sk $HOME/.ekstazi)
+   
+   - find $TRAVIS_BUILD_DIR -name .ekstazi | while read line; do du -sh $line; \
+        DIR=$(dirname $HOME$line); mkdir -p $DIR; cp -r $line $DIR; done
+   - echo CACHESIZE $(du -sk $HOME/.ekstazi)
+ 

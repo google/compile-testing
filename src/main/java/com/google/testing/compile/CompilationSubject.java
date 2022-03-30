@@ -18,7 +18,8 @@ package com.google.testing.compile;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Predicates.notNull;
 import static com.google.common.collect.Iterables.size;
-import static com.google.common.collect.Streams.mapWithIndex;
+import static com.google.common.truth.Fact.fact;
+import static com.google.common.truth.Fact.simpleFact;
 import static com.google.common.truth.Truth.assertAbout;
 import static com.google.testing.compile.Compilation.Status.FAILURE;
 import static com.google.testing.compile.Compilation.Status.SUCCESS;
@@ -35,6 +36,8 @@ import static javax.tools.Diagnostic.Kind.WARNING;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.collect.Streams;
+import com.google.common.truth.Fact;
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
 import com.google.common.truth.Truth;
@@ -52,9 +55,10 @@ import javax.tools.Diagnostic;
 import javax.tools.JavaFileManager.Location;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** A {@link Truth} subject for a {@link Compilation}. */
-public final class CompilationSubject extends Subject<CompilationSubject, Compilation> {
+public final class CompilationSubject extends Subject {
 
   private static final Subject.Factory<CompilationSubject, Compilation> FACTORY =
       new CompilationSubjectFactory();
@@ -69,15 +73,18 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
     return assertAbout(compilations()).that(actual);
   }
 
+  private final Compilation actual;
+
   CompilationSubject(FailureMetadata failureMetadata, Compilation actual) {
     super(failureMetadata, actual);
+    this.actual = actual;
   }
 
   /** Asserts that the compilation succeeded. */
   public void succeeded() {
-    if (actual().status().equals(FAILURE)) {
-      failWithRawMessage(
-          actual().describeFailureDiagnostics() + actual().describeGeneratedSourceFiles());
+    if (actual.status().equals(FAILURE)) {
+      failWithoutActual(
+          simpleFact(actual.describeFailureDiagnostics() + actual.describeGeneratedSourceFiles()));
     }
   }
 
@@ -89,10 +96,11 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
 
   /** Asserts that the compilation failed. */
   public void failed() {
-    if (actual().status().equals(SUCCESS)) {
-      failWithRawMessage(
-          "Compilation was expected to fail, but contained no errors.\n\n"
-              + actual().describeGeneratedSourceFiles());
+    if (actual.status().equals(SUCCESS)) {
+      failWithoutActual(
+          simpleFact(
+              "Compilation was expected to fail, but contained no errors.\n\n"
+                  + actual.describeGeneratedSourceFiles()));
     }
   }
 
@@ -168,17 +176,18 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
   private void checkDiagnosticCount(
       int expectedCount, Diagnostic.Kind kind, Diagnostic.Kind... more) {
     Iterable<Diagnostic<? extends JavaFileObject>> diagnostics =
-        actual().diagnosticsOfKind(kind, more);
+        actual.diagnosticsOfKind(kind, more);
     int actualCount = size(diagnostics);
     if (actualCount != expectedCount) {
-      failWithRawMessage(
-          messageListing(
-              diagnostics,
-              "Expected %d %s, but found the following %d %s:",
-              expectedCount,
-              kindPlural(kind),
-              actualCount,
-              kindPlural(kind)));
+      failWithoutActual(
+          simpleFact(
+              messageListing(
+                  diagnostics,
+                  "Expected %d %s, but found the following %d %s:",
+                  expectedCount,
+                  kindPlural(kind),
+                  actualCount,
+                  kindPlural(kind))));
     }
   }
 
@@ -276,15 +285,17 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
       Diagnostic.Kind kind,
       Diagnostic.Kind... more) {
     ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsOfKind =
-        actual().diagnosticsOfKind(kind, more);
+        actual.diagnosticsOfKind(kind, more);
     ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsWithMessage =
         diagnosticsOfKind
             .stream()
             .filter(diagnostic -> expectedPattern.matcher(diagnostic.getMessage(null)).find())
             .collect(toImmutableList());
     if (diagnosticsWithMessage.isEmpty()) {
-      failWithRawMessage(
-          messageListing(diagnosticsOfKind, "Expected %s, but only found:", expectedDiagnostic));
+      failWithoutActual(
+          simpleFact(
+              messageListing(
+                  diagnosticsOfKind, "Expected %s, but only found:", expectedDiagnostic)));
     }
     return diagnosticsWithMessage;
   }
@@ -296,20 +307,14 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
   @CanIgnoreReturnValue
   public JavaFileObjectSubject generatedFile(
       Location location, String packageName, String fileName) {
-    return checkGeneratedFile(
-        actual().generatedFile(location, packageName, fileName),
-        location,
-        "named \"%s\" in %s",
-        fileName,
-        packageName.isEmpty()
-            ? "the default package"
-            : String.format("package \"%s\"", packageName));
+    String path = packageName.isEmpty() ? fileName : packageName.replace('.', '/') + '/' + fileName;
+    return generatedFile(location, path);
   }
 
   /** Asserts that compilation generated a file at {@code path}. */
   @CanIgnoreReturnValue
   public JavaFileObjectSubject generatedFile(Location location, String path) {
-    return checkGeneratedFile(actual().generatedFile(location, path), location, path);
+    return checkGeneratedFile(actual.generatedFile(location, path), location, path);
   }
 
   /** Asserts that compilation generated a source file for a type with a given qualified name. */
@@ -324,20 +329,22 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
           "compile.Failure", "package compile;", "", "final class Failure {}");
 
   private JavaFileObjectSubject checkGeneratedFile(
-      Optional<JavaFileObject> generatedFile, Location location, String format, Object... args) {
+      Optional<JavaFileObject> generatedFile, Location location, String path) {
     if (!generatedFile.isPresent()) {
-      StringBuilder builder = new StringBuilder("generated the file ");
-      builder.append(args.length == 0 ? format : String.format(format, args));
-      builder.append("; it generated:\n");
-      for (JavaFileObject generated : actual().generatedFiles()) {
+      // TODO(b/132162475): Use Facts if it becomes public API.
+      ImmutableList.Builder<Fact> facts = ImmutableList.builder();
+      facts.add(fact("in location", location.getName()));
+      facts.add(simpleFact("it generated:"));
+      for (JavaFileObject generated : actual.generatedFiles()) {
         if (generated.toUri().getPath().contains(location.getName())) {
-          builder.append("  ").append(generated.toUri().getPath()).append('\n');
+          facts.add(simpleFact("  " + generated.toUri().getPath()));
         }
       }
-      fail(builder.toString());
+      failWithoutActual(
+          fact("expected to generate file", "/" + path), facts.build().toArray(new Fact[0]));
       return ignoreCheck().about(javaFileObjects()).that(ALREADY_FAILED);
     }
-    return check().about(javaFileObjects()).that(generatedFile.get());
+    return check("generatedFile(/%s)", path).about(javaFileObjects()).that(generatedFile.get());
   }
 
   private static <T> Collector<T, ?, ImmutableList<T>> toImmutableList() {
@@ -375,11 +382,12 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
     }
 
     protected void failExpectingMatchingDiagnostic(String format, Object... args) {
-      failWithRawMessage(
-          new StringBuilder("Expected ")
-              .append(expectedDiagnostic)
-              .append(String.format(format, args))
-              .toString());
+      failWithoutActual(
+          simpleFact(
+              new StringBuilder("Expected ")
+                  .append(expectedDiagnostic)
+                  .append(String.format(format, args))
+                  .toString()));
     }
   }
 
@@ -459,9 +467,12 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
 
     /** Lists the line at a line number (1-based). */
     String listLine(long lineNumber) {
-      return lineNumber == Diagnostic.NOPOS
-          ? "(no associated line)"
-          : String.format("%4d: %s", lineNumber, linesInFile().get((int) (lineNumber - 1)));
+      if (lineNumber == Diagnostic.NOPOS) {
+        return "(no associated line)";
+      }
+      checkArgument(lineNumber > 0 && lineNumber <= linesInFile().size(),
+          "Invalid line number %s; number of lines is only %s", lineNumber, linesInFile().size());
+      return String.format("%4d: %s", lineNumber, linesInFile().get((int) (lineNumber - 1)));
     }
   }
 
@@ -500,8 +511,9 @@ public final class CompilationSubject extends Subject<CompilationSubject, Compil
      *     expectedLineSubstring}
      */
     private long findLineContainingSubstring(String expectedLineSubstring) {
+      // The explicit type arguments below are needed by our nullness checker.
       ImmutableSet<Long> matchingLines =
-          mapWithIndex(
+          Streams.<String, @Nullable Long>mapWithIndex(
                   linesInFile.linesInFile().stream(),
                   (line, index) -> line.contains(expectedLineSubstring) ? index : null)
               .filter(notNull())

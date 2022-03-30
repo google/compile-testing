@@ -16,6 +16,7 @@
 
 package com.google.testing.compile;
 
+import static com.google.common.truth.ExpectFailure.assertThat;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.testing.compile.JavaFileObjectSubject.assertThat;
 import static com.google.testing.compile.JavaFileObjectSubject.javaFileObjects;
@@ -23,7 +24,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.common.truth.ExpectFailure;
 import java.io.IOException;
-import java.util.regex.Pattern;
 import javax.tools.JavaFileObject;
 import org.junit.Rule;
 import org.junit.Test;
@@ -96,9 +96,9 @@ public final class JavaFileObjectSubjectTest {
         .contentsAsString(UTF_8)
         .containsMatch("bad+");
     AssertionError expected = expectFailure.getFailure();
-    assertThat(expected.getMessage())
-        .containsMatch("the contents of .*" + Pattern.quote(CLASS.getName()));
-    assertThat(expected.getMessage()).contains("bad+");
+    assertThat(expected).factValue("value of").isEqualTo("javaFileObject.contents()");
+    assertThat(expected).factValue("javaFileObject was").startsWith(CLASS.getName());
+    assertThat(expected).factValue("expected to contain a match for").isEqualTo("bad+");
   }
 
   @Test
@@ -119,9 +119,9 @@ public final class JavaFileObjectSubjectTest {
         .that(CLASS)
         .hasSourceEquivalentTo(DIFFERENT_NAME);
     AssertionError expected = expectFailure.getFailure();
-    assertThat(expected.getMessage()).contains("is equivalent to");
+    assertThat(expected).factKeys().contains("expected to be equivalent to");
     assertThat(expected.getMessage()).contains(CLASS.getName());
-    assertThat(expected.getMessage()).contains(CLASS.getCharContent(false));
+    assertThat(expected).factValue("but was").isEqualTo(CLASS.getCharContent(false));
   }
 
   @Test
@@ -132,10 +132,10 @@ public final class JavaFileObjectSubjectTest {
         .that(CLASS)
         .hasSourceEquivalentTo(CLASS_WITH_FIELD);
     AssertionError expected = expectFailure.getFailure();
-    assertThat(expected.getMessage()).contains("is equivalent to");
+    assertThat(expected).factKeys().contains("expected to be equivalent to");
     assertThat(expected.getMessage()).contains("unmatched nodes in the expected tree");
     assertThat(expected.getMessage()).contains(CLASS.getName());
-    assertThat(expected.getMessage()).contains(CLASS.getCharContent(false));
+    assertThat(expected).factValue("but was").isEqualTo(CLASS.getCharContent(false));
   }
 
   @Test
@@ -146,9 +146,54 @@ public final class JavaFileObjectSubjectTest {
         .that(CLASS_WITH_FIELD)
         .hasSourceEquivalentTo(CLASS);
     AssertionError expected = expectFailure.getFailure();
-    assertThat(expected.getMessage()).contains("is equivalent to");
+    assertThat(expected).factKeys().contains("expected to be equivalent to");
     assertThat(expected.getMessage()).contains("unmatched nodes in the actual tree");
     assertThat(expected.getMessage()).contains(CLASS_WITH_FIELD.getName());
-    assertThat(expected.getMessage()).contains(CLASS_WITH_FIELD.getCharContent(false));
+    assertThat(expected).factValue("but was").isEqualTo(CLASS_WITH_FIELD.getCharContent(false));
+  }
+
+  private static final JavaFileObject SAMPLE_ACTUAL_FILE_FOR_MATCHING =
+      JavaFileObjects.forSourceLines(
+          "test.SomeFile",
+          "package test;",
+          "",
+          "import pkg.AnAnnotation;",
+          "import static another.something.Special.CONSTANT;",
+          "",
+          "@AnAnnotation(with = @Some(values = {1,2,3}), and = \"a string\")",
+          "public class SomeFile {",
+          "  private static final int CONSTANT_TIMES_2 = CONSTANT * 2;",
+          "  private static final int CONSTANT_TIMES_3 = CONSTANT * 3;",
+          "  private static final int CONSTANT_TIMES_4 = CONSTANT * 4;",
+          "",
+          "  @Nullable private MaybeNull field;",
+          "",
+          "  @Inject SomeFile() {",
+          "    this.field = MaybeNull.constructorBody();",
+          "  }",
+          "",
+          "  protected int method(Parameter p, OtherParam o) {",
+          "    return CONSTANT_TIMES_4 / p.hashCode() + o.hashCode();",
+          "  }",
+          "",
+          "  public static class InnerClass {",
+          "    private static final int CONSTANT_TIMES_8 = CONSTANT_TIMES_4 * 2;",
+          "",
+          "    @Nullable private MaybeNull innerClassField;",
+          "",
+          "    @Inject",
+          "    InnerClass() {",
+          "      this.innerClassField = MaybeNull.constructorBody();",
+          "    }",
+          "",
+          "    protected int innerClassMethod(Parameter p, OtherParam o) {",
+          "      return CONSTANT_TIMES_8 / p.hashCode() + o.hashCode();",
+          "    }",
+          "  }",
+          "}");
+
+  @Test
+  public void containsElementsIn_completeMatch() {
+    assertThat(SAMPLE_ACTUAL_FILE_FOR_MATCHING).containsElementsIn(SAMPLE_ACTUAL_FILE_FOR_MATCHING);
   }
 }

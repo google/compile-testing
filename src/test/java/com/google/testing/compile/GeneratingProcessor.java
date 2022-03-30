@@ -21,6 +21,7 @@ import static javax.tools.StandardLocation.CLASS_OUTPUT;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.io.Writer;
 import java.util.Set;
 import javax.annotation.processing.AbstractProcessor;
@@ -29,6 +30,7 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.TypeElement;
+import javax.tools.FileObject;
 
 final class GeneratingProcessor extends AbstractProcessor {
   static final String GENERATED_CLASS_NAME = "Blah";
@@ -50,29 +52,31 @@ final class GeneratingProcessor extends AbstractProcessor {
   @Override
   public synchronized void init(ProcessingEnvironment processingEnv) {
     Filer filer = processingEnv.getFiler();
-    try (Writer writer = filer.createSourceFile(generatedClassName()).openWriter()) {
-      writer.write(GENERATED_SOURCE);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    try {
+      write(filer.createSourceFile(generatedClassName()), GENERATED_SOURCE);
+      write(
+          filer.createResource(
+              CLASS_OUTPUT, getClass().getPackage().getName(), GENERATED_RESOURCE_NAME),
+          GENERATED_RESOURCE);
 
-    try (Writer writer =
-        filer
-            .createResource(
-                CLASS_OUTPUT, getClass().getPackage().getName(), GENERATED_RESOURCE_NAME)
-            .openWriter()) {
-      writer.write(GENERATED_RESOURCE);
+      if (!packageName.isEmpty()) {
+        write(filer.createSourceFile(packageName + ".package-info"), generatedPackageInfoSource());
+      }
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new UncheckedIOException(e);
     }
   }
 
   String packageName() {
     return packageName;
   }
-  
+
   String generatedClassName() {
     return packageName.isEmpty() ? GENERATED_CLASS_NAME : packageName + "." + GENERATED_CLASS_NAME;
+  }
+
+  String generatedPackageInfoSource() {
+    return "package " + packageName + ";\n";
   }
 
   @CanIgnoreReturnValue
@@ -89,5 +93,11 @@ final class GeneratingProcessor extends AbstractProcessor {
   @Override
   public SourceVersion getSupportedSourceVersion() {
     return SourceVersion.latestSupported();
+  }
+
+  private static void write(FileObject file, String contents) throws IOException {
+    try (Writer writer = file.openWriter()) {
+      writer.write(contents);
+    }
   }
 }

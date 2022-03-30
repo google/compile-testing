@@ -16,10 +16,19 @@
 package com.google.testing.compile;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static com.google.common.collect.ImmutableList.toImmutableList;
+import static com.google.common.collect.ImmutableSet.toImmutableSet;
+import static com.google.common.collect.Iterables.isEmpty;
+import static java.util.Objects.requireNonNull;
 
+import com.google.auto.common.MoreTypes;
+import com.google.auto.value.AutoValue;
+import com.google.common.base.Equivalence;
+import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
-import com.google.common.base.Optional;
-
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.errorprone.annotations.FormatMethod;
 import com.sun.source.tree.AnnotationTree;
 import com.sun.source.tree.ArrayAccessTree;
 import com.sun.source.tree.ArrayTypeTree;
@@ -64,6 +73,7 @@ import com.sun.source.tree.SynchronizedTree;
 import com.sun.source.tree.ThrowTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.tree.Tree.Kind;
+import com.sun.source.tree.TreeVisitor;
 import com.sun.source.tree.TryTree;
 import com.sun.source.tree.TypeCastTree;
 import com.sun.source.tree.TypeParameterTree;
@@ -73,11 +83,15 @@ import com.sun.source.tree.WhileLoopTree;
 import com.sun.source.tree.WildcardTree;
 import com.sun.source.util.SimpleTreeVisitor;
 import com.sun.source.util.TreePath;
-
+import com.sun.source.util.Trees;
+import java.util.HashSet;
 import java.util.Iterator;
-
-import javax.annotation.Nullable;
+import java.util.Optional;
+import java.util.Set;
 import javax.lang.model.element.Name;
+import javax.lang.model.type.TypeMirror;
+import javax.tools.JavaFileObject;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A class for determining how two compilation {@code Tree}s differ from each other.
@@ -98,57 +112,79 @@ final class TreeDiffer {
   private TreeDiffer() {}
 
   /**
-   * Returns a {@code TreeDifference} describing the difference between the two
-   * {@code CompilationUnitTree}s provided.
+   * Returns a {@code TreeDifference} describing the difference between the two {@code
+   * CompilationUnitTree}s provided.
    */
-  static final TreeDifference diffCompilationUnits(@Nullable CompilationUnitTree expected,
-      @Nullable CompilationUnitTree actual) {
+  static TreeDifference diffCompilationUnits(
+      CompilationUnitTree expected, CompilationUnitTree actual) {
+    return createDiff(checkNotNull(expected), checkNotNull(actual), TreeFilter.KEEP_ALL);
+  }
+
+  /**
+   * Returns a {@code TreeDifference} describing the difference between the actual {@code
+   * CompilationUnitTree} provided and the pattern. See {@link
+   * JavaFileObjectSubject#containsElementsIn(JavaFileObject)} for more details on how the pattern
+   * is used.
+   */
+  static TreeDifference matchCompilationUnits(
+      CompilationUnitTree pattern,
+      Trees patternTrees,
+      CompilationUnitTree actual,
+      Trees actualTrees) {
+    checkNotNull(pattern);
+    checkNotNull(actual);
+    return createDiff(
+        pattern, actual, new MatchExpectedTreesFilter(pattern, patternTrees, actual, actualTrees));
+  }
+
+  private static TreeDifference createDiff(
+      @Nullable CompilationUnitTree expected,
+      @Nullable CompilationUnitTree actual,
+      TreeFilter treeFilter) {
     TreeDifference.Builder diffBuilder = new TreeDifference.Builder();
-    DiffVisitor diffVisitor = new DiffVisitor(diffBuilder);
+    DiffVisitor diffVisitor = new DiffVisitor(diffBuilder, treeFilter);
     diffVisitor.scan(expected, actual);
     return diffBuilder.build();
   }
 
   /**
-   * Returns a {@link TreeDifference} describing the difference between the two
-   * sub-{@code Tree}s. The trees diffed are the leaves of the {@link TreePath}s
-   * provided.
+   * Returns a {@link TreeDifference} describing the difference between the two sub-{@code Tree}s.
+   * The trees diffed are the leaves of the {@link TreePath}s provided.
    *
    * <p>Used for testing.
    */
-  static final TreeDifference diffSubtrees(@Nullable TreePath pathToExpected,
-      @Nullable TreePath pathToActual) {
+  static TreeDifference diffSubtrees(TreePath pathToExpected, TreePath pathToActual) {
     TreeDifference.Builder diffBuilder = new TreeDifference.Builder();
-    DiffVisitor diffVisitor = new DiffVisitor(diffBuilder,
-        pathToExpected, pathToActual);
+    DiffVisitor diffVisitor =
+        new DiffVisitor(diffBuilder, TreeFilter.KEEP_ALL, pathToExpected, pathToActual);
     diffVisitor.scan(pathToExpected.getLeaf(), pathToActual.getLeaf());
     return diffBuilder.build();
   }
 
   /**
    * A {@code SimpleTreeVisitor} that traverses a {@link Tree} and an argument {@link Tree},
-   * verifying equality along the way. Appends each diff it finds to a
-   * {@link TreeDifference.Builder}.
+   * verifying equality along the way. Appends each diff it finds to a {@link
+   * TreeDifference.Builder}.
    */
-  static final class DiffVisitor extends SimpleTreeVisitor<Void, Tree> {
-    private TreePath expectedPath;
-    private TreePath actualPath;
+  static final class DiffVisitor extends SimpleTreeVisitor<@Nullable Void, Tree> {
+    private @Nullable TreePath expectedPath;
+    private @Nullable TreePath actualPath;
 
     private final TreeDifference.Builder diffBuilder;
+    private final TreeFilter filter;
 
-    public DiffVisitor(TreeDifference.Builder diffBuilder) {
-      this.diffBuilder = diffBuilder;
-      expectedPath = null;
-      actualPath = null;
+    DiffVisitor(TreeDifference.Builder diffBuilder, TreeFilter filter) {
+      this(diffBuilder, filter, null, null);
     }
 
-    /**
-     * Constructs a DiffVisitor whose {@code TreePath}s are initialized with the paths
-     * provided.
-     */
-    public DiffVisitor(TreeDifference.Builder diffBuilder,
-        TreePath pathToExpected, TreePath pathToActual) {
+    /** Constructs a DiffVisitor whose {@code TreePath}s are initialized with the paths provided. */
+    private DiffVisitor(
+        TreeDifference.Builder diffBuilder,
+        TreeFilter filter,
+        @Nullable TreePath pathToExpected,
+        @Nullable TreePath pathToActual) {
       this.diffBuilder = diffBuilder;
+      this.filter = filter;
       expectedPath = pathToExpected;
       actualPath = pathToActual;
     }
@@ -167,9 +203,13 @@ final class TreeDiffer {
      * Adds a {@code TwoWayDiff} if the predicate given evaluates to false. The {@code TwoWayDiff}
      * is parameterized by the {@code Tree}s and message format provided.
      */
+    @FormatMethod
     private void checkForDiff(boolean p, String message, Object... formatArgs) {
       if (!p) {
-        diffBuilder.addDifferingNodes(expectedPath, actualPath, String.format(message, formatArgs));
+        diffBuilder.addDifferingNodes(
+            requireNonNull(expectedPath),
+            requireNonNull(actualPath),
+            String.format(message, formatArgs));
       }
     }
 
@@ -184,13 +224,13 @@ final class TreeDiffer {
     }
 
     /**
-     * Pushes the {@code expected} and {@code actual} {@link Tree}s onto their respective
-     * {@link TreePath}s and recurses with {@code expected.accept(this, actual)}, popping the
-     * stack when the call completes.
+     * Pushes the {@code expected} and {@code actual} {@link Tree}s onto their respective {@link
+     * TreePath}s and recurses with {@code expected.accept(this, actual)}, popping the stack when
+     * the call completes.
      *
      * <p>This should be the ONLY place where either {@link TreePath} is mutated.
      */
-    private Void pushPathAndAccept(Tree expected, Tree actual) {
+    private @Nullable Void pushPathAndAccept(Tree expected, Tree actual) {
       TreePath prevExpectedPath = expectedPath;
       TreePath prevActualPath = actualPath;
       expectedPath = expectedPathPlus(expected);
@@ -209,7 +249,7 @@ final class TreeDiffer {
           : (actual != null && expected.contentEquals(actual));
     }
 
-    public Void scan(@Nullable Tree expected, @Nullable Tree actual) {
+    private void scan(@Nullable Tree expected, @Nullable Tree actual) {
       if (expected == null && actual != null) {
         diffBuilder.addExtraActualNode(actualPathPlus(actual));
       } else if (expected != null && actual == null) {
@@ -217,11 +257,10 @@ final class TreeDiffer {
       } else if (actual != null && expected != null) {
         pushPathAndAccept(expected, actual);
       }
-      return null;
     }
 
-    private Void parallelScan(Iterable<? extends Tree> expecteds,
-        Iterable<? extends Tree> actuals) {
+    private void parallelScan(
+        Iterable<? extends Tree> expecteds, Iterable<? extends Tree> actuals) {
       if (expecteds != null && actuals != null) {
         Iterator<? extends Tree> expectedsIterator = expecteds.iterator();
         Iterator<? extends Tree> actualsIterator = actuals.iterator();
@@ -233,20 +272,15 @@ final class TreeDiffer {
         } else if (expectedsIterator.hasNext() && !actualsIterator.hasNext()) {
           diffBuilder.addExtraExpectedNode(expectedPathPlus(expectedsIterator.next()));
         }
-      } else if (expecteds == null && !isEmptyOrNull(actuals)) {
+      } else if (expecteds == null && actuals != null && !isEmpty(actuals)) {
         diffBuilder.addExtraActualNode(actualPathPlus(actuals.iterator().next()));
-      } else if (actuals == null && !isEmptyOrNull(expecteds)) {
+      } else if (actuals == null && expecteds != null && !isEmpty(expecteds)) {
         diffBuilder.addExtraExpectedNode(expectedPathPlus(expecteds.iterator().next()));
       }
-      return null;
-    }
-
-    private boolean isEmptyOrNull(Iterable<?> iterable) {
-      return iterable == null || !iterable.iterator().hasNext();
     }
 
     @Override
-    public Void visitAnnotation(AnnotationTree expected, Tree actual) {
+    public @Nullable Void visitAnnotation(AnnotationTree expected, Tree actual) {
       Optional<AnnotationTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -259,7 +293,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitMethodInvocation(MethodInvocationTree expected, Tree actual) {
+    public @Nullable Void visitMethodInvocation(MethodInvocationTree expected, Tree actual) {
       Optional<MethodInvocationTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -273,7 +307,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitLambdaExpression(LambdaExpressionTree expected, Tree actual) {
+    public @Nullable Void visitLambdaExpression(LambdaExpressionTree expected, Tree actual) {
       Optional<LambdaExpressionTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -286,7 +320,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitMemberReference(MemberReferenceTree expected, Tree actual) {
+    public @Nullable Void visitMemberReference(MemberReferenceTree expected, Tree actual) {
       Optional<MemberReferenceTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -302,7 +336,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitAssert(AssertTree expected, Tree actual) {
+    public @Nullable Void visitAssert(AssertTree expected, Tree actual) {
       Optional<AssertTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -315,7 +349,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitAssignment(AssignmentTree expected, Tree actual) {
+    public @Nullable Void visitAssignment(AssignmentTree expected, Tree actual) {
       Optional<AssignmentTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -328,7 +362,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitCompoundAssignment(CompoundAssignmentTree expected, Tree actual) {
+    public @Nullable Void visitCompoundAssignment(CompoundAssignmentTree expected, Tree actual) {
       Optional<CompoundAssignmentTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -341,7 +375,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitBinary(BinaryTree expected, Tree actual) {
+    public @Nullable Void visitBinary(BinaryTree expected, Tree actual) {
       Optional<BinaryTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -354,7 +388,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitBlock(BlockTree expected, Tree actual) {
+    public @Nullable Void visitBlock(BlockTree expected, Tree actual) {
       Optional<BlockTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -370,7 +404,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitBreak(BreakTree expected, Tree actual) {
+    public @Nullable Void visitBreak(BreakTree expected, Tree actual) {
       Optional<BreakTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -384,7 +418,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitCase(CaseTree expected, Tree actual) {
+    public @Nullable Void visitCase(CaseTree expected, Tree actual) {
       Optional<CaseTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -397,7 +431,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitCatch(CatchTree expected, Tree actual) {
+    public @Nullable Void visitCatch(CatchTree expected, Tree actual) {
       Optional<CatchTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -410,7 +444,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitClass(ClassTree expected, Tree actual) {
+    public @Nullable Void visitClass(ClassTree expected, Tree actual) {
       Optional<ClassTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -425,12 +459,17 @@ final class TreeDiffer {
       parallelScan(expected.getTypeParameters(), other.get().getTypeParameters());
       scan(expected.getExtendsClause(), other.get().getExtendsClause());
       parallelScan(expected.getImplementsClause(), other.get().getImplementsClause());
-      parallelScan(expected.getMembers(), other.get().getMembers());
+      parallelScan(
+          expected.getMembers(),
+          filter.filterActualMembers(
+              ImmutableList.copyOf(expected.getMembers()),
+              ImmutableList.copyOf(other.get().getMembers())));
       return null;
     }
 
     @Override
-    public Void visitConditionalExpression(ConditionalExpressionTree expected, Tree actual) {
+    public @Nullable Void visitConditionalExpression(
+        ConditionalExpressionTree expected, Tree actual) {
       Optional<ConditionalExpressionTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -444,7 +483,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitContinue(ContinueTree expected, Tree actual) {
+    public @Nullable Void visitContinue(ContinueTree expected, Tree actual) {
       Optional<ContinueTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -458,7 +497,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitDoWhileLoop(DoWhileLoopTree expected, Tree actual) {
+    public @Nullable Void visitDoWhileLoop(DoWhileLoopTree expected, Tree actual) {
       Optional<DoWhileLoopTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -471,7 +510,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitErroneous(ErroneousTree expected, Tree actual) {
+    public @Nullable Void visitErroneous(ErroneousTree expected, Tree actual) {
       Optional<ErroneousTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -483,7 +522,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitExpressionStatement(ExpressionStatementTree expected, Tree actual) {
+    public @Nullable Void visitExpressionStatement(ExpressionStatementTree expected, Tree actual) {
       Optional<ExpressionStatementTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -495,7 +534,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitEnhancedForLoop(EnhancedForLoopTree expected, Tree actual) {
+    public @Nullable Void visitEnhancedForLoop(EnhancedForLoopTree expected, Tree actual) {
       Optional<EnhancedForLoopTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -509,7 +548,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitForLoop(ForLoopTree expected, Tree actual) {
+    public @Nullable Void visitForLoop(ForLoopTree expected, Tree actual) {
       Optional<ForLoopTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -524,7 +563,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitIdentifier(IdentifierTree expected, Tree actual) {
+    public @Nullable Void visitIdentifier(IdentifierTree expected, Tree actual) {
       Optional<IdentifierTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -538,7 +577,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitIf(IfTree expected, Tree actual) {
+    public @Nullable Void visitIf(IfTree expected, Tree actual) {
       Optional<IfTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -552,7 +591,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitImport(ImportTree expected, Tree actual) {
+    public @Nullable Void visitImport(ImportTree expected, Tree actual) {
       Optional<ImportTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -569,7 +608,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitArrayAccess(ArrayAccessTree expected, Tree actual) {
+    public @Nullable Void visitArrayAccess(ArrayAccessTree expected, Tree actual) {
       Optional<ArrayAccessTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -582,7 +621,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitLabeledStatement(LabeledStatementTree expected, Tree actual) {
+    public @Nullable Void visitLabeledStatement(LabeledStatementTree expected, Tree actual) {
       Optional<LabeledStatementTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -598,7 +637,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitLiteral(LiteralTree expected, Tree actual) {
+    public @Nullable Void visitLiteral(LiteralTree expected, Tree actual) {
       Optional<LiteralTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -612,7 +651,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitMethod(MethodTree expected, Tree actual) {
+    public @Nullable Void visitMethod(MethodTree expected, Tree actual) {
       Optional<MethodTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -634,7 +673,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitModifiers(ModifiersTree expected, Tree actual) {
+    public @Nullable Void visitModifiers(ModifiersTree expected, Tree actual) {
       Optional<ModifiersTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -650,7 +689,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitNewArray(NewArrayTree expected, Tree actual) {
+    public @Nullable Void visitNewArray(NewArrayTree expected, Tree actual) {
       Optional<NewArrayTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -664,7 +703,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitNewClass(NewClassTree expected, Tree actual) {
+    public @Nullable Void visitNewClass(NewClassTree expected, Tree actual) {
       Optional<NewClassTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -680,7 +719,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitParenthesized(ParenthesizedTree expected, Tree actual) {
+    public @Nullable Void visitParenthesized(ParenthesizedTree expected, Tree actual) {
       Optional<ParenthesizedTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -692,7 +731,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitReturn(ReturnTree expected, Tree actual) {
+    public @Nullable Void visitReturn(ReturnTree expected, Tree actual) {
       Optional<ReturnTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -704,7 +743,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitMemberSelect(MemberSelectTree expected, Tree actual) {
+    public @Nullable Void visitMemberSelect(MemberSelectTree expected, Tree actual) {
       Optional<MemberSelectTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -720,7 +759,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitEmptyStatement(EmptyStatementTree expected, Tree actual) {
+    public @Nullable Void visitEmptyStatement(EmptyStatementTree expected, Tree actual) {
       if (!checkTypeAndCast(expected, actual).isPresent()) {
         addTypeMismatch(expected, actual);
         return null;
@@ -729,7 +768,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitSwitch(SwitchTree expected, Tree actual) {
+    public @Nullable Void visitSwitch(SwitchTree expected, Tree actual) {
       Optional<SwitchTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -742,7 +781,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitSynchronized(SynchronizedTree expected, Tree actual) {
+    public @Nullable Void visitSynchronized(SynchronizedTree expected, Tree actual) {
       Optional<SynchronizedTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -755,7 +794,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitThrow(ThrowTree expected, Tree actual) {
+    public @Nullable Void visitThrow(ThrowTree expected, Tree actual) {
       Optional<ThrowTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -767,7 +806,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitCompilationUnit(CompilationUnitTree expected, Tree actual) {
+    public @Nullable Void visitCompilationUnit(CompilationUnitTree expected, Tree actual) {
       Optional<CompilationUnitTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -776,19 +815,24 @@ final class TreeDiffer {
 
       parallelScan(expected.getPackageAnnotations(), other.get().getPackageAnnotations());
       scan(expected.getPackageName(), other.get().getPackageName());
-      parallelScan(expected.getImports(), other.get().getImports());
+      parallelScan(
+          expected.getImports(),
+          filter.filterImports(
+              ImmutableList.copyOf(expected.getImports()),
+              ImmutableList.copyOf(other.get().getImports())));
       parallelScan(expected.getTypeDecls(), other.get().getTypeDecls());
       return null;
     }
 
     @Override
-    public Void visitTry(TryTree expected, Tree actual) {
+    public @Nullable Void visitTry(TryTree expected, Tree actual) {
       Optional<TryTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
         return null;
       }
 
+      parallelScan(expected.getResources(), other.get().getResources());
       scan(expected.getBlock(), other.get().getBlock());
       parallelScan(expected.getCatches(), other.get().getCatches());
       scan(expected.getFinallyBlock(), other.get().getFinallyBlock());
@@ -796,7 +840,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitParameterizedType(ParameterizedTypeTree expected, Tree actual) {
+    public @Nullable Void visitParameterizedType(ParameterizedTypeTree expected, Tree actual) {
       Optional<ParameterizedTypeTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -809,7 +853,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitArrayType(ArrayTypeTree expected, Tree actual) {
+    public @Nullable Void visitArrayType(ArrayTypeTree expected, Tree actual) {
       Optional<ArrayTypeTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -821,7 +865,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitTypeCast(TypeCastTree expected, Tree actual) {
+    public @Nullable Void visitTypeCast(TypeCastTree expected, Tree actual) {
       Optional<TypeCastTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -834,7 +878,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitPrimitiveType(PrimitiveTypeTree expected, Tree actual) {
+    public @Nullable Void visitPrimitiveType(PrimitiveTypeTree expected, Tree actual) {
       Optional<PrimitiveTypeTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -848,7 +892,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitTypeParameter(TypeParameterTree expected, Tree actual) {
+    public @Nullable Void visitTypeParameter(TypeParameterTree expected, Tree actual) {
       Optional<TypeParameterTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -864,7 +908,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitInstanceOf(InstanceOfTree expected, Tree actual) {
+    public @Nullable Void visitInstanceOf(InstanceOfTree expected, Tree actual) {
       Optional<InstanceOfTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -877,7 +921,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitUnary(UnaryTree expected, Tree actual) {
+    public @Nullable Void visitUnary(UnaryTree expected, Tree actual) {
       Optional<UnaryTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -889,7 +933,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitVariable(VariableTree expected, Tree actual) {
+    public @Nullable Void visitVariable(VariableTree expected, Tree actual) {
       Optional<VariableTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -907,7 +951,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitWhileLoop(WhileLoopTree expected, Tree actual) {
+    public @Nullable Void visitWhileLoop(WhileLoopTree expected, Tree actual) {
       Optional<WhileLoopTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -920,7 +964,7 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitWildcard(WildcardTree expected, Tree actual) {
+    public @Nullable Void visitWildcard(WildcardTree expected, Tree actual) {
       Optional<WildcardTree> other = checkTypeAndCast(expected, actual);
       if (!other.isPresent()) {
         addTypeMismatch(expected, actual);
@@ -932,10 +976,11 @@ final class TreeDiffer {
     }
 
     @Override
-    public Void visitOther(Tree expected, Tree actual) {
+    public @Nullable Void visitOther(Tree expected, Tree actual) {
       throw new UnsupportedOperationException("cannot compare unknown trees");
     }
 
+    // TODO(dpb,ronshapiro): rename this method and document which one is cast
     private <T extends Tree> Optional<T> checkTypeAndCast(T expected, Tree actual) {
       Kind expectedKind = checkNotNull(expected).getKind();
       Kind treeKind = checkNotNull(actual).getKind();
@@ -944,8 +989,182 @@ final class TreeDiffer {
         T treeAsExpectedType = (T) actual;
         return Optional.of(treeAsExpectedType);
       } else {
-        return Optional.absent();
+        return Optional.empty();
       }
+    }
+  }
+
+  /** Strategy for determining which {link Tree}s should be diffed in {@link DiffVisitor}. */
+  private interface TreeFilter {
+
+    /** Returns the subset of {@code actualMembers} that should be diffed by {@link DiffVisitor}. */
+    ImmutableList<Tree> filterActualMembers(
+        ImmutableList<Tree> expectedMembers, ImmutableList<Tree> actualMembers);
+
+    /** Returns the subset of {@code actualImports} that should be diffed by {@link DiffVisitor}. */
+    ImmutableList<ImportTree> filterImports(
+        ImmutableList<ImportTree> expectedImports, ImmutableList<ImportTree> actualImports);
+
+    /** A {@link TreeFilter} that doesn't filter any subtrees out of the actual source AST. */
+    TreeFilter KEEP_ALL =
+        new TreeFilter() {
+          @Override
+          public ImmutableList<Tree> filterActualMembers(
+              ImmutableList<Tree> expectedMembers, ImmutableList<Tree> actualMembers) {
+            return actualMembers;
+          }
+
+          @Override
+          public ImmutableList<ImportTree> filterImports(
+              ImmutableList<ImportTree> expectedImports, ImmutableList<ImportTree> actualImports) {
+            return actualImports;
+          }
+        };
+  }
+
+  /**
+   * A {@link TreeFilter} that ignores all {@link Tree}s that don't have a matching {@link Tree} in
+   * a pattern. For more information on what trees are filtered, see {@link
+   * JavaFileObjectSubject#containsElementsIn(JavaFileObject)}.
+   */
+  private static class MatchExpectedTreesFilter implements TreeFilter {
+    private final CompilationUnitTree pattern;
+    private final Trees patternTrees;
+    private final CompilationUnitTree actual;
+    private final Trees actualTrees;
+
+    MatchExpectedTreesFilter(
+        CompilationUnitTree pattern,
+        Trees patternTrees,
+        CompilationUnitTree actual,
+        Trees actualTrees) {
+      this.pattern = pattern;
+      this.patternTrees = patternTrees;
+      this.actual = actual;
+      this.actualTrees = actualTrees;
+    }
+
+    @Override
+    public ImmutableList<Tree> filterActualMembers(
+        ImmutableList<Tree> patternMembers, ImmutableList<Tree> actualMembers) {
+      Set<String> patternVariableNames = new HashSet<>();
+      Set<String> patternNestedTypeNames = new HashSet<>();
+      Set<MethodSignature> patternMethods = new HashSet<>();
+      for (Tree patternTree : patternMembers) {
+        patternTree.accept(
+            new SimpleTreeVisitor<@Nullable Void, @Nullable Void>() {
+              @Override
+              public @Nullable Void visitVariable(VariableTree variable, @Nullable Void p) {
+                patternVariableNames.add(variable.getName().toString());
+                return null;
+              }
+
+              @Override
+              public @Nullable Void visitMethod(MethodTree method, @Nullable Void p) {
+                patternMethods.add(MethodSignature.create(pattern, method, patternTrees));
+                return null;
+              }
+
+              @Override
+              public @Nullable Void visitClass(ClassTree clazz, @Nullable Void p) {
+                patternNestedTypeNames.add(clazz.getSimpleName().toString());
+                return null;
+              }
+            },
+            null);
+      }
+
+      ImmutableList.Builder<Tree> filteredActualTrees = ImmutableList.builder();
+      for (Tree actualTree : actualMembers) {
+        actualTree.accept(
+            new SimpleTreeVisitor<@Nullable Void, @Nullable Void>() {
+              @Override
+              public @Nullable Void visitVariable(VariableTree variable, @Nullable Void p) {
+                if (patternVariableNames.contains(variable.getName().toString())) {
+                  filteredActualTrees.add(actualTree);
+                }
+                return null;
+              }
+
+              @Override
+              public @Nullable Void visitMethod(MethodTree method, @Nullable Void p) {
+                if (patternMethods.contains(MethodSignature.create(actual, method, actualTrees))) {
+                  filteredActualTrees.add(method);
+                }
+                return null;
+              }
+
+              @Override
+              public @Nullable Void visitClass(ClassTree clazz, @Nullable Void p) {
+                if (patternNestedTypeNames.contains(clazz.getSimpleName().toString())) {
+                  filteredActualTrees.add(clazz);
+                }
+                return null;
+              }
+
+              @Override
+              protected @Nullable Void defaultAction(Tree tree, @Nullable Void p) {
+                filteredActualTrees.add(tree);
+                return null;
+              }
+            },
+            null);
+      }
+      return filteredActualTrees.build();
+    }
+
+    @Override
+    public ImmutableList<ImportTree> filterImports(
+        ImmutableList<ImportTree> patternImports, ImmutableList<ImportTree> actualImports) {
+      ImmutableSet<String> patternImportsAsStrings =
+          patternImports.stream().map(this::fullyQualifiedImport).collect(toImmutableSet());
+      return actualImports
+          .stream()
+          .filter(importTree -> patternImportsAsStrings.contains(fullyQualifiedImport(importTree)))
+          .collect(toImmutableList());
+    }
+
+    private String fullyQualifiedImport(ImportTree importTree) {
+      ImmutableList.Builder<Name> names = ImmutableList.builder();
+      importTree.getQualifiedIdentifier().accept(IMPORT_NAMES_ACCUMULATOR, names);
+      return Joiner.on('.').join(names.build().reverse());
+    }
+  }
+
+  private static final TreeVisitor<@Nullable Void, ImmutableList.Builder<Name>>
+      IMPORT_NAMES_ACCUMULATOR =
+          new SimpleTreeVisitor<@Nullable Void, ImmutableList.Builder<Name>>() {
+            @Override
+            public @Nullable Void visitMemberSelect(
+                MemberSelectTree memberSelectTree, ImmutableList.Builder<Name> names) {
+              names.add(memberSelectTree.getIdentifier());
+              return memberSelectTree.getExpression().accept(this, names);
+            }
+
+            @Override
+            public @Nullable Void visitIdentifier(
+                IdentifierTree identifierTree, ImmutableList.Builder<Name> names) {
+              names.add(identifierTree.getName());
+              return null;
+            }
+          };
+
+  @AutoValue
+  abstract static class MethodSignature {
+    abstract String name();
+    abstract ImmutableList<Equivalence.Wrapper<TypeMirror>> parameterTypes();
+
+    static MethodSignature create(
+        CompilationUnitTree compilationUnitTree, MethodTree tree, Trees trees) {
+      ImmutableList.Builder<Equivalence.Wrapper<TypeMirror>> parameterTypes =
+          ImmutableList.builder();
+      for (VariableTree parameter : tree.getParameters()) {
+        parameterTypes.add(
+            MoreTypes.equivalence()
+                .wrap(trees.getTypeMirror(trees.getPath(compilationUnitTree, parameter))));
+      }
+      return new AutoValue_TreeDiffer_MethodSignature(
+          tree.getName().toString(), parameterTypes.build());
     }
   }
 }

@@ -1,21 +1,11 @@
 Compile Testing
 ===============
 
-A library for testing javac compilation with or without annotation processors. See the [javadoc][package-info] for usage examples.
+[![Build Status][ci-shield]][ci-link]
+[![Maven Release][maven-shield]][maven-link]
+[![Javadoc][javadoc-shield]][javadoc-link]
 
-Latest Release
---------------
-
-The latest release is version `0.12`.  Include it as a [Maven](http://maven.apache.org/) dependency with the following snippet:
-
-```
-<dependency>
-  <groupId>com.google.testing.compile</groupId>
-  <artifactId>compile-testing</artifactId>
-  <version>0.12</version>
-  <scope>test</scope>
-</dependency>
-```
+A library for testing javac compilation with or without annotation processors. See the [javadoc][javadoc-link] for usage examples.
 
 License
 -------
@@ -34,4 +24,9 @@ License
     See the License for the specific language governing permissions and
     limitations under the License.
 
-[package-info]: https://github.com/google/compile-testing/blob/master/src/main/java/com/google/testing/compile/package-info.java
+[ci-shield]: https://github.com/google/compile-testing/actions/workflows/ci.yml/badge.svg?branch=master
+[ci-link]: https://github.com/google/compile-testing/actions
+[maven-shield]: https://img.shields.io/maven-central/v/com.google.testing.compile/compile-testing.png
+[maven-link]: https://search.maven.org/artifact/com.google.testing.compile/compile-testing
+[javadoc-shield]: https://javadoc.io/badge/com.google.testing.compile/compile-testing.svg?color=blue
+[javadoc-link]: https://javadoc.io/doc/com.google.testing.compile/compile-testing

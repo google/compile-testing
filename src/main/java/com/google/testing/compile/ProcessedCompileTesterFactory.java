@@ -15,7 +15,7 @@
  */
 package com.google.testing.compile;
 
-import javax.annotation.CheckReturnValue;
+import java.io.File;
 import javax.annotation.processing.Processor;
 
 /**
@@ -30,28 +30,37 @@ public interface ProcessedCompileTesterFactory {
    * Adds options that will be passed to the compiler. {@code -Xlint} is the first option, by
    * default.
    */
-  @CheckReturnValue ProcessedCompileTesterFactory withCompilerOptions(Iterable<String> options);
-  
+  ProcessedCompileTesterFactory withCompilerOptions(Iterable<String> options);
+
   /**
    * Adds options that will be passed to the compiler. {@code -Xlint} is the first option, by
    * default.
    */
-  @CheckReturnValue ProcessedCompileTesterFactory withCompilerOptions(String... options);
+  ProcessedCompileTesterFactory withCompilerOptions(String... options);
 
   /**
    * Attempts to extract the classpath from the classpath of the Classloader argument, including all
    * its parents up to (and including) the System Classloader.
-   * <p>
-   * If not specified, we will use the System classpath for compilation.
+   *
+   * <p>If not specified, we will use the System classpath for compilation.
+   *
+   * @deprecated prefer {@link #withClasspath(Iterable)}. This method only supports {@link
+   *     java.net.URLClassLoader} and the default system classloader, and {@link File}s are usually
+   *     a more natural way to expression compilation classpaths than class loaders.
    */
-  @CheckReturnValue
+  @Deprecated
   ProcessedCompileTesterFactory withClasspathFrom(ClassLoader classloader);
-  
-  /** Adds {@linkplain Processor annotation processors} to the compilation being tested.  */
-  @CheckReturnValue
+
+  /**
+   * Sets the compilation classpath.
+   *
+   * <p>If not specified, we will use the System classpath for compilation.
+   */
+  ProcessedCompileTesterFactory withClasspath(Iterable<File> classPath);
+
+  /** Adds {@linkplain Processor annotation processors} to the compilation being tested. */
   CompileTester processedWith(Processor first, Processor... rest);
 
-  /** Adds {@linkplain Processor annotation processors} to the compilation being tested.  */
-  @CheckReturnValue
+  /** Adds {@linkplain Processor annotation processors} to the compilation being tested. */
   CompileTester processedWith(Iterable<? extends Processor> processors);
 }

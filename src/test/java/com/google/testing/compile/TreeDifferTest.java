@@ -15,9 +15,11 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.collect.Iterables.getOnlyElement;
 import static com.google.common.truth.Truth.assertThat;
 
 import com.google.common.collect.ImmutableList;
+import com.google.testing.compile.Parser.ParseResult;
 import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
@@ -153,6 +155,22 @@ public class TreeDifferTest {
           "  };",
           "}");
 
+  private static final CompilationUnitTree TRY_WITH_RESOURCES_1 =
+      MoreTrees.parseLinesToTree("package test;",
+          "final class TestClass {",
+          "  void f() {",
+          "    try (Resource1 r = new Resource1()) {}",
+          "  }",
+          "}");
+
+  private static final CompilationUnitTree TRY_WITH_RESOURCES_2 =
+      MoreTrees.parseLinesToTree("package test;",
+          "final class TestClass {",
+          "  void f() {",
+          "    try (Resource2 r = new Resource2()) {}",
+          "  }",
+          "}");
+
   @Test
   public void scan_differingCompilationUnits() {
     TreeDifference diff = TreeDiffer.diffCompilationUnits(EXPECTED_TREE, ACTUAL_TREE);
@@ -181,14 +199,14 @@ public class TreeDifferTest {
     for (TreeDifference.OneWayDiff extraNode : diff.getExtraActualNodes()) {
       extraNodesFound.add(SimplifiedDiff.create(extraNode));
     }
-    assertThat(extraNodesExpected).containsExactlyElementsIn(extraNodesFound.build()).inOrder();
+    assertThat(extraNodesFound.build()).containsExactlyElementsIn(extraNodesExpected).inOrder();
     ImmutableList.Builder<SimplifiedDiff> differingNodesFound =
         new ImmutableList.Builder<SimplifiedDiff>();
     for (TreeDifference.TwoWayDiff differingNode : diff.getDifferingNodes()) {
       differingNodesFound.add(SimplifiedDiff.create(differingNode));
     }
-    assertThat(differingNodesExpected)
-        .containsExactlyElementsIn(differingNodesFound.build())
+    assertThat(differingNodesFound.build())
+        .containsExactlyElementsIn(differingNodesExpected)
         .inOrder();
   }
 
@@ -280,6 +298,419 @@ public class TreeDifferTest {
     TreeDifference diff =
         TreeDiffer.diffCompilationUnits(LAMBDA_1, ANONYMOUS_CLASS);
     assertThat(diff.isEmpty()).isFalse();
+  }
+
+  @Test
+  public void scan_testTryWithResources() {
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(TRY_WITH_RESOURCES_1, TRY_WITH_RESOURCES_1);
+    assertThat(diff.isEmpty()).isTrue();
+  }
+
+  @Test
+  public void scan_testTryWithResourcesDifferent() {
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(TRY_WITH_RESOURCES_1, TRY_WITH_RESOURCES_2);
+    assertThat(diff.isEmpty()).isFalse();
+  }
+
+  @Test
+  public void matchCompilationUnits() {
+    ParseResult actual =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "import not.NotUsed;",
+            "import is.IsUsed;",
+            "",
+            "public class HasExtras { ",
+            "  private NotUsed skipped;",
+            "  private Object matched;",
+            "  private IsUsed usedFromImport;",
+            "  private Object skipped2;",
+            "",
+            "  HasExtras() {}",
+            "  HasExtras(int overloadedConstructor) {}",
+            "",
+            "  public String skippedMethod() { return null; }",
+            "  public String matchedMethod() { return null; }",
+            "  public Object overloadedMethod(int skipWithDifferentSignature) { return null; }",
+            "  public String overloadedMethod(int i, Double d) { return null; }",
+            "  public String overloadedMethod(int i, Double d, IsUsed u) { return null; }",
+            "",
+            "  class NestedClass {",
+            "    int matchMe = 0;",
+            "    double ignoreMe = 0;",
+            "  }",
+            "",
+            "  class IgnoredNestedClass {}",
+            "}");
+
+    ParseResult pattern =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "import is.IsUsed;",
+            "",
+            "public class HasExtras { ",
+            "  private Object matched;",
+            "  private IsUsed usedFromImport;",
+            "",
+            "  HasExtras(int overloadedConstructor) {}",
+            "",
+            "  public String matchedMethod() { return null; }",
+            "  public String overloadedMethod(int i, Double d) { return null; }",
+            "  public String overloadedMethod(int i, Double d, IsUsed u) { return null; }",
+            "",
+            "  class NestedClass {",
+            "    int matchMe = 0;",
+            "  }",
+            "}");
+    TreeDifference diff =
+        TreeDiffer.matchCompilationUnits(
+            getOnlyElement(pattern.compilationUnits()),
+            pattern.trees(),
+            getOnlyElement(actual.compilationUnits()),
+            actual.trees());
+
+    assertThat(diff.isEmpty()).isTrue();
+  }
+
+  @Test
+  public void matchCompilationUnits_unresolvedTypeInPattern() {
+    ParseResult actual =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "import is.IsUsed;",
+            "",
+            "public class HasExtras { ",
+            "  private IsUsed usedFromImport;",
+            "}");
+
+    ParseResult pattern =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "public class HasExtras { ",
+            "  private IsUsed usedFromImport;",
+            "}");
+    TreeDifference diff =
+        TreeDiffer.matchCompilationUnits(
+            getOnlyElement(pattern.compilationUnits()),
+            pattern.trees(),
+            getOnlyElement(actual.compilationUnits()),
+            actual.trees());
+
+    assertThat(diff.isEmpty()).isTrue();
+  }
+
+  @Test
+  public void matchCompilationUnits_sameSignature_differentReturnType() {
+    ParseResult actual =
+        MoreTrees.parseLines(
+            "package test;",
+            "public class HasExtras { ",
+            "  private Object method(int i, double d) { return null; };",
+            "}");
+
+    ParseResult pattern =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "public class HasExtras { ",
+            "  private String method(int i, double d) { return null; };",
+            "}");
+    TreeDifference diff =
+        TreeDiffer.matchCompilationUnits(
+            getOnlyElement(pattern.compilationUnits()),
+            pattern.trees(),
+            getOnlyElement(actual.compilationUnits()),
+            actual.trees());
+
+    assertThat(diff.getDifferingNodes()).isNotEmpty();
+  }
+
+  @Test
+  public void matchCompilationUnits_sameSignature_differentParameterNames() {
+    ParseResult actual =
+        MoreTrees.parseLines(
+            "package test;",
+            "public class HasExtras { ",
+            "  private Object method(int i, double d) { return null; };",
+            "}");
+
+    ParseResult pattern =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "public class HasExtras { ",
+            "  private Object method(int i2, double d2) { return null; };",
+            "}");
+    TreeDifference diff =
+        TreeDiffer.matchCompilationUnits(
+            getOnlyElement(pattern.compilationUnits()),
+            pattern.trees(),
+            getOnlyElement(actual.compilationUnits()),
+            actual.trees());
+
+    assertThat(diff.getDifferingNodes()).isNotEmpty();
+  }
+
+  @Test
+  public void matchCompilationUnits_sameSignature_differentParameters() {
+    ParseResult actual =
+        MoreTrees.parseLines(
+            "package test;",
+            "public class HasExtras { ",
+            "  private Object method(int i, Object o) { return null; };",
+            "}");
+
+    ParseResult pattern =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "public class HasExtras { ",
+            "  private Object method(int i2, @Nullable Object o) { return null; };",
+            "}");
+    TreeDifference diff =
+        TreeDiffer.matchCompilationUnits(
+            getOnlyElement(pattern.compilationUnits()),
+            pattern.trees(),
+            getOnlyElement(actual.compilationUnits()),
+            actual.trees());
+
+    assertThat(diff.getDifferingNodes()).isNotEmpty();
+  }
+
+  @Test
+  public void matchCompilationUnits_sameSignature_differentModifiers() {
+    ParseResult actual =
+        MoreTrees.parseLines(
+            "package test;",
+            "public class HasExtras { ",
+            "  private Object method(int i, Object o) { return null; };",
+            "}");
+
+    ParseResult pattern =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "public class HasExtras { ",
+            "  public Object method(int i2, @Nullable Object o) { return null; };",
+            "}");
+    TreeDifference diff =
+        TreeDiffer.matchCompilationUnits(
+            getOnlyElement(pattern.compilationUnits()),
+            pattern.trees(),
+            getOnlyElement(actual.compilationUnits()),
+            actual.trees());
+
+    assertThat(diff.getDifferingNodes()).isNotEmpty();
+  }
+
+  @Test
+  public void matchCompilationUnits_sameSignature_differentThrows() {
+    ParseResult actual =
+        MoreTrees.parseLines(
+            "package test;",
+            "public class HasExtras { ",
+            "  private void method() throws RuntimeException {}",
+            "}");
+
+    ParseResult pattern =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "public class HasExtras { ",
+            "  private void method() throws Error {}",
+            "}");
+    TreeDifference diff =
+        TreeDiffer.matchCompilationUnits(
+            getOnlyElement(pattern.compilationUnits()),
+            pattern.trees(),
+            getOnlyElement(actual.compilationUnits()),
+            actual.trees());
+
+    assertThat(diff.getDifferingNodes()).isNotEmpty();
+  }
+
+  @Test
+  public void matchCompilationUnits_variablesWithDifferentTypes() {
+    ParseResult actual =
+        MoreTrees.parseLines(
+            "package test;",
+            "public class HasExtras { ",
+            "  private Object field;",
+            "}");
+
+    ParseResult pattern =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "public class HasExtras { ",
+            "  private String field;",
+            "}");
+    TreeDifference diff =
+        TreeDiffer.matchCompilationUnits(
+            getOnlyElement(pattern.compilationUnits()),
+            pattern.trees(),
+            getOnlyElement(actual.compilationUnits()),
+            actual.trees());
+
+    assertThat(diff.getDifferingNodes()).isNotEmpty();
+  }
+
+  @Test
+  public void matchCompilationUnits_importsWithSameSimpleName() {
+    ParseResult actual =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "import foo.Imported;",
+            "",
+            "public class HasExtras { ",
+            "  private Imported field;",
+            "}");
+
+    ParseResult pattern =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "import bar.Imported;",
+            "",
+            "public class HasExtras { ",
+            "  private Imported field;",
+            "}");
+    TreeDifference diff =
+        TreeDiffer.matchCompilationUnits(
+            getOnlyElement(pattern.compilationUnits()),
+            pattern.trees(),
+            getOnlyElement(actual.compilationUnits()),
+            actual.trees());
+
+    assertThat(diff.getExtraExpectedNodes()).isNotEmpty();
+    assertThat(diff.getExtraActualNodes()).isEmpty();
+  }
+
+  @Test
+  public void matchCompilationUnits_wrongOrder() {
+    ParseResult actual =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "class Foo {",
+            "  private String method1() { return new String(); }",
+            "  private String method2() { return new String(); }",
+            "}");
+
+    ParseResult pattern =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "class Foo {",
+            "  private String method2() { return new String(); }",
+            "  private String method1() { return new String(); }",
+            "}");
+    TreeDifference diff =
+        TreeDiffer.matchCompilationUnits(
+            getOnlyElement(pattern.compilationUnits()),
+            pattern.trees(),
+            getOnlyElement(actual.compilationUnits()),
+            actual.trees());
+
+    assertThat(diff.getDifferingNodes()).isNotEmpty();
+  }
+
+  @Test
+  public void matchCompilationUnits_missingParameter() {
+    ParseResult actual =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "class Foo {",
+            "  private String method1(String s) { return s; }",
+            "  private String method2() { return new String(); }",
+            "}");
+
+    ParseResult pattern =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "class Foo {",
+            "  private String method1() { return s; }",
+            "}");
+    TreeDifference diff =
+        TreeDiffer.matchCompilationUnits(
+            getOnlyElement(pattern.compilationUnits()),
+            pattern.trees(),
+            getOnlyElement(actual.compilationUnits()),
+            actual.trees());
+
+    assertThat(diff.getExtraExpectedNodes()).isNotEmpty();
+    assertThat(diff.getExtraActualNodes()).isEmpty();
+  }
+
+  @Test
+  public void matchCompilationUnits_missingMethodBodyStatement() {
+    ParseResult actual =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "class Foo {",
+            "  private String method1(String s) { ",
+            "    System.out.println(s);",
+            "    return s;",
+            "  }",
+            "  private String method2() { return new String(); }",
+            "}");
+
+    ParseResult pattern =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "class Foo {",
+            "  private String method1(String s) { ",
+            "    return s;",
+            "  }",
+            "}");
+    TreeDifference diff =
+        TreeDiffer.matchCompilationUnits(
+            getOnlyElement(pattern.compilationUnits()),
+            pattern.trees(),
+            getOnlyElement(actual.compilationUnits()),
+            actual.trees());
+
+    assertThat(diff.getExtraActualNodes()).isNotEmpty();
+  }
+
+  @Test
+  public void matchCompilationUnits_skipsImports() {
+    ParseResult actual =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "import bar.Bar;",
+            "",
+            "class Foo {",
+            "  private Bar bar;",
+            "}");
+
+    ParseResult pattern =
+        MoreTrees.parseLines(
+            "package test;",
+            "",
+            "class Foo {",
+            "  private Bar bar;",
+            "}");
+    TreeDifference diff =
+        TreeDiffer.matchCompilationUnits(
+            getOnlyElement(pattern.compilationUnits()),
+            pattern.trees(),
+            getOnlyElement(actual.compilationUnits()),
+            actual.trees());
+
+    assertThat(diff.isEmpty()).isTrue();
   }
 
   private TreePath asPath(CompilationUnitTree compilationUnit) {

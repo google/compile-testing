@@ -15,6 +15,7 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.truth.ExpectFailure.assertThat;
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.testing.compile.CompilationSubject.assertThat;
 import static com.google.testing.compile.CompilationSubject.compilations;
@@ -23,12 +24,15 @@ import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.stream.Collectors.joining;
 import static javax.tools.StandardLocation.CLASS_OUTPUT;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
 import com.google.common.truth.ExpectFailure;
 import com.google.common.truth.Truth;
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import javax.tools.Diagnostic;
@@ -73,13 +77,13 @@ public class CompilationSubjectTest {
           "}");
 
   private static final JavaFileObject HELLO_WORLD_RESOURCE =
-      JavaFileObjects.forResource("HelloWorld.java");
+      JavaFileObjects.forResource("test/HelloWorld.java");
 
   private static final JavaFileObject HELLO_WORLD_BROKEN_RESOURCE =
-      JavaFileObjects.forResource("HelloWorld-broken.java");
+      JavaFileObjects.forResource("test/HelloWorld-broken.java");
 
   private static final JavaFileObject HELLO_WORLD_DIFFERENT_RESOURCE =
-      JavaFileObjects.forResource("HelloWorld-different.java");
+      JavaFileObjects.forResource("test/HelloWorld-different.java");
 
   @RunWith(JUnit4.class)
   public static class StatusTest {
@@ -99,7 +103,8 @@ public class CompilationSubjectTest {
           .that(compilerWithGeneratorAndError().compile(HELLO_WORLD_RESOURCE))
           .succeeded();
       AssertionError expected = expectFailure.getFailure();
-      assertThat(expected.getMessage()).contains("Compilation produced the following errors:\n");
+      assertThat(expected.getMessage()).contains(
+          "Compilation produced the following diagnostics:\n");
       assertThat(expected.getMessage()).contains(FailingGeneratingProcessor.GENERATED_CLASS_NAME);
       assertThat(expected.getMessage()).contains(FailingGeneratingProcessor.GENERATED_SOURCE);
     }
@@ -112,7 +117,8 @@ public class CompilationSubjectTest {
           .that(javac().compile(HELLO_WORLD_BROKEN_RESOURCE))
           .succeeded();
       AssertionError expected = expectFailure.getFailure();
-      assertThat(expected.getMessage()).startsWith("Compilation produced the following errors:\n");
+      assertThat(expected.getMessage()).startsWith(
+          "Compilation produced the following diagnostics:\n");
       assertThat(expected.getMessage()).contains("No files were generated.");
     }
 
@@ -130,6 +136,22 @@ public class CompilationSubjectTest {
         // newer jdks throw a runtime exception whose cause is the original exception
         assertThat(expected.getCause()).isEqualTo(e);
       }
+    }
+
+    @Test
+    public void succeeded_failureReportsWarnings() {
+      expectFailure
+          .whenTesting()
+          .about(compilations())
+          .that(compilerWithWarning().compile(HELLO_WORLD_BROKEN))
+          .succeeded();
+      AssertionError expected = expectFailure.getFailure();
+      assertThat(expected.getMessage())
+          .startsWith("Compilation produced the following diagnostics:\n");
+      assertThat(expected.getMessage()).contains("No files were generated.");
+      // "this is a message" is output by compilerWithWarning() since the source has
+      // @DiagnosticMessage
+      assertThat(expected.getMessage()).contains("warning: this is a message");
     }
 
     @Test
@@ -326,6 +348,22 @@ public class CompilationSubjectTest {
                       sourceFile.getName()),
                   "   1: "));
       assertThat(expected.getMessage()).contains("" + actualErrorLine);
+    }
+
+    @Test
+    public void hadWarningContainingInFileOnLine_lineTooBig() throws IOException {
+      long lineCount = new BufferedReader(sourceFile.openReader(false)).lines().count();
+      IllegalArgumentException exception =
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  assertThat(compilerWithWarning().compile(sourceFile))
+                      .hadWarningContainingMatch("this is a+ message")
+                      .inFile(sourceFile)
+                      .onLine(100));
+      assertThat(exception)
+          .hasMessageThat()
+          .isEqualTo("Invalid line number 100; number of lines is only " + lineCount);
     }
 
     /* TODO(dpb): Negative cases for onLineContaining for
@@ -771,6 +809,16 @@ public class CompilationSubjectTest {
     }
 
     @Test
+    public void generatedSourceFile_packageInfo() {
+      GeneratingProcessor generatingProcessor = new GeneratingProcessor("test");
+      assertThat(javac().withProcessors(generatingProcessor).compile(HELLO_WORLD_RESOURCE))
+          .generatedSourceFile("test.package-info")
+          .hasSourceEquivalentTo(
+              JavaFileObjects.forSourceString(
+                  "test.package-info", generatingProcessor.generatedPackageInfoSource()));
+    }
+
+    @Test
     public void generatedSourceFile_fail() {
       expectFailure
           .whenTesting()
@@ -778,7 +826,9 @@ public class CompilationSubjectTest {
           .that(compilerWithGenerator().compile(HELLO_WORLD_RESOURCE))
           .generatedSourceFile("ThisIsNotTheRightFile");
       AssertionError expected = expectFailure.getFailure();
-      assertThat(expected.getMessage()).contains("generated the file ThisIsNotTheRightFile.java");
+      assertThat(expected)
+          .factValue("expected to generate file")
+          .isEqualTo("/ThisIsNotTheRightFile.java");
       assertThat(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
     }
 
@@ -797,8 +847,9 @@ public class CompilationSubjectTest {
           .that(compilerWithGenerator().compile(HELLO_WORLD_RESOURCE))
           .generatedFile(CLASS_OUTPUT, "com/google/testing/compile/Bogus.class");
       AssertionError expected = expectFailure.getFailure();
-      assertThat(expected.getMessage())
-          .contains("generated the file com/google/testing/compile/Bogus.class");
+      assertThat(expected)
+          .factValue("expected to generate file")
+          .isEqualTo("/com/google/testing/compile/Bogus.class");
     }
 
     @Test
@@ -816,10 +867,9 @@ public class CompilationSubjectTest {
           .that(compilerWithGenerator().compile(HELLO_WORLD_RESOURCE))
           .generatedFile(CLASS_OUTPUT, "com.google.testing.compile", "Bogus.class");
       AssertionError expected = expectFailure.getFailure();
-      assertThat(expected.getMessage())
-          .contains(
-              "generated the file named \"Bogus.class\" "
-                  + "in package \"com.google.testing.compile\"");
+      assertThat(expected)
+          .factValue("expected to generate file")
+          .isEqualTo("/com/google/testing/compile/Bogus.class");
     }
 
     @Test
@@ -830,8 +880,7 @@ public class CompilationSubjectTest {
           .that(compilerWithGenerator().compile(HELLO_WORLD_RESOURCE))
           .generatedFile(CLASS_OUTPUT, "", "File.java");
       AssertionError expected = expectFailure.getFailure();
-      assertThat(expected.getMessage())
-          .contains("generated the file named \"File.java\" in the default package");
+      assertThat(expected).factValue("expected to generate file").isEqualTo("/File.java");
       assertThat(expected.getMessage()).contains(GeneratingProcessor.GENERATED_CLASS_NAME);
     }
   }

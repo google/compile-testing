@@ -24,7 +24,8 @@ script:
 before_install:
   - echo $HOME/.ekstazi
   - echo $TRAVIS_BUILD_DIR
-  - echo ${DIR# .ekstazi /}
+  - echo $DIR#
+  - echo $DIR
   - find $HOME/.ekstazi | while read line; do du -sh $line; \
         DIR=$(dirname ${line#$HOME}); if [[ -d ${DIR# .ekstazi /} ]]; then cp -r $line $DIR; fi; done
     

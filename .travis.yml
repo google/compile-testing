@@ -14,7 +14,7 @@ before_script:
   - mvn -version
   - find $TRAVIS_BUILD_DIR -name .ekstazi | while read line; do rm -rf $line; done;
       find $HOME/.ekstazi | while read line; do du -sh $line; \
-        DIR=$(dirname ${line#$HOME}); if [[ -d ${DIR$.ekstazi /} ]]; then cp -r $line $DIR; fi; done
+        DIR=$(dirname ${line#$HOME}); if [[ -d ${DIR#.ekstazi /} ]]; then cp -r $line $DIR; fi; done
     
   
 script:
@@ -27,7 +27,7 @@ before_install:
   - echo $DIR#
   - echo $DIR
   - find $HOME/.ekstazi | while read line; do du -sh $line; \
-        DIR=$(dirname ${line#$HOME}); if [[ -d ${DIR$.ekstazi /} ]]; then cp -r $line $DIR; fi; done
+        DIR=$(dirname ${line#$HOME}); if [[ -d ${DIR#.ekstazi /} ]]; then cp -r $line $DIR; fi; done
     
 before_cache:
    - echo CACHESIZE $(du -sk $HOME/.ekstazi)

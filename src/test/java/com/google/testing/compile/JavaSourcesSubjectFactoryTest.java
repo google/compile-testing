@@ -398,7 +398,7 @@ public class JavaSourcesSubjectFactoryTest {
           .parsesAs(JavaFileObjects.forResource("test/HelloWorld-broken.java"));
       fail();
     } catch (IllegalStateException expected) {
-      assertThat(expected.getMessage()).startsWith("error while parsing:");
+      assertThat(expected.getMessage()).startsWith("Error while parsing *expected* source:\n");
     }
   }
 
@@ -410,7 +410,7 @@ public class JavaSourcesSubjectFactoryTest {
           .parsesAs(HELLO_WORLD_RESOURCE);
       fail();
     } catch (IllegalStateException expected) {
-      assertThat(expected.getMessage()).startsWith("error while parsing:");
+      assertThat(expected.getMessage()).startsWith("Error while parsing *actual* source:\n");
     }
   }
 

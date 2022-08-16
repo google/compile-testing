@@ -170,10 +170,10 @@ public final class JavaFileObjectSubject extends Subject {
       String failureVerb,
       String expectedTitle,
       BiFunction<ParseResult, ParseResult, TreeDifference> differencingFunction) {
-    ParseResult actualResult = Parser.parse(ImmutableList.of(actual));
+    ParseResult actualResult = Parser.parse(ImmutableList.of(actual), "*actual* source");
     CompilationUnitTree actualTree = getOnlyElement(actualResult.compilationUnits());
 
-    ParseResult expectedResult = Parser.parse(ImmutableList.of(expected));
+    ParseResult expectedResult = Parser.parse(ImmutableList.of(expected), "*expected* source");
     CompilationUnitTree expectedTree = getOnlyElement(expectedResult.compilationUnits());
 
     TreeDifference treeDifference = differencingFunction.apply(expectedResult, actualResult);

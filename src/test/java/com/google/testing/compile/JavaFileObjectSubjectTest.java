@@ -21,6 +21,7 @@ import static com.google.common.truth.Truth.assertThat;
 import static com.google.testing.compile.JavaFileObjectSubject.assertThat;
 import static com.google.testing.compile.JavaFileObjectSubject.javaFileObjects;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.junit.Assert.assertThrows;
 
 import com.google.common.truth.ExpectFailure;
 import java.io.IOException;
@@ -195,5 +196,40 @@ public final class JavaFileObjectSubjectTest {
   @Test
   public void containsElementsIn_completeMatch() {
     assertThat(SAMPLE_ACTUAL_FILE_FOR_MATCHING).containsElementsIn(SAMPLE_ACTUAL_FILE_FOR_MATCHING);
+  }
+
+  private static final JavaFileObject SIMPLE_INVALID_FILE =
+      JavaFileObjects.forSourceLines(
+          "test.SomeClass", //
+          "package test;",
+          "",
+          "public syntax error class SomeClass {",
+          "}");
+  private static final JavaFileObject SIMPLE_VALID_FILE =
+      JavaFileObjects.forSourceLines(
+          "test.SomeClass", //
+          "package test;",
+          "",
+          "public class SomeClass {",
+          "}");
+
+  @Test
+  public void containsElementsIn_badActual() {
+    IllegalStateException ex =
+        assertThrows(
+            IllegalStateException.class,
+            () -> assertThat(SIMPLE_INVALID_FILE).containsElementsIn(SIMPLE_VALID_FILE));
+
+    assertThat(ex).hasMessageThat().startsWith("Error while parsing *actual* source:\n");
+  }
+
+  @Test
+  public void containsElementsIn_badExpected() {
+    IllegalStateException ex =
+        assertThrows(
+            IllegalStateException.class,
+            () -> assertThat(SIMPLE_VALID_FILE).containsElementsIn(SIMPLE_INVALID_FILE));
+
+    assertThat(ex).hasMessageThat().startsWith("Error while parsing *expected* source:\n");
   }
 }

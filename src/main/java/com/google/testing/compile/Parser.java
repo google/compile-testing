@@ -50,8 +50,11 @@ public final class Parser {
   /**
    * Parses {@code sources} into {@linkplain CompilationUnitTree compilation units}. This method
    * <b>does not</b> compile the sources.
+   *
+   * @param sourcesDescription describes the sources. Parsing exceptions will contain this string.
+   * @throws IllegalStateException if any parsing errors occur.
    */
-  static ParseResult parse(Iterable<? extends JavaFileObject> sources) {
+  static ParseResult parse(Iterable<? extends JavaFileObject> sources, String sourcesDescription) {
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
     DiagnosticCollector<JavaFileObject> diagnosticCollector = new DiagnosticCollector<>();
     InMemoryJavaFileManager fileManager =
@@ -72,8 +75,8 @@ public final class Parser {
       Iterable<? extends CompilationUnitTree> parsedCompilationUnits = task.parse();
       List<Diagnostic<? extends JavaFileObject>> diagnostics = diagnosticCollector.getDiagnostics();
       if (foundParseErrors(parsedCompilationUnits, diagnostics)) {
-        throw new IllegalStateException(
-            "error while parsing:\n" + Joiner.on('\n').join(diagnostics));
+        String msgPrefix = String.format("Error while parsing %s:\n", sourcesDescription);
+        throw new IllegalStateException(msgPrefix + Joiner.on('\n').join(diagnostics));
       }
       return new ParseResult(
           sortDiagnosticsByKind(diagnostics), parsedCompilationUnits, Trees.instance(task));
@@ -195,4 +198,6 @@ public final class Parser {
       super(null);
     }
   }
+
+  private Parser() {}
 }

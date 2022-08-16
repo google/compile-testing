@@ -52,7 +52,7 @@ final class MoreTrees {
   /** Parses the source given into a {@link CompilationUnitTree}. */
   static CompilationUnitTree parseLinesToTree(Iterable<String> source) {
     Iterable<? extends CompilationUnitTree> parseResults =
-        Parser.parse(ImmutableList.of(JavaFileObjects.forSourceLines("", source)))
+        Parser.parse(ImmutableList.of(JavaFileObjects.forSourceLines("", source)), "source")
             .compilationUnits();
     return Iterables.getOnlyElement(parseResults);
   }
@@ -64,7 +64,7 @@ final class MoreTrees {
 
   /** Parses the source given and produces a {@link ParseResult}. */
   static ParseResult parseLines(Iterable<String> source) {
-    return Parser.parse(ImmutableList.of(JavaFileObjects.forSourceLines("", source)));
+    return Parser.parse(ImmutableList.of(JavaFileObjects.forSourceLines("", source)), "source");
   }
 
   /**

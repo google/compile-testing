@@ -158,7 +158,7 @@ public final class JavaSourcesSubject extends Subject
                 "Compilation generated no additional source files, though some were expected."));
         return;
       }
-      ParseResult actualResult = Parser.parse(actual);
+      ParseResult actualResult = Parser.parse(actual, "*actual* source");
       ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
           actualResult.diagnosticsByKind().get(Kind.ERROR);
       if (!errors.isEmpty()) {
@@ -170,7 +170,7 @@ public final class JavaSourcesSubject extends Subject
         failWithoutActual(simpleFact(message.toString()));
         return;
       }
-      ParseResult expectedResult = Parser.parse(Lists.asList(first, rest));
+      ParseResult expectedResult = Parser.parse(Lists.asList(first, rest), "*expected* source");
       ImmutableList<TypedCompilationUnit> actualTrees =
           actualResult.compilationUnits().stream()
               .map(TypedCompilationUnit::create)

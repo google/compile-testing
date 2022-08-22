@@ -58,17 +58,20 @@ final class TreeContext {
   }
 
   /**
-   * Returns the {@code TreePath} to the given sub-{@code Tree} of this object's
-   * {@code CompilationUnitTree}
+   * Returns the {@code TreePath} to the given sub-{@code Tree} of this object's {@code
+   * CompilationUnitTree}
    *
    * @throws IllegalArgumentException if the node provided is not a sub-{@code Tree} of this
-   *   object's {@code CompilationUnitTree}.
+   *     object's {@code CompilationUnitTree}.
    */
   TreePath getNodePath(Tree node) {
     TreePath treePath = trees.getPath(compilationUnit, node);
-    checkArgument(treePath != null, "The node provided was not a subtree of the "
-        + "CompilationUnitTree in this TreeContext. CompilationUnit: %s; Node:",
-        compilationUnit, node);
+    checkArgument(
+        treePath != null,
+        "The node provided was not a subtree of the "
+            + "CompilationUnitTree in this TreeContext. CompilationUnit: %s; Node: %s",
+        compilationUnit,
+        node);
     return treePath;
   }
 

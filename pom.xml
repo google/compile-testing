@@ -9,7 +9,7 @@
 
   <groupId>com.google.testing.compile</groupId>
   <artifactId>compile-testing</artifactId>
-  <version>HEAD-SNAPSHOT</version>
+  <version>0.20</version>
 
   <name>Compile Testing</name>
   <description>Utilities for testing compilation.</description>

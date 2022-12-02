@@ -24,7 +24,7 @@ License
     See the License for the specific language governing permissions and
     limitations under the License.
 
-[ci-shield]: https://github.com/google/compile-testing/actions/workflows/ci.yml/badge.svg?branch=master
+[ci-shield]: https://github.com/google/compile-testing/actions/workflows/ci.yml/badge.svg?branch=main
 [ci-link]: https://github.com/google/compile-testing/actions
 [maven-shield]: https://img.shields.io/maven-central/v/com.google.testing.compile/compile-testing.png
 [maven-link]: https://search.maven.org/artifact/com.google.testing.compile/compile-testing

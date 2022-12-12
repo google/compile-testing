@@ -126,6 +126,13 @@
       <plugin>
         <artifactId>maven-javadoc-plugin</artifactId>
         <version>3.4.1</version>
+        <configuration>
+          <additionalJOptions>
+            <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED</additionalJOption>
+            <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED</additionalJOption>
+            <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED</additionalJOption>
+          </additionalJOptions>
+        </configuration>
       </plugin>
       <plugin>
         <artifactId>maven-site-plugin</artifactId>

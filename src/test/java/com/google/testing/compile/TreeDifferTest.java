@@ -15,6 +15,7 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.collect.ImmutableList.toImmutableList;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static com.google.common.truth.Truth.assertThat;
 
@@ -24,18 +25,15 @@ import com.sun.source.tree.CompilationUnitTree;
 import com.sun.source.tree.Tree;
 import com.sun.source.util.TreePath;
 import java.util.Objects;
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
 
 /**
- * A test for {@link DetailedEqualityScanner}
+ * A test for {@link TreeDiffer}.
  */
 @RunWith(JUnit4.class)
 public class TreeDifferTest {
-  @Rule public final ExpectedException expectedExn = ExpectedException.none();
   private static final CompilationUnitTree EXPECTED_TREE =
       MoreTrees.parseLinesToTree("package test;",
           "import java.util.Set;",
@@ -171,6 +169,49 @@ public class TreeDifferTest {
           "  }",
           "}");
 
+  private static final ImmutableList<String> ANNOTATED_TYPE_SOURCE =
+      ImmutableList.of(
+          "package test;",
+          "",
+          "import java.lang.annotation.*;",
+          "import java.util.List;",
+          "",
+          "@Target(ElementType.TYPE_USE)",
+          "@interface Nullable {}",
+          "",
+          "interface NullableStringList extends List<@Nullable String> {}");
+
+  private static final CompilationUnitTree ANNOTATED_TYPE_1 =
+      MoreTrees.parseLinesToTree(ANNOTATED_TYPE_SOURCE);
+
+  private static final CompilationUnitTree ANNOTATED_TYPE_2 =
+      MoreTrees.parseLinesToTree(
+          ANNOTATED_TYPE_SOURCE.stream()
+              .map(s -> s.replace("@Nullable ", ""))
+              .collect(toImmutableList()));
+
+  private static final ImmutableList<String> MULTICATCH_SOURCE =
+      ImmutableList.of(
+          "package test;",
+          "",
+          "class TestClass {",
+          "  void f() {",
+          "    try {",
+          "      System.gc();",
+          "    } catch (IllegalArgumentException | NullPointerException e) {",
+          "    }",
+          "  }",
+          "}");
+
+  private static final CompilationUnitTree MULTICATCH_1 =
+      MoreTrees.parseLinesToTree(MULTICATCH_SOURCE);
+
+  private static final CompilationUnitTree MULTICATCH_2 =
+      MoreTrees.parseLinesToTree(
+          MULTICATCH_SOURCE.stream()
+              .map(s -> s.replace("IllegalArgumentException", "IllegalStateException"))
+              .collect(toImmutableList()));
+
   @Test
   public void scan_differingCompilationUnits() {
     TreeDifference diff = TreeDiffer.diffCompilationUnits(EXPECTED_TREE, ACTUAL_TREE);
@@ -182,15 +223,15 @@ public class TreeDifferTest {
 
     ImmutableList<SimplifiedDiff> differingNodesExpected = ImmutableList.of(
         new SimplifiedDiff(Tree.Kind.MEMBER_SELECT,
-            "Expected member identifier to be <Set> but was <List>."),
+            "Expected member-select identifier to be <Set> but was <List>."),
         new SimplifiedDiff(Tree.Kind.VARIABLE,
             "Expected variable name to be <numbers> but was <numberz>."),
         new SimplifiedDiff(Tree.Kind.IDENTIFIER,
-            "Expected identifier to be <numbers> but was <numberz>."),
+            "Expected identifier name to be <numbers> but was <numberz>."),
         new SimplifiedDiff(Tree.Kind.IDENTIFIER,
-            "Expected identifier to be <IllegalStateException> but was <RuntimeException>."),
+            "Expected identifier name to be <IllegalStateException> but was <RuntimeException>."),
         new SimplifiedDiff(Tree.Kind.BREAK,
-            "Expected label on break statement to be <loop> but was <null>."));
+            "Expected break label to be <loop> but was <null>."));
     assertThat(diff.getExtraExpectedNodes().isEmpty()).isTrue();
     assertThat(diff.getExtraActualNodes().size()).isEqualTo(extraNodesExpected.size());
 
@@ -205,9 +246,7 @@ public class TreeDifferTest {
     for (TreeDifference.TwoWayDiff differingNode : diff.getDifferingNodes()) {
       differingNodesFound.add(SimplifiedDiff.create(differingNode));
     }
-    assertThat(differingNodesFound.build())
-        .containsExactlyElementsIn(differingNodesExpected)
-        .inOrder();
+    assertThat(differingNodesFound.build()).containsExactlyElementsIn(differingNodesExpected);
   }
 
   @Test
@@ -246,7 +285,7 @@ public class TreeDifferTest {
     assertThat(diff.isEmpty()).isFalse();
     for (TreeDifference.TwoWayDiff differingNode : diff.getDifferingNodes()) {
       assertThat(differingNode.getDetails())
-          .contains("Expected literal value to be <3> but was <4>");
+          .contains("Expected int-literal value to be <3> but was <4>");
     }
   }
 
@@ -268,7 +307,7 @@ public class TreeDifferTest {
   public void scan_testLambdas() {
     TreeDifference diff =
         TreeDiffer.diffCompilationUnits(LAMBDA_1, LAMBDA_2);
-    assertThat(diff.isEmpty()).isTrue();
+    assertThat(diff.getDiffReport()).isEmpty();
   }
 
   @Test
@@ -283,7 +322,7 @@ public class TreeDifferTest {
     TreeDifference diff =
         TreeDiffer.diffCompilationUnits(
             LAMBDA_IMPLICIT_ARG_TYPE, LAMBDA_IMPLICIT_ARG_TYPE_NO_PARENS);
-    assertThat(diff.isEmpty()).isTrue();
+    assertThat(diff.getDiffReport()).isEmpty();
   }
 
   @Test
@@ -304,13 +343,41 @@ public class TreeDifferTest {
   public void scan_testTryWithResources() {
     TreeDifference diff =
         TreeDiffer.diffCompilationUnits(TRY_WITH_RESOURCES_1, TRY_WITH_RESOURCES_1);
-    assertThat(diff.isEmpty()).isTrue();
+    assertThat(diff.getDiffReport()).isEmpty();
   }
 
   @Test
   public void scan_testTryWithResourcesDifferent() {
     TreeDifference diff =
         TreeDiffer.diffCompilationUnits(TRY_WITH_RESOURCES_1, TRY_WITH_RESOURCES_2);
+    assertThat(diff.isEmpty()).isFalse();
+  }
+
+  @Test
+  public void scan_testAnnotatedType() {
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(ANNOTATED_TYPE_1, ANNOTATED_TYPE_1);
+    assertThat(diff.getDiffReport()).isEmpty();
+  }
+
+  @Test
+  public void scan_testAnnotatedTypeDifferent() {
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(ANNOTATED_TYPE_1, ANNOTATED_TYPE_2);
+    assertThat(diff.isEmpty()).isFalse();
+  }
+
+  @Test
+  public void scan_testMulticatch() {
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(MULTICATCH_1, MULTICATCH_1);
+    assertThat(diff.getDiffReport()).isEmpty();
+  }
+
+  @Test
+  public void scan_testMulticatchDifferent() {
+    TreeDifference diff =
+        TreeDiffer.diffCompilationUnits(MULTICATCH_1, MULTICATCH_2);
     assertThat(diff.isEmpty()).isFalse();
   }
 
@@ -373,7 +440,7 @@ public class TreeDifferTest {
             getOnlyElement(actual.compilationUnits()),
             actual.trees());
 
-    assertThat(diff.isEmpty()).isTrue();
+    assertThat(diff.getDiffReport()).isEmpty();
   }
 
   @Test
@@ -402,7 +469,7 @@ public class TreeDifferTest {
             getOnlyElement(actual.compilationUnits()),
             actual.trees());
 
-    assertThat(diff.isEmpty()).isTrue();
+    assertThat(diff.getDiffReport()).isEmpty();
   }
 
   @Test
@@ -710,7 +777,7 @@ public class TreeDifferTest {
             getOnlyElement(actual.compilationUnits()),
             actual.trees());
 
-    assertThat(diff.isEmpty()).isTrue();
+    assertThat(diff.getDiffReport()).isEmpty();
   }
 
   private TreePath asPath(CompilationUnitTree compilationUnit) {
@@ -732,14 +799,6 @@ public class TreeDifferTest {
     SimplifiedDiff(Tree.Kind kind, String details) {
       this.kind = kind;
       this.details = details;
-    }
-
-    Tree.Kind getKind() {
-      return kind;
-    }
-
-    String getDetails() {
-      return details;
     }
 
     static SimplifiedDiff create(TreeDifference.OneWayDiff other) {

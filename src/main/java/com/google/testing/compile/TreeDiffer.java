@@ -23,70 +23,33 @@ import static java.util.Objects.requireNonNull;
 
 import com.google.auto.common.MoreTypes;
 import com.google.auto.value.AutoValue;
+import com.google.common.base.CaseFormat;
 import com.google.common.base.Equivalence;
 import com.google.common.base.Joiner;
-import com.google.common.base.Objects;
+import com.google.common.base.VerifyException;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.errorprone.annotations.FormatMethod;
-import com.sun.source.tree.AnnotationTree;
-import com.sun.source.tree.ArrayAccessTree;
-import com.sun.source.tree.ArrayTypeTree;
-import com.sun.source.tree.AssertTree;
-import com.sun.source.tree.AssignmentTree;
-import com.sun.source.tree.BinaryTree;
-import com.sun.source.tree.BlockTree;
-import com.sun.source.tree.BreakTree;
-import com.sun.source.tree.CaseTree;
-import com.sun.source.tree.CatchTree;
 import com.sun.source.tree.ClassTree;
 import com.sun.source.tree.CompilationUnitTree;
-import com.sun.source.tree.CompoundAssignmentTree;
-import com.sun.source.tree.ConditionalExpressionTree;
-import com.sun.source.tree.ContinueTree;
-import com.sun.source.tree.DoWhileLoopTree;
-import com.sun.source.tree.EmptyStatementTree;
-import com.sun.source.tree.EnhancedForLoopTree;
-import com.sun.source.tree.ErroneousTree;
-import com.sun.source.tree.ExpressionStatementTree;
-import com.sun.source.tree.ForLoopTree;
 import com.sun.source.tree.IdentifierTree;
-import com.sun.source.tree.IfTree;
 import com.sun.source.tree.ImportTree;
-import com.sun.source.tree.InstanceOfTree;
-import com.sun.source.tree.LabeledStatementTree;
-import com.sun.source.tree.LambdaExpressionTree;
-import com.sun.source.tree.LiteralTree;
-import com.sun.source.tree.MemberReferenceTree;
+import com.sun.source.tree.LineMap;
 import com.sun.source.tree.MemberSelectTree;
-import com.sun.source.tree.MethodInvocationTree;
 import com.sun.source.tree.MethodTree;
-import com.sun.source.tree.ModifiersTree;
-import com.sun.source.tree.NewArrayTree;
-import com.sun.source.tree.NewClassTree;
-import com.sun.source.tree.ParameterizedTypeTree;
-import com.sun.source.tree.ParenthesizedTree;
-import com.sun.source.tree.PrimitiveTypeTree;
-import com.sun.source.tree.ReturnTree;
-import com.sun.source.tree.SwitchTree;
-import com.sun.source.tree.SynchronizedTree;
-import com.sun.source.tree.ThrowTree;
 import com.sun.source.tree.Tree;
-import com.sun.source.tree.Tree.Kind;
 import com.sun.source.tree.TreeVisitor;
-import com.sun.source.tree.TryTree;
-import com.sun.source.tree.TypeCastTree;
-import com.sun.source.tree.TypeParameterTree;
-import com.sun.source.tree.UnaryTree;
 import com.sun.source.tree.VariableTree;
-import com.sun.source.tree.WhileLoopTree;
-import com.sun.source.tree.WildcardTree;
 import com.sun.source.util.SimpleTreeVisitor;
 import com.sun.source.util.TreePath;
 import com.sun.source.util.Trees;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.lang.reflect.WildcardType;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.Set;
 import javax.lang.model.element.Name;
 import javax.lang.model.type.TypeMirror;
@@ -200,17 +163,15 @@ final class TreeDiffer {
     }
 
     /**
-     * Adds a {@code TwoWayDiff} if the predicate given evaluates to false. The {@code TwoWayDiff}
-     * is parameterized by the {@code Tree}s and message format provided.
+     * Adds a {@code TwoWayDiff} that is parameterized by the {@code Tree}s and message format
+     * provided.
      */
     @FormatMethod
-    private void checkForDiff(boolean p, String message, Object... formatArgs) {
-      if (!p) {
-        diffBuilder.addDifferingNodes(
-            requireNonNull(expectedPath),
-            requireNonNull(actualPath),
-            String.format(message, formatArgs));
-      }
+    private void reportDiff(String message, Object... formatArgs) {
+      diffBuilder.addDifferingNodes(
+          requireNonNull(expectedPath),
+          requireNonNull(actualPath),
+          String.format(message, formatArgs));
     }
 
     private TreePath actualPathPlus(Tree actual) {
@@ -279,718 +240,161 @@ final class TreeDiffer {
       }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>The exact set of {@code visitFoo} methods depends on the compiler version. For example, if
+     * the compiler is for a version of the language that has the {@code yield} statement, then
+     * there will be a {@code visitYield(YieldTree)}. But if it's for an earlier version, then not
+     * only will there not be that method, there will also not be a {@code YieldTree} type at all.
+     * That means it is impossible for this class to have a complete set of visit methods and also
+     * compile on earlier versions.
+     *
+     * <p>Instead, we override {@link SimpleTreeVisitor#defaultAction} and inspect the visited tree
+     * with reflection. We can use {@link Tree.Kind#getInterface()} to get the specific interface,
+     * such as {@code YieldTree}, and within that interface we just look for {@code getFoo()}
+     * methods. The {@code actual} tree must have the same {@link Tree.Kind} and then we can compare
+     * the results of calling the corresponding {@code getFoo()} methods on both trees. The
+     * comparison depends on the return type of the method:
+     *
+     * <ul>
+     *   <li>For a method returning {@link Tree} or a subtype, we call {@link #scan(Tree, Tree)},
+     *       which will visit the subtrees recursively.
+     *   <li>For a method returning a type that is assignable to {@code Iterable<? extends Tree>},
+     *       we call {@link #parallelScan(Iterable, Iterable)}.
+     *   <li>For a method returning {@link Name}, we compare with {@link Name#contentEquals}.
+     *   <li>Otherwise we just compare with {@link Objects#equals(Object, Object)}.
+     *   <li>Methods returning certain types are ignored: {@link LineMap}, because we don't care if
+     *       the line numbers don't match between the two trees; {@link JavaFileObject}, because the
+     *       value for two distinct trees will never compare equal.
+     * </ul>
+     *
+     * <p>This technique depends on the specific way the tree interfaces are defined. In practice it
+     * works well. Besides solving the {@code YieldTree} issue, it also ensures we don't overlook
+     * properties of any given tree type, include properties that may be added in later versions.
+     * For example, in versions that have sealed interfaces, the {@code permits} clause is
+     * represented by a method {@code ClassTree.getPermitsClause()}. Earlier versions obviously
+     * don't have that method.
+     */
     @Override
-    public @Nullable Void visitAnnotation(AnnotationTree expected, Tree actual) {
-      Optional<AnnotationTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
+    public @Nullable Void defaultAction(Tree expected, Tree actual) {
+      if (expected.getKind() != actual.getKind()) {
         addTypeMismatch(expected, actual);
         return null;
       }
-
-      scan(expected.getAnnotationType(), other.get().getAnnotationType());
-      parallelScan(expected.getArguments(), other.get().getArguments());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitMethodInvocation(MethodInvocationTree expected, Tree actual) {
-      Optional<MethodInvocationTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      parallelScan(expected.getTypeArguments(), other.get().getTypeArguments());
-      scan(expected.getMethodSelect(), other.get().getMethodSelect());
-      parallelScan(expected.getArguments(), other.get().getArguments());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitLambdaExpression(LambdaExpressionTree expected, Tree actual) {
-      Optional<LambdaExpressionTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      parallelScan(expected.getParameters(), other.get().getParameters());
-      scan(expected.getBody(), other.get().getBody());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitMemberReference(MemberReferenceTree expected, Tree actual) {
-      Optional<MemberReferenceTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getQualifierExpression(), other.get().getQualifierExpression());
-      parallelScan(expected.getTypeArguments(), other.get().getTypeArguments());
-      checkForDiff(expected.getName().contentEquals(other.get().getName()),
-          "Expected identifier to be <%s> but was <%s>.",
-          expected.getName(), other.get().getName());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitAssert(AssertTree expected, Tree actual) {
-      Optional<AssertTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getCondition(), other.get().getCondition());
-      scan(expected.getDetail(), other.get().getDetail());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitAssignment(AssignmentTree expected, Tree actual) {
-      Optional<AssignmentTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getVariable(), other.get().getVariable());
-      scan(expected.getExpression(), other.get().getExpression());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitCompoundAssignment(CompoundAssignmentTree expected, Tree actual) {
-      Optional<CompoundAssignmentTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getVariable(), other.get().getVariable());
-      scan(expected.getExpression(), other.get().getExpression());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitBinary(BinaryTree expected, Tree actual) {
-      Optional<BinaryTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getLeftOperand(), other.get().getLeftOperand());
-      scan(expected.getRightOperand(), other.get().getRightOperand());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitBlock(BlockTree expected, Tree actual) {
-      Optional<BlockTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      checkForDiff(expected.isStatic() == other.get().isStatic(),
-          "Expected block to be <%s> but was <%s>.", expected.isStatic() ? "static" : "non-static",
-          other.get().isStatic() ? "static" : "non-static");
-
-      parallelScan(expected.getStatements(), other.get().getStatements());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitBreak(BreakTree expected, Tree actual) {
-      Optional<BreakTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      checkForDiff(namesEqual(expected.getLabel(), other.get().getLabel()),
-          "Expected label on break statement to be <%s> but was <%s>.",
-          expected.getLabel(), other.get().getLabel());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitCase(CaseTree expected, Tree actual) {
-      Optional<CaseTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getExpression(), other.get().getExpression());
-      parallelScan(expected.getStatements(), other.get().getStatements());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitCatch(CatchTree expected, Tree actual) {
-      Optional<CatchTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getParameter(), other.get().getParameter());
-      scan(expected.getBlock(), other.get().getBlock());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitClass(ClassTree expected, Tree actual) {
-      Optional<ClassTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      checkForDiff(expected.getSimpleName().contentEquals(other.get().getSimpleName()),
-          "Expected name of type to be <%s> but was <%s>.",
-          expected.getSimpleName(), other.get().getSimpleName());
-
-      scan(expected.getModifiers(), other.get().getModifiers());
-      parallelScan(expected.getTypeParameters(), other.get().getTypeParameters());
-      scan(expected.getExtendsClause(), other.get().getExtendsClause());
-      parallelScan(expected.getImplementsClause(), other.get().getImplementsClause());
-      parallelScan(
-          expected.getMembers(),
-          filter.filterActualMembers(
-              ImmutableList.copyOf(expected.getMembers()),
-              ImmutableList.copyOf(other.get().getMembers())));
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitConditionalExpression(
-        ConditionalExpressionTree expected, Tree actual) {
-      Optional<ConditionalExpressionTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getCondition(), other.get().getCondition());
-      scan(expected.getTrueExpression(), other.get().getTrueExpression());
-      scan(expected.getFalseExpression(), other.get().getFalseExpression());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitContinue(ContinueTree expected, Tree actual) {
-      Optional<ContinueTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      checkForDiff(namesEqual(expected.getLabel(), other.get().getLabel()),
-          "Expected label on continue statement to be <%s> but was <%s>.",
-          expected.getLabel(), other.get().getLabel());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitDoWhileLoop(DoWhileLoopTree expected, Tree actual) {
-      Optional<DoWhileLoopTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getCondition(), other.get().getCondition());
-      scan(expected.getStatement(), other.get().getStatement());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitErroneous(ErroneousTree expected, Tree actual) {
-      Optional<ErroneousTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      parallelScan(expected.getErrorTrees(), other.get().getErrorTrees());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitExpressionStatement(ExpressionStatementTree expected, Tree actual) {
-      Optional<ExpressionStatementTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getExpression(), other.get().getExpression());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitEnhancedForLoop(EnhancedForLoopTree expected, Tree actual) {
-      Optional<EnhancedForLoopTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getVariable(), other.get().getVariable());
-      scan(expected.getExpression(), other.get().getExpression());
-      scan(expected.getStatement(), other.get().getStatement());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitForLoop(ForLoopTree expected, Tree actual) {
-      Optional<ForLoopTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      parallelScan(expected.getInitializer(), other.get().getInitializer());
-      scan(expected.getCondition(), other.get().getCondition());
-      parallelScan(expected.getUpdate(), other.get().getUpdate());
-      scan(expected.getStatement(), other.get().getStatement());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitIdentifier(IdentifierTree expected, Tree actual) {
-      Optional<IdentifierTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      checkForDiff(expected.getName().contentEquals(other.get().getName()),
-          "Expected identifier to be <%s> but was <%s>.",
-          expected.getName(), other.get().getName());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitIf(IfTree expected, Tree actual) {
-      Optional<IfTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getCondition(), other.get().getCondition());
-      scan(expected.getThenStatement(), other.get().getThenStatement());
-      scan(expected.getElseStatement(), other.get().getElseStatement());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitImport(ImportTree expected, Tree actual) {
-      Optional<ImportTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      checkForDiff(expected.isStatic() == other.get().isStatic(),
-          "Expected import to be <%s> but was <%s>.",
-          expected.isStatic() ? "static" : "non-static",
-          other.get().isStatic() ? "static" : "non-static");
-
-      scan(expected.getQualifiedIdentifier(), other.get().getQualifiedIdentifier());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitArrayAccess(ArrayAccessTree expected, Tree actual) {
-      Optional<ArrayAccessTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getExpression(), other.get().getExpression());
-      scan(expected.getIndex(), other.get().getIndex());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitLabeledStatement(LabeledStatementTree expected, Tree actual) {
-      Optional<LabeledStatementTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      checkForDiff(expected.getLabel().contentEquals(other.get().getLabel()),
-          "Expected statement label to be <%s> but was <%s>.",
-          expected.getLabel(), other.get().getLabel());
-
-      scan(expected.getStatement(), other.get().getStatement());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitLiteral(LiteralTree expected, Tree actual) {
-      Optional<LiteralTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      checkForDiff(Objects.equal(expected.getValue(), other.get().getValue()),
-          "Expected literal value to be <%s> but was <%s>.",
-          expected.getValue(), other.get().getValue());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitMethod(MethodTree expected, Tree actual) {
-      Optional<MethodTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      checkForDiff(expected.getName().contentEquals(other.get().getName()),
-          "Expected method name to be <%s> but was <%s>.",
-          expected.getName(), other.get().getName());
-
-      scan(expected.getModifiers(), other.get().getModifiers());
-      scan(expected.getReturnType(), other.get().getReturnType());
-      parallelScan(expected.getTypeParameters(), other.get().getTypeParameters());
-      parallelScan(expected.getParameters(), other.get().getParameters());
-      parallelScan(expected.getThrows(), other.get().getThrows());
-      scan(expected.getBody(), other.get().getBody());
-      scan(expected.getDefaultValue(), other.get().getDefaultValue());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitModifiers(ModifiersTree expected, Tree actual) {
-      Optional<ModifiersTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      checkForDiff(expected.getFlags().equals(other.get().getFlags()),
-          "Expected modifier set to be <%s> but was <%s>.",
-          expected.getFlags(), other.get().getFlags());
-
-      parallelScan(expected.getAnnotations(), other.get().getAnnotations());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitNewArray(NewArrayTree expected, Tree actual) {
-      Optional<NewArrayTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getType(), other.get().getType());
-      parallelScan(expected.getDimensions(), other.get().getDimensions());
-      parallelScan(expected.getInitializers(), other.get().getInitializers());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitNewClass(NewClassTree expected, Tree actual) {
-      Optional<NewClassTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getEnclosingExpression(), other.get().getEnclosingExpression());
-      parallelScan(expected.getTypeArguments(), other.get().getTypeArguments());
-      scan(expected.getIdentifier(), other.get().getIdentifier());
-      parallelScan(expected.getArguments(), other.get().getArguments());
-      scan(expected.getClassBody(), other.get().getClassBody());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitParenthesized(ParenthesizedTree expected, Tree actual) {
-      Optional<ParenthesizedTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getExpression(), other.get().getExpression());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitReturn(ReturnTree expected, Tree actual) {
-      Optional<ReturnTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getExpression(), other.get().getExpression());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitMemberSelect(MemberSelectTree expected, Tree actual) {
-      Optional<MemberSelectTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      checkForDiff(expected.getIdentifier().contentEquals(other.get().getIdentifier()),
-          "Expected member identifier to be <%s> but was <%s>.",
-          expected.getIdentifier(), other.get().getIdentifier());
-
-      scan(expected.getExpression(), other.get().getExpression());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitEmptyStatement(EmptyStatementTree expected, Tree actual) {
-      if (!checkTypeAndCast(expected, actual).isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
+      Class<? extends Tree> treeInterface = expected.getKind().asInterface();
+      for (Method method : treeInterface.getMethods()) {
+        if (method.getName().startsWith("get") && method.getParameterTypes().length == 0) {
+          Object expectedValue;
+          Object actualValue;
+          try {
+            expectedValue = method.invoke(expected);
+            actualValue = method.invoke(actual);
+          } catch (ReflectiveOperationException e) {
+            throw new VerifyException(e);
+          }
+          defaultCompare(method, expected.getKind(), expectedValue, actualValue);
+        }
       }
       return null;
     }
 
-    @Override
-    public @Nullable Void visitSwitch(SwitchTree expected, Tree actual) {
-      Optional<SwitchTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
+    private void defaultCompare(Method method, Tree.Kind kind, Object expected, Object actual) {
+      Type type = method.getGenericReturnType();
+      if (isIterableOfTree(type)) {
+        @SuppressWarnings("unchecked")
+        Iterable<? extends Tree> expectedList = (Iterable<? extends Tree>) expected;
+        @SuppressWarnings("unchecked")
+        Iterable<? extends Tree> actualList = (Iterable<? extends Tree>) actual;
+        actualList = filterActual(method, kind, expectedList, actualList);
+        parallelScan(expectedList, actualList);
+      } else if (type instanceof Class<?> && Tree.class.isAssignableFrom((Class<?>) type)) {
+        scan((Tree) expected, (Tree) actual);
+      } else if (expected instanceof LineMap && actual instanceof LineMap) {
+        return; // we don't require lines to match exactly
+      } else if (expected instanceof JavaFileObject && actual instanceof JavaFileObject) {
+        return; // these will never be equal unless the inputs are identical
+      } else {
+        boolean eq =
+            (expected instanceof Name)
+                ? namesEqual((Name) expected, (Name) actual)
+                : Objects.equals(expected, actual);
+        if (!eq) {
+          // If MemberSelectTree.getIdentifier() doesn't match, we will say
+          //    "Expected member-select identifier to be <foo> but was <bar>."
+          String treeKind =
+              CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_HYPHEN, kind.name());
+          String property =
+              CaseFormat.UPPER_CAMEL
+                  .to(CaseFormat.LOWER_UNDERSCORE, method.getName().substring("get".length()))
+                  .replace('_', ' ');
+          reportDiff(
+              "Expected %s %s to be <%s> but was <%s>.",
+              treeKind,
+              property,
+              expected,
+              actual);
+        }
       }
-
-      scan(expected.getExpression(), other.get().getExpression());
-      parallelScan(expected.getCases(), other.get().getCases());
-      return null;
     }
 
-    @Override
-    public @Nullable Void visitSynchronized(SynchronizedTree expected, Tree actual) {
-      Optional<SynchronizedTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
+    /**
+     * Applies {@link #filter} to the list of subtrees from the actual tree. If it is a
+     * {@code CompilationUnitTree} then we filter its imports. If it is a {@code ClassTree} then we
+     * filter its members.
+     */
+    private Iterable<? extends Tree> filterActual(
+        Method method,
+        Tree.Kind kind,
+        Iterable<? extends Tree> expected,
+        Iterable<? extends Tree> actual) {
+      switch (kind) {
+        case COMPILATION_UNIT:
+          if (method.getName().equals("getImports")) {
+            @SuppressWarnings("unchecked")
+            Iterable<ImportTree> expectedImports = (Iterable<ImportTree>) expected;
+            @SuppressWarnings("unchecked")
+            Iterable<ImportTree> actualImports = (Iterable<ImportTree>) actual;
+            return filter.filterImports(
+                ImmutableList.copyOf(expectedImports), ImmutableList.copyOf(actualImports));
+          }
+          break;
+        case CLASS:
+          if (method.getName().equals("getMembers")) {
+            return filter.filterActualMembers(
+                ImmutableList.copyOf(expected), ImmutableList.copyOf(actual));
+          }
+          break;
+        default:
       }
-
-      scan(expected.getExpression(), other.get().getExpression());
-      scan(expected.getBlock(), other.get().getBlock());
-      return null;
+      return actual;
     }
 
-    @Override
-    public @Nullable Void visitThrow(ThrowTree expected, Tree actual) {
-      Optional<ThrowTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
+    private static boolean isIterableOfTree(Type type) {
+      if (!(type instanceof ParameterizedType)) {
+        return false;
       }
-
-      scan(expected.getExpression(), other.get().getExpression());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitCompilationUnit(CompilationUnitTree expected, Tree actual) {
-      Optional<CompilationUnitTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
+      ParameterizedType parameterizedType = (ParameterizedType) type;
+      if (!Iterable.class.isAssignableFrom((Class<?>) parameterizedType.getRawType())
+          || parameterizedType.getActualTypeArguments().length != 1) {
+        return false;
       }
-
-      parallelScan(expected.getPackageAnnotations(), other.get().getPackageAnnotations());
-      scan(expected.getPackageName(), other.get().getPackageName());
-      parallelScan(
-          expected.getImports(),
-          filter.filterImports(
-              ImmutableList.copyOf(expected.getImports()),
-              ImmutableList.copyOf(other.get().getImports())));
-      parallelScan(expected.getTypeDecls(), other.get().getTypeDecls());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitTry(TryTree expected, Tree actual) {
-      Optional<TryTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
+      Type argType = parameterizedType.getActualTypeArguments()[0];
+      if (argType instanceof Class<?>) {
+        return Tree.class.isAssignableFrom((Class<?>) argType);
+      } else if (argType instanceof WildcardType) {
+        WildcardType wildcardType = (WildcardType) argType;
+        return wildcardType.getUpperBounds().length == 1
+            && wildcardType.getUpperBounds()[0] instanceof Class<?>
+            && Tree.class.isAssignableFrom((Class<?>) wildcardType.getUpperBounds()[0]);
+      } else {
+        return false;
       }
-
-      parallelScan(expected.getResources(), other.get().getResources());
-      scan(expected.getBlock(), other.get().getBlock());
-      parallelScan(expected.getCatches(), other.get().getCatches());
-      scan(expected.getFinallyBlock(), other.get().getFinallyBlock());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitParameterizedType(ParameterizedTypeTree expected, Tree actual) {
-      Optional<ParameterizedTypeTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getType(), other.get().getType());
-      parallelScan(expected.getTypeArguments(), other.get().getTypeArguments());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitArrayType(ArrayTypeTree expected, Tree actual) {
-      Optional<ArrayTypeTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getType(), other.get().getType());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitTypeCast(TypeCastTree expected, Tree actual) {
-      Optional<TypeCastTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getType(), other.get().getType());
-      scan(expected.getExpression(), other.get().getExpression());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitPrimitiveType(PrimitiveTypeTree expected, Tree actual) {
-      Optional<PrimitiveTypeTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      checkForDiff(expected.getPrimitiveTypeKind() == other.get().getPrimitiveTypeKind(),
-          "Expected primitive type kind to be <%s> but was <%s>.",
-          expected.getPrimitiveTypeKind(), other.get().getPrimitiveTypeKind());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitTypeParameter(TypeParameterTree expected, Tree actual) {
-      Optional<TypeParameterTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      checkForDiff(expected.getName().contentEquals(other.get().getName()),
-          "Expected type parameter name to be <%s> but was <%s>.",
-          expected.getName(), other.get().getName());
-
-      parallelScan(expected.getBounds(), other.get().getBounds());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitInstanceOf(InstanceOfTree expected, Tree actual) {
-      Optional<InstanceOfTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getExpression(), other.get().getExpression());
-      scan(expected.getType(), other.get().getType());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitUnary(UnaryTree expected, Tree actual) {
-      Optional<UnaryTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getExpression(), other.get().getExpression());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitVariable(VariableTree expected, Tree actual) {
-      Optional<VariableTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      checkForDiff(expected.getName().contentEquals(other.get().getName()),
-          "Expected variable name to be <%s> but was <%s>.",
-          expected.getName(), other.get().getName());
-
-      scan(expected.getModifiers(), other.get().getModifiers());
-      scan(expected.getType(), other.get().getType());
-      scan(expected.getInitializer(), other.get().getInitializer());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitWhileLoop(WhileLoopTree expected, Tree actual) {
-      Optional<WhileLoopTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getCondition(), other.get().getCondition());
-      scan(expected.getStatement(), other.get().getStatement());
-      return null;
-    }
-
-    @Override
-    public @Nullable Void visitWildcard(WildcardTree expected, Tree actual) {
-      Optional<WildcardTree> other = checkTypeAndCast(expected, actual);
-      if (!other.isPresent()) {
-        addTypeMismatch(expected, actual);
-        return null;
-      }
-
-      scan(expected.getBound(), other.get().getBound());
-      return null;
     }
 
     @Override
     public @Nullable Void visitOther(Tree expected, Tree actual) {
       throw new UnsupportedOperationException("cannot compare unknown trees");
-    }
-
-    // TODO(dpb,ronshapiro): rename this method and document which one is cast
-    private <T extends Tree> Optional<T> checkTypeAndCast(T expected, Tree actual) {
-      Kind expectedKind = checkNotNull(expected).getKind();
-      Kind treeKind = checkNotNull(actual).getKind();
-      if (expectedKind == treeKind) {
-        @SuppressWarnings("unchecked")  // checked by Kind
-        T treeAsExpectedType = (T) actual;
-        return Optional.of(treeAsExpectedType);
-      } else {
-        return Optional.empty();
-      }
     }
   }
 

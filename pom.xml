@@ -125,7 +125,7 @@
       </plugin>
       <plugin>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>3.4.1</version>
+        <version>3.5.0</version>
         <configuration>
           <additionalJOptions>
             <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED</additionalJOption>
@@ -213,7 +213,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
-            <version>3.4.1</version>
+            <version>3.5.0</version>
             <executions>
               <execution>
                 <id>attach-docs</id>

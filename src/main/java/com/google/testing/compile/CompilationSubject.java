@@ -16,6 +16,7 @@
 package com.google.testing.compile;
 
 import static com.google.common.base.Preconditions.checkArgument;
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.base.Predicates.notNull;
 import static com.google.common.collect.Iterables.size;
 import static com.google.common.truth.Fact.fact;
@@ -73,15 +74,16 @@ public final class CompilationSubject extends Subject {
     return assertAbout(compilations()).that(actual);
   }
 
-  private final Compilation actual;
+  private final @Nullable Compilation actual;
 
-  CompilationSubject(FailureMetadata failureMetadata, Compilation actual) {
+  CompilationSubject(FailureMetadata failureMetadata, @Nullable Compilation actual) {
     super(failureMetadata, actual);
     this.actual = actual;
   }
 
   /** Asserts that the compilation succeeded. */
   public void succeeded() {
+    Compilation actual = actualNotNull();
     if (actual.status().equals(FAILURE)) {
       failWithoutActual(
           simpleFact(actual.describeFailureDiagnostics() + actual.describeGeneratedSourceFiles()));
@@ -96,11 +98,11 @@ public final class CompilationSubject extends Subject {
 
   /** Asserts that the compilation failed. */
   public void failed() {
-    if (actual.status().equals(SUCCESS)) {
+    if (actualNotNull().status().equals(SUCCESS)) {
       failWithoutActual(
           simpleFact(
               "Compilation was expected to fail, but contained no errors.\n\n"
-                  + actual.describeGeneratedSourceFiles()));
+                  + actualNotNull().describeGeneratedSourceFiles()));
     }
   }
 
@@ -176,7 +178,7 @@ public final class CompilationSubject extends Subject {
   private void checkDiagnosticCount(
       int expectedCount, Diagnostic.Kind kind, Diagnostic.Kind... more) {
     Iterable<Diagnostic<? extends JavaFileObject>> diagnostics =
-        actual.diagnosticsOfKind(kind, more);
+        actualNotNull().diagnosticsOfKind(kind, more);
     int actualCount = size(diagnostics);
     if (actualCount != expectedCount) {
       failWithoutActual(
@@ -285,7 +287,7 @@ public final class CompilationSubject extends Subject {
       Diagnostic.Kind kind,
       Diagnostic.Kind... more) {
     ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsOfKind =
-        actual.diagnosticsOfKind(kind, more);
+        actualNotNull().diagnosticsOfKind(kind, more);
     ImmutableList<Diagnostic<? extends JavaFileObject>> diagnosticsWithMessage =
         diagnosticsOfKind
             .stream()
@@ -314,7 +316,7 @@ public final class CompilationSubject extends Subject {
   /** Asserts that compilation generated a file at {@code path}. */
   @CanIgnoreReturnValue
   public JavaFileObjectSubject generatedFile(Location location, String path) {
-    return checkGeneratedFile(actual.generatedFile(location, path), location, path);
+    return checkGeneratedFile(actualNotNull().generatedFile(location, path), location, path);
   }
 
   /** Asserts that compilation generated a source file for a type with a given qualified name. */
@@ -335,7 +337,7 @@ public final class CompilationSubject extends Subject {
       ImmutableList.Builder<Fact> facts = ImmutableList.builder();
       facts.add(fact("in location", location.getName()));
       facts.add(simpleFact("it generated:"));
-      for (JavaFileObject generated : actual.generatedFiles()) {
+      for (JavaFileObject generated : actualNotNull().generatedFiles()) {
         if (generated.toUri().getPath().contains(location.getName())) {
           facts.add(simpleFact("  " + generated.toUri().getPath()));
         }
@@ -345,6 +347,11 @@ public final class CompilationSubject extends Subject {
       return ignoreCheck().about(javaFileObjects()).that(ALREADY_FAILED);
     }
     return check("generatedFile(/%s)", path).about(javaFileObjects()).that(generatedFile.get());
+  }
+
+  private Compilation actualNotNull() {
+    isNotNull();
+    return checkNotNull(actual);
   }
 
   private static <T> Collector<T, ?, ImmutableList<T>> toImmutableList() {

@@ -18,13 +18,15 @@ package com.google.testing.compile;
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
 import javax.tools.JavaFileObject;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** A factory for {@link JavaFileObjectSubject}s. */
 final class JavaFileObjectSubjectFactory
     implements Subject.Factory<JavaFileObjectSubject, JavaFileObject> {
 
   @Override
-  public JavaFileObjectSubject createSubject(FailureMetadata failureMetadata, JavaFileObject that) {
+  public JavaFileObjectSubject createSubject(
+      FailureMetadata failureMetadata, @Nullable JavaFileObject that) {
     return new JavaFileObjectSubject(failureMetadata, that);
   }
 }

@@ -18,12 +18,14 @@ package com.google.testing.compile;
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
 import com.google.common.truth.Truth;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** A {@link Truth} subject factory for a {@link Compilation}. */
 final class CompilationSubjectFactory implements Subject.Factory<CompilationSubject, Compilation> {
 
   @Override
-  public CompilationSubject createSubject(FailureMetadata failureMetadata, Compilation that) {
+  public CompilationSubject createSubject(
+      FailureMetadata failureMetadata, @Nullable Compilation that) {
     return new CompilationSubject(failureMetadata, that);
   }
 }

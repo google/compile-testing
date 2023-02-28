@@ -15,6 +15,7 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.truth.Fact.simpleFact;
 import static com.google.common.truth.Truth.assertAbout;
 import static com.google.testing.compile.CompilationSubject.compilations;
@@ -65,14 +66,15 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 @SuppressWarnings("restriction") // Sun APIs usage intended
 public final class JavaSourcesSubject extends Subject
     implements CompileTester, ProcessedCompileTesterFactory {
-  private final Iterable<? extends JavaFileObject> actual;
+  private final @Nullable Iterable<? extends JavaFileObject> actual;
   private final List<String> options = new ArrayList<>(Arrays.asList("-Xlint"));
   @Nullable private ClassLoader classLoader;
   @Nullable private ImmutableList<File> classPath;
 
-  JavaSourcesSubject(FailureMetadata failureMetadata, Iterable<? extends JavaFileObject> subject) {
-    super(failureMetadata, subject);
-    this.actual = subject;
+  JavaSourcesSubject(
+      FailureMetadata failureMetadata, @Nullable Iterable<? extends JavaFileObject> actual) {
+    super(failureMetadata, actual);
+    this.actual = actual;
   }
 
   @Override
@@ -152,13 +154,13 @@ public final class JavaSourcesSubject extends Subject
 
     @Override
     public void parsesAs(JavaFileObject first, JavaFileObject... rest) {
-      if (Iterables.isEmpty(actual)) {
+      if (Iterables.isEmpty(actualNotNull())) {
         failWithoutActual(
             simpleFact(
                 "Compilation generated no additional source files, though some were expected."));
         return;
       }
-      ParseResult actualResult = Parser.parse(actual, "*actual* source");
+      ParseResult actualResult = Parser.parse(actualNotNull(), "*actual* source");
       ImmutableList<Diagnostic<? extends JavaFileObject>> errors =
           actualResult.diagnosticsByKind().get(Kind.ERROR);
       if (!errors.isEmpty()) {
@@ -312,7 +314,7 @@ public final class JavaSourcesSubject extends Subject
       if (classPath != null) {
         compiler = compiler.withClasspath(classPath);
       }
-      return compiler.compile(actual);
+      return compiler.compile(actualNotNull());
     }
   }
 
@@ -580,6 +582,11 @@ public final class JavaSourcesSubject extends Subject
                 .build());
   }
 
+  private Iterable<? extends JavaFileObject> actualNotNull() {
+    isNotNull();
+    return checkNotNull(actual);
+  }
+
   private static <T> Collector<T, ?, ImmutableList<T>> toImmutableList() {
     return collectingAndThen(toList(), ImmutableList::copyOf);
   }
@@ -588,7 +595,7 @@ public final class JavaSourcesSubject extends Subject
       implements CompileTester, ProcessedCompileTesterFactory {
     private final JavaSourcesSubject delegate;
 
-    SingleSourceAdapter(FailureMetadata failureMetadata, JavaFileObject subject) {
+    SingleSourceAdapter(FailureMetadata failureMetadata, @Nullable JavaFileObject subject) {
       super(failureMetadata, subject);
       /*
        * TODO(b/131918061): It would make more sense to eliminate SingleSourceAdapter entirely.
@@ -599,7 +606,8 @@ public final class JavaSourcesSubject extends Subject
        * We could take that on, or we could wait for JavaSourcesSubject to go away entirely in favor
        * of CompilationSubject.
        */
-      this.delegate = check("delegate()").about(javaSources()).that(ImmutableList.of(subject));
+      this.delegate =
+          check("delegate()").about(javaSources()).that(ImmutableList.of(checkNotNull(subject)));
     }
 
     @Override

@@ -17,8 +17,8 @@ package com.google.testing.compile;
 
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
-
 import javax.tools.JavaFileObject;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A <a href="https://github.com/truth0/truth">Truth</a> {@link Subject.Factory} for creating
@@ -35,8 +35,8 @@ public final class JavaSourcesSubjectFactory
   private JavaSourcesSubjectFactory() {}
 
   @Override
-  public JavaSourcesSubject createSubject(FailureMetadata failureMetadata,
-      Iterable<? extends JavaFileObject> subject) {
+  public JavaSourcesSubject createSubject(
+      FailureMetadata failureMetadata, @Nullable Iterable<? extends JavaFileObject> subject) {
     return new JavaSourcesSubject(failureMetadata, subject);
   }
 }

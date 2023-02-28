@@ -17,8 +17,8 @@ package com.google.testing.compile;
 
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
-
 import javax.tools.JavaFileObject;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A <a href="https://github.com/truth0/truth">Truth</a> {@link Subject.Factory} similar to
@@ -35,8 +35,8 @@ public final class JavaSourceSubjectFactory
   private JavaSourceSubjectFactory() {}
 
   @Override
-  public JavaSourcesSubject.SingleSourceAdapter createSubject(FailureMetadata failureMetadata,
-      JavaFileObject subject) {
+  public JavaSourcesSubject.SingleSourceAdapter createSubject(
+      FailureMetadata failureMetadata, @Nullable JavaFileObject subject) {
     return new JavaSourcesSubject.SingleSourceAdapter(failureMetadata, subject);
   }
 }

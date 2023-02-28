@@ -15,6 +15,7 @@
  */
 package com.google.testing.compile;
 
+import static com.google.common.base.Preconditions.checkNotNull;
 import static com.google.common.collect.Iterables.getOnlyElement;
 import static com.google.common.truth.Fact.fact;
 import static com.google.common.truth.Truth.assertAbout;
@@ -48,20 +49,20 @@ public final class JavaFileObjectSubject extends Subject {
   }
 
   /** Starts making assertions about a {@link JavaFileObject}. */
-  public static JavaFileObjectSubject assertThat(JavaFileObject actual) {
+  public static JavaFileObjectSubject assertThat(@Nullable JavaFileObject actual) {
     return assertAbout(FACTORY).that(actual);
   }
 
-  private final JavaFileObject actual;
+  private final @Nullable JavaFileObject actual;
 
-  JavaFileObjectSubject(FailureMetadata failureMetadata, JavaFileObject actual) {
+  JavaFileObjectSubject(FailureMetadata failureMetadata, @Nullable JavaFileObject actual) {
     super(failureMetadata, actual);
     this.actual = actual;
   }
 
   @Override
   protected String actualCustomStringRepresentation() {
-    return actual.toUri().getPath();
+    return actualNotNull().toUri().getPath();
   }
 
   /**
@@ -77,7 +78,7 @@ public final class JavaFileObjectSubject extends Subject {
 
     JavaFileObject otherFile = (JavaFileObject) other;
     try {
-      if (!asByteSource(actual).contentEquals(asByteSource(otherFile))) {
+      if (!asByteSource(actualNotNull()).contentEquals(asByteSource(otherFile))) {
         failWithActual("expected to be equal to", other);
       }
     } catch (IOException e) {
@@ -88,7 +89,7 @@ public final class JavaFileObjectSubject extends Subject {
   /** Asserts that the actual file's contents are equal to {@code expected}. */
   public void hasContents(ByteSource expected) {
     try {
-      if (!asByteSource(actual).contentEquals(expected)) {
+      if (!asByteSource(actualNotNull()).contentEquals(expected)) {
         failWithActual("expected to have contents", expected);
       }
     } catch (IOException e) {
@@ -103,7 +104,7 @@ public final class JavaFileObjectSubject extends Subject {
   public StringSubject contentsAsString(Charset charset) {
     try {
       return check("contents()")
-          .that(JavaFileObjects.asByteSource(actual).asCharSource(charset).read());
+          .that(JavaFileObjects.asByteSource(actualNotNull()).asCharSource(charset).read());
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -170,7 +171,7 @@ public final class JavaFileObjectSubject extends Subject {
       String failureVerb,
       String expectedTitle,
       BiFunction<ParseResult, ParseResult, TreeDifference> differencingFunction) {
-    ParseResult actualResult = Parser.parse(ImmutableList.of(actual), "*actual* source");
+    ParseResult actualResult = Parser.parse(ImmutableList.of(actualNotNull()), "*actual* source");
     CompilationUnitTree actualTree = getOnlyElement(actualResult.compilationUnits());
 
     ParseResult expectedResult = Parser.parse(ImmutableList.of(expected), "*expected* source");
@@ -185,15 +186,20 @@ public final class JavaFileObjectSubject extends Subject {
               new TreeContext(actualTree, actualResult.trees()));
       try {
         failWithoutActual(
-            fact("for file", actual.toUri().getPath()),
+            fact("for file", actualNotNull().toUri().getPath()),
             fact(failureVerb, expected.toUri().getPath()),
             fact("diff", diffReport),
             fact(expectedTitle, expected.getCharContent(false)),
-            fact("but was", actual.getCharContent(false)));
+            fact("but was", actualNotNull().getCharContent(false)));
       } catch (IOException e) {
         throw new IllegalStateException(
             "Couldn't read from JavaFileObject when it was already in memory.", e);
       }
     }
+  }
+
+  private JavaFileObject actualNotNull() {
+    isNotNull();
+    return checkNotNull(actual);
   }
 }

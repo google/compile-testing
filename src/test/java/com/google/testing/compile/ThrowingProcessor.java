@@ -20,6 +20,7 @@ import com.google.common.collect.ImmutableSet;
 import java.util.Set;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
+import javax.lang.model.SourceVersion;
 import javax.lang.model.element.TypeElement;
 
 final class ThrowingProcessor extends AbstractProcessor {
@@ -33,6 +34,11 @@ final class ThrowingProcessor extends AbstractProcessor {
   @Override
   public Set<String> getSupportedAnnotationTypes() {
     return ImmutableSet.of("*");
+  }
+
+  @Override
+  public SourceVersion getSupportedSourceVersion() {
+    return SourceVersion.latestSupported();
   }
 
   @Override

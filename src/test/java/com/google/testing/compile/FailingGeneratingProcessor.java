@@ -52,6 +52,6 @@ final class FailingGeneratingProcessor extends AbstractProcessor {
 
   @Override
   public SourceVersion getSupportedSourceVersion() {
-    return delegate.getSupportedSourceVersion();
+    return SourceVersion.latestSupported();
   }
 }

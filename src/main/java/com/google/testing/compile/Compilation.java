@@ -29,6 +29,8 @@ import static javax.tools.StandardLocation.SOURCE_OUTPUT;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
+
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.Optional;
 import java.util.stream.Collector;
@@ -38,25 +40,28 @@ import javax.tools.JavaFileManager.Location;
 import javax.tools.JavaFileObject;
 
 /** The results of {@linkplain Compiler#compile compiling} source files. */
-public final class Compilation {
+public final class Compilation implements Closeable {
 
   private final Compiler compiler;
   private final ImmutableList<JavaFileObject> sourceFiles;
   private final Status status;
   private final ImmutableList<Diagnostic<? extends JavaFileObject>> diagnostics;
   private final ImmutableList<JavaFileObject> generatedFiles;
+  private final Closeable fileCloseable;
 
   Compilation(
       Compiler compiler,
       Iterable<? extends JavaFileObject> sourceFiles,
       boolean successful,
       Iterable<Diagnostic<? extends JavaFileObject>> diagnostics,
-      Iterable<JavaFileObject> generatedFiles) {
+      Iterable<JavaFileObject> generatedFiles,
+      Closeable fileCloseable) {
     this.compiler = compiler;
     this.sourceFiles = ImmutableList.copyOf(sourceFiles);
     this.status = successful ? Status.SUCCESS : Status.FAILURE;
     this.diagnostics = ImmutableList.copyOf(diagnostics);
     this.generatedFiles = ImmutableList.copyOf(generatedFiles);
+    this.fileCloseable = fileCloseable;
   }
 
   /** The compiler. */
@@ -216,6 +221,14 @@ public final class Compilation {
       builder.append(" passing options ").append(compiler.options());
     }
     return builder.toString();
+  }
+
+  /**
+   * Method for closing any underlying file manager resources.
+   */
+  @Override
+  public void close() throws IOException {
+    fileCloseable.close();
   }
 
   /** Returns a description of the why the compilation failed. */

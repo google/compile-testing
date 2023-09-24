@@ -28,6 +28,7 @@ import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
+import com.google.common.io.Closeables;
 import com.google.testing.compile.Compilation.Status;
 import java.io.File;
 import java.io.IOException;
@@ -205,8 +206,12 @@ public abstract class Compiler {
             files,
             succeeded,
             diagnosticCollector.getDiagnostics(),
-            fileManager.getOutputFiles());
+            fileManager.getOutputFiles(),
+            fileManager);
     if (compilation.status().equals(Status.FAILURE) && compilation.errors().isEmpty()) {
+      try {
+        fileManager.close();
+      } catch (Throwable ignored) {}
       throw new CompilationFailureException(compilation);
     }
     return compilation;

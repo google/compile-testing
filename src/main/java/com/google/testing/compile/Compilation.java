@@ -17,6 +17,7 @@ package com.google.testing.compile;
 
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.testing.compile.JavaFileObjects.asByteSource;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.toList;
 import static javax.tools.Diagnostic.Kind.ERROR;
@@ -155,9 +156,8 @@ public final class Compilation {
     // We're relying on the implementation of location.getName() to be equivalent to the first
     // part of the path.
     String expectedFilename = String.format("%s/%s", location.getName(), path);
-    return generatedFiles()
-        .stream()
-        .filter(generated -> generated.toUri().getPath().endsWith(expectedFilename))
+    return generatedFiles().stream()
+        .filter(generated -> requireNonNull(generated.toUri().getPath()).endsWith(expectedFilename))
         .findFirst();
   }
 

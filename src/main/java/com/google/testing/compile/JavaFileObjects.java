@@ -17,6 +17,7 @@ package com.google.testing.compile;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
+import static java.util.Objects.requireNonNull;
 import static javax.tools.JavaFileObject.Kind.SOURCE;
 
 import com.google.common.base.CharMatcher;
@@ -162,7 +163,7 @@ public final class JavaFileObjects {
   }
 
   static Kind deduceKind(URI uri) {
-    String path = uri.getPath();
+    String path = requireNonNull(uri.getPath());
     for (Kind kind : Kind.values()) {
       if (path.endsWith(kind.extension)) {
         return kind;

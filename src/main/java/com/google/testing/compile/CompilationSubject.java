@@ -26,6 +26,7 @@ import static com.google.testing.compile.Compilation.Status.FAILURE;
 import static com.google.testing.compile.Compilation.Status.SUCCESS;
 import static com.google.testing.compile.JavaFileObjectSubject.javaFileObjects;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.collectingAndThen;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -338,7 +339,7 @@ public final class CompilationSubject extends Subject {
       facts.add(fact("in location", location.getName()));
       facts.add(simpleFact("it generated:"));
       for (JavaFileObject generated : actualNotNull().generatedFiles()) {
-        if (generated.toUri().getPath().contains(location.getName())) {
+        if (requireNonNull(generated.toUri().getPath()).contains(location.getName())) {
           facts.add(simpleFact("  " + generated.toUri().getPath()));
         }
       }
@@ -421,7 +422,8 @@ public final class CompilationSubject extends Subject {
           filterDiagnostics(
               diagnostic -> {
                 JavaFileObject source = diagnostic.getSource();
-                return source != null && source.toUri().getPath().equals(expectedFilePath);
+                return source != null
+                    && requireNonNull(source.toUri().getPath()).equals(expectedFilePath);
               });
       if (diagnosticsInFile.isEmpty()) {
         failExpectingMatchingDiagnostic(

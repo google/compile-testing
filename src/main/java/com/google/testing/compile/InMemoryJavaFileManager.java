@@ -16,6 +16,7 @@
 package com.google.testing.compile;
 
 import static com.google.common.collect.MoreCollectors.toOptional;
+import static java.util.Objects.requireNonNull;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.cache.CacheBuilder;
@@ -129,7 +130,7 @@ final class InMemoryJavaFileManager extends ForwardingStandardJavaFileManager {
     String suffix =
         packageName.isEmpty() ? relativeName : packageName.replace('.', '/') + "/" + relativeName;
     return inMemoryInputs.entrySet().stream()
-        .filter(entry -> entry.getKey().getPath().endsWith(suffix))
+        .filter(entry -> requireNonNull(entry.getKey().getPath()).endsWith(suffix))
         .map(Map.Entry::getValue)
         .collect(toOptional()); // Might have problems if more than one input file matches.
   }
@@ -151,7 +152,8 @@ final class InMemoryJavaFileManager extends ForwardingStandardJavaFileManager {
   ImmutableList<JavaFileObject> getGeneratedSources() {
     ImmutableList.Builder<JavaFileObject> result = ImmutableList.builder();
     for (Map.Entry<URI, JavaFileObject> entry : inMemoryOutputs.asMap().entrySet()) {
-      if (entry.getKey().getPath().startsWith("/" + StandardLocation.SOURCE_OUTPUT.name())
+      if (requireNonNull(entry.getKey().getPath())
+              .startsWith("/" + StandardLocation.SOURCE_OUTPUT.name())
           && (entry.getValue().getKind() == Kind.SOURCE)) {
         result.add(entry.getValue());
       }

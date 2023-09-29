@@ -23,6 +23,7 @@ import static com.google.testing.compile.JavaFileObjects.asByteSource;
 import static com.google.testing.compile.TreeDiffer.diffCompilationUnits;
 import static com.google.testing.compile.TreeDiffer.matchCompilationUnits;
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Objects.requireNonNull;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
@@ -62,7 +63,7 @@ public final class JavaFileObjectSubject extends Subject {
 
   @Override
   protected String actualCustomStringRepresentation() {
-    return actualNotNull().toUri().getPath();
+    return requireNonNull(actualNotNull().toUri().getPath());
   }
 
   /**

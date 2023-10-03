@@ -43,6 +43,7 @@ import javax.tools.DiagnosticCollector;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaCompiler.CompilationTask;
 import javax.tools.JavaFileObject;
+import javax.tools.StandardJavaFileManager;
 import javax.tools.StandardLocation;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
@@ -180,36 +181,44 @@ public abstract class Compiler {
    */
   public final Compilation compile(Iterable<? extends JavaFileObject> files) {
     DiagnosticCollector<JavaFileObject> diagnosticCollector = new DiagnosticCollector<>();
-    InMemoryJavaFileManager fileManager =
-        new InMemoryJavaFileManager(
-            javaCompiler().getStandardFileManager(diagnosticCollector, Locale.getDefault(), UTF_8));
-    fileManager.addSourceFiles(files);
-    classPath().ifPresent(path -> setLocation(fileManager, StandardLocation.CLASS_PATH, path));
-    annotationProcessorPath()
-        .ifPresent(
-            path -> setLocation(fileManager, StandardLocation.ANNOTATION_PROCESSOR_PATH, path));
-    CompilationTask task =
-        javaCompiler()
-            .getTask(
-                null, // use the default because old versions of javac log some output on stderr
-                fileManager,
-                diagnosticCollector,
-                options(),
-                ImmutableSet.<String>of(),
-                files);
-    task.setProcessors(processors());
-    boolean succeeded = task.call();
-    Compilation compilation =
-        new Compilation(
-            this,
-            files,
-            succeeded,
-            diagnosticCollector.getDiagnostics(),
-            fileManager.getOutputFiles());
-    if (compilation.status().equals(Status.FAILURE) && compilation.errors().isEmpty()) {
-      throw new CompilationFailureException(compilation);
+    try (StandardJavaFileManager standardFileManager = standardFileManager(diagnosticCollector);
+        InMemoryJavaFileManager fileManager = new InMemoryJavaFileManager(standardFileManager)) {
+      fileManager.addSourceFiles(files);
+      classPath().ifPresent(path -> setLocation(fileManager, StandardLocation.CLASS_PATH, path));
+      annotationProcessorPath()
+          .ifPresent(
+              path -> setLocation(fileManager, StandardLocation.ANNOTATION_PROCESSOR_PATH, path));
+
+      CompilationTask task =
+          javaCompiler()
+              .getTask(
+                  null, // use the default because old versions of javac log some output on stderr
+                  fileManager,
+                  diagnosticCollector,
+                  options(),
+                  ImmutableSet.<String>of(),
+                  files);
+      task.setProcessors(processors());
+      boolean succeeded = task.call();
+      Compilation compilation =
+          new Compilation(
+              this,
+              files,
+              succeeded,
+              diagnosticCollector.getDiagnostics(),
+              fileManager.getOutputFiles());
+      if (compilation.status().equals(Status.FAILURE) && compilation.errors().isEmpty()) {
+        throw new CompilationFailureException(compilation);
+      }
+      return compilation;
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
-    return compilation;
+  }
+
+  private StandardJavaFileManager standardFileManager(
+      DiagnosticCollector<JavaFileObject> diagnosticCollector) {
+    return javaCompiler().getStandardFileManager(diagnosticCollector, Locale.getDefault(), UTF_8);
   }
 
   @VisibleForTesting

@@ -35,9 +35,11 @@ import java.io.UncheckedIOException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import javax.annotation.processing.Processor;
 import javax.tools.DiagnosticCollector;
 import javax.tools.JavaCompiler;
@@ -53,6 +55,17 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 @SuppressWarnings("JavaLangClash")
 public abstract class Compiler {
 
+  private static final Set<String> REDUNDANT_OPTIONS = ImmutableSet.of(
+      "--add-exports",
+      "--add-opens",
+      "--add-reads"
+  );
+
+  @VisibleForTesting
+  static final String REDUNDANT_OPTIONS_ERROR_TEMPLATE =
+      "Following options were passed to the compiler: %s."
+          + "These options will have no effect and should instead be passed as VM options.";
+
   /** Returns the {@code javac} compiler. */
   public static Compiler javac() {
     return compiler(getSystemJavaCompiler());
@@ -61,7 +74,8 @@ public abstract class Compiler {
   /** Returns a {@link Compiler} that uses a given {@link JavaCompiler} instance. */
   public static Compiler compiler(JavaCompiler javaCompiler) {
     return new AutoValue_Compiler(
-        javaCompiler, ImmutableList.of(), ImmutableList.of(), Optional.empty(), Optional.empty());
+        javaCompiler, ImmutableList.of(), ImmutableList.of(), Optional.empty(), Optional.empty(),
+        false);
   }
 
   abstract JavaCompiler javaCompiler();
@@ -79,6 +93,12 @@ public abstract class Compiler {
    * The annotation processor path. If not present, the system annotation processor path is used.
    */
   public abstract Optional<ImmutableList<File>> annotationProcessorPath();
+
+  /**
+   * Whether to ignore redundant options check.
+   * @see #REDUNDANT_OPTIONS
+   */
+  public abstract boolean shouldIgnoreRedundantOptionsCheck();
 
   /**
    * Uses annotation processors during compilation. These replace any previously specified.
@@ -100,7 +120,11 @@ public abstract class Compiler {
    */
   public final Compiler withProcessors(Iterable<? extends Processor> processors) {
     return copy(
-        ImmutableList.copyOf(processors), options(), classPath(), annotationProcessorPath());
+        ImmutableList.copyOf(processors),
+        options(),
+        classPath(),
+        annotationProcessorPath(),
+        false);
   }
 
   /**
@@ -122,7 +146,8 @@ public abstract class Compiler {
         processors(),
         FluentIterable.from(options).transform(toStringFunction()).toList(),
         classPath(),
-        annotationProcessorPath());
+        annotationProcessorPath(),
+        false);
   }
 
   /**
@@ -141,7 +166,8 @@ public abstract class Compiler {
         processors(),
         options(),
         Optional.of(getClasspathFromClassloader(classloader)),
-        annotationProcessorPath());
+        annotationProcessorPath(),
+        false);
   }
 
   /** Uses the given classpath for the compilation instead of the system classpath. */
@@ -150,7 +176,8 @@ public abstract class Compiler {
         processors(),
         options(),
         Optional.of(ImmutableList.copyOf(classPath)),
-        annotationProcessorPath());
+        annotationProcessorPath(),
+        false);
   }
 
   /**
@@ -162,7 +189,17 @@ public abstract class Compiler {
         processors(),
         options(),
         classPath(),
-        Optional.of(ImmutableList.copyOf(annotationProcessorPath)));
+        Optional.of(ImmutableList.copyOf(annotationProcessorPath)),
+        false);
+  }
+
+  public final Compiler ignoreRedundantOptionsCheck() {
+    return copy(
+        processors(),
+        options(),
+        classPath(),
+        annotationProcessorPath(),
+        true);
   }
 
   /**
@@ -180,6 +217,11 @@ public abstract class Compiler {
    * @return the results of the compilation
    */
   public final Compilation compile(Iterable<? extends JavaFileObject> files) {
+    final List<String> redundantOptions = getRedundantOptions();
+    if (!shouldIgnoreRedundantOptionsCheck() && !redundantOptions.isEmpty()) {
+      throw new IllegalArgumentException(
+          String.format(REDUNDANT_OPTIONS_ERROR_TEMPLATE, redundantOptions));
+    }
     DiagnosticCollector<JavaFileObject> diagnosticCollector = new DiagnosticCollector<>();
     try (StandardJavaFileManager standardFileManager = standardFileManager(diagnosticCollector);
         InMemoryJavaFileManager fileManager = new InMemoryJavaFileManager(standardFileManager)) {
@@ -295,8 +337,16 @@ public abstract class Compiler {
       ImmutableList<Processor> processors,
       ImmutableList<String> options,
       Optional<ImmutableList<File>> classPath,
-      Optional<ImmutableList<File>> annotationProcessorPath) {
+      Optional<ImmutableList<File>> annotationProcessorPath,
+      boolean shouldIgnoreRedundantOptionsCheck) {
     return new AutoValue_Compiler(
-        javaCompiler(), processors, options, classPath, annotationProcessorPath);
+        javaCompiler(), processors, options, classPath, annotationProcessorPath,
+        shouldIgnoreRedundantOptionsCheck);
+  }
+
+  private List<String> getRedundantOptions() {
+    return options().stream()
+        .filter(option -> REDUNDANT_OPTIONS.stream().anyMatch(option::startsWith))
+        .collect(Collectors.toList());
   }
 }

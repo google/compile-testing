@@ -146,9 +146,6 @@ public class EnclosedCompilationTest {
   @RunWith(Parameterized.class)
   public static class RedundantOptionsTest {
 
-    @Rule
-    public final ExpectFailure expectFailure = new ExpectFailure();
-
     @Parameter
     public ImmutableList<String> redundantOptions;
 

@@ -46,7 +46,7 @@
  * Compilation compilation =
  *     javac()
  *         .withProcessors(new MyAnnotationProcessor())
- *         .compile(JavaFileObjects.forSourceString("HelloWorld", "final class HelloWorld {}");
+ *         .compile(JavaFileObjects.forSourceString("HelloWorld", "final class HelloWorld {}"));
  * assertThat(compilation).succeededWithoutWarnings();
  * </pre>
  *

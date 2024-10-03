@@ -34,7 +34,7 @@
  *
  * <pre>
  * Compilation compilation =
- *     javac().compile(JavaFileObjects.forSourceString("HelloWorld", "final class HelloWorld {}");
+ *     javac().compile(JavaFileObjects.forSourceString("HelloWorld", "final class HelloWorld {}"));
  * assertThat(compilation).succeeded();
  * </pre>
  *

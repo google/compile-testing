@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ * https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -147,7 +147,7 @@ public interface CompileTester {
   public interface GeneratedPredicateClause<T> {
     /**
      * Checks that a source file with an equivalent
-     * <a href="http://en.wikipedia.org/wiki/Abstract_syntax_tree">AST</a> was generated for each of
+     * <a href="https://en.wikipedia.org/wiki/Abstract_syntax_tree">AST</a> was generated for each of
      * the given {@linkplain JavaFileObject files}.
      */
     @CanIgnoreReturnValue

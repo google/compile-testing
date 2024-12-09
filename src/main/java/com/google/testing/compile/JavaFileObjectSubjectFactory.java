@@ -18,7 +18,7 @@ package com.google.testing.compile;
 import com.google.common.truth.FailureMetadata;
 import com.google.common.truth.Subject;
 import javax.tools.JavaFileObject;
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /** A factory for {@link JavaFileObjectSubject}s. */
 final class JavaFileObjectSubjectFactory

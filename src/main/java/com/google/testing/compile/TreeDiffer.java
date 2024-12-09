@@ -54,7 +54,7 @@ import java.util.Set;
 import javax.lang.model.element.Name;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.JavaFileObject;
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A class for determining how two compilation {@code Tree}s differ from each other.

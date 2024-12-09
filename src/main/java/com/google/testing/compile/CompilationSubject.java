@@ -57,7 +57,7 @@ import javax.tools.Diagnostic;
 import javax.tools.JavaFileManager.Location;
 import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /** A {@link Truth} subject for a {@link Compilation}. */
 public final class CompilationSubject extends Subject {

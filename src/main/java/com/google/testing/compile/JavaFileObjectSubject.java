@@ -36,7 +36,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.function.BiFunction;
 import javax.tools.JavaFileObject;
-import org.checkerframework.checker.nullness.qual.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /** Assertions about {@link JavaFileObject}s. */
 public final class JavaFileObjectSubject extends Subject {

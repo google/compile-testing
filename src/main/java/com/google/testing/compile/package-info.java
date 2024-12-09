@@ -83,6 +83,8 @@
  * </pre>
  */
 @CheckReturnValue
+@NullMarked
 package com.google.testing.compile;
 
 import com.google.errorprone.annotations.CheckReturnValue;
+import org.jspecify.annotations.NullMarked;

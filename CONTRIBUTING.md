@@ -13,8 +13,8 @@ Truth assertions and be added to `<project>/src/test/java`.
 
 Please make sure your code compiles by running `mvn clean verify` which will
 execute both unit and integration test phases.  Additionally, consider using
-http://travis-ci.org to validate your branches before you even put them into
-pull requests.  All pull requests will be validated by Travis-ci in any case
+https://travis-ci.com to validate your branches before you even put them into
+pull requests.  All pull requests will be validated by Travis CI in any case
 and must pass before being merged.
 
 If you are adding or modifying files you may add your own copyright line, but
@@ -26,7 +26,7 @@ be accepted under the terms of that license.
 Checkstyle failures during compilation indicate errors in your style and will
 be displayed in the console output of the build (including in Travis-CI output),
 or can be viewed in the `checkstyle-result.xml` file.  To save yourself some
-hassle, consider executing checkstyle first per: 'mvn checkstyle:checkstyle'.
+hassle, consider executing checkstyle first per: `mvn checkstyle:checkstyle`.
 It's fast, and will catch style errors early.
 
 Before your code can be accepted into the project you must sign the

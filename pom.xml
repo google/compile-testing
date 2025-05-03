@@ -1,12 +1,20 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.google.testing.compile</groupId>
+  <groupId>github.benslabbert.fork</groupId>
   <artifactId>compile-testing</artifactId>
   <version>${revision}</version>
 
   <name>Compile Testing</name>
   <description>Utilities for testing compilation.</description>
+
+  <distributionManagement>
+    <repository>
+      <id>github</id>
+      <name>GitHub BenSlabbert Apache Maven Packages</name>
+      <url>https://maven.pkg.github.com/BenSlabbert/compile-testing</url>
+    </repository>
+  </distributionManagement>
 
   <properties>
     <revision>0.0.0-SNAPSHOT</revision>

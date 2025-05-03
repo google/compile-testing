@@ -1,20 +1,39 @@
+---
 version: 2
+registries:
+  git-version-extension:
+    type: "maven-repository"
+    url: "https://maven.pkg.github.com/BenSlabbert/git-version-extension"
+    username: "BenSlabbert"
+    password: "${{ secrets.GH_TOKEN }}"
 updates:
-  - package-ecosystem: "maven"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    groups:
-      dependencies:
-        applies-to: version-updates
-        patterns:
-          - "*"
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "monthly"
-    groups:
-      github-actions:
-        applies-to: version-updates
-        patterns:
-          - "*"
+- package-ecosystem: "maven"
+  directory: "/"
+  schedule:
+    interval: "daily"
+  open-pull-requests-limit: 10
+  registries:
+  - "git-version-extension"
+  labels:
+  - "dependencies"
+  groups:
+    updates:
+      patterns:
+      - "*"
+      update-types:
+      - "minor"
+      - "patch"
+- package-ecosystem: "github-actions"
+  directory: "/"
+  schedule:
+    interval: "weekly"
+  open-pull-requests-limit: 10
+  labels:
+  - "dependencies"
+  groups:
+    updates:
+      patterns:
+      - "*"
+      update-types:
+      - "minor"
+      - "patch"

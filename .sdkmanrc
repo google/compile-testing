@@ -1,3 +1,3 @@
-java=21-zulu
+java=21.0.7-zulu
 maven=3.9.9
 mvnd=1.0.2

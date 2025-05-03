@@ -32,13 +32,14 @@ jobs:
       uses: "actions/setup-java@v4"
       with:
         distribution: "zulu"
-        java-version: "21"
+        java-version: "21.0.7"
         java-package: "jdk"
         cache: "maven"
     - name: "Set up Maven"
       uses: "stCarolas/setup-maven@v5"
       with:
         maven-version: "3.9.9"
+    - run: "mvn --version"
     - run: "mvn -s settings.xml clean install"
     - name: "Perform CodeQL Analysis"
       uses: "github/codeql-action/analyze@v3"

@@ -22,7 +22,7 @@
     <truth.version>1.4.4</truth.version>
     <junit.version>4.13.2</junit.version>
     <guava.version>33.4.8-jre</guava.version>
-    <error_prone_annotations.version>2.40.0</error_prone_annotations.version>
+    <error_prone_annotations.version>2.41.0</error_prone_annotations.version>
     <auto-value.version>1.11.0</auto-value.version>
     <auto-common.version>1.2.2</auto-common.version>
     <jspecify.version>1.0.0</jspecify.version>

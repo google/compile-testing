@@ -9,6 +9,7 @@
   <description>Utilities for testing compilation.</description>
 
   <properties>
+    <autovalue.version>1.11.0</autovalue.version>
     <truth.version>1.4.4</truth.version>
   </properties>
 
@@ -77,8 +78,8 @@
     </dependency>
     <dependency>
       <groupId>com.google.auto.value</groupId>
-      <artifactId>auto-value</artifactId>
-      <version>1.11.0</version>
+      <artifactId>auto-value-annotations</artifactId>
+      <version>${autovalue.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.auto</groupId>
@@ -112,6 +113,13 @@
           <compilerArgument>-Xlint:all</compilerArgument>
           <showWarnings>true</showWarnings>
           <showDeprecation>true</showDeprecation>
+          <annotationProcessorPaths>
+            <path>
+              <groupId>com.google.auto.value</groupId>
+              <artifactId>auto-value</artifactId>
+              <version>${autovalue.version}</version>
+            </path>
+          </annotationProcessorPaths>
         </configuration>
       </plugin>
       <plugin>

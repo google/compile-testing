@@ -17,9 +17,7 @@ package com.google.testing.compile;
 
 import com.google.common.io.ByteSource;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
-
 import java.nio.charset.Charset;
-
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileManager;
 import javax.tools.JavaFileObject;
@@ -44,8 +42,7 @@ public interface CompileTester {
   SuccessfulCompilationClause compilesWithoutError();
 
   /**
-   * The clause in the fluent API that tests for successful compilation without warnings or
-   * errors.
+   * The clause in the fluent API that tests for successful compilation without warnings or errors.
    */
   @CanIgnoreReturnValue
   CleanCompilationClause compilesWithoutWarnings();
@@ -57,7 +54,7 @@ public interface CompileTester {
   /**
    * The clause in the fluent API that allows for chaining test conditions.
    *
-   * @param T the clause type returned by {@link #and()}
+   * @param <T> the clause type returned by {@link #and()}
    */
   public interface ChainingClause<T> {
     T and();
@@ -66,12 +63,12 @@ public interface CompileTester {
   /**
    * The clause in the fluent API that checks notes in a compilation.
    *
-   * @param T the non-generic clause type implementing this interface
+   * @param <T> the non-generic clause type implementing this interface
    */
   public interface CompilationWithNotesClause<T> {
     /**
-     * Checks that a note exists that contains the given fragment in the
-     * {@linkplain Diagnostic#getMessage(java.util.Locale) diagnostic message}.
+     * Checks that a note exists that contains the given fragment in the {@linkplain
+     * Diagnostic#getMessage(java.util.Locale) diagnostic message}.
      */
     @CanIgnoreReturnValue
     FileClause<T> withNoteContaining(String messageFragment);
@@ -87,13 +84,13 @@ public interface CompileTester {
   /**
    * The clause in the fluent API that checks notes and warnings in a compilation.
    *
-   * @param T the non-generic clause type implementing this interface
+   * @param <T> the non-generic clause type implementing this interface
    */
   public interface CompilationWithWarningsClause<T> extends CompilationWithNotesClause<T> {
 
     /**
-     * Checks that a warning exists that contains the given fragment in the
-     * {@linkplain Diagnostic#getMessage(java.util.Locale) diagnostic message}.
+     * Checks that a warning exists that contains the given fragment in the {@linkplain
+     * Diagnostic#getMessage(java.util.Locale) diagnostic message}.
      */
     @CanIgnoreReturnValue
     FileClause<T> withWarningContaining(String messageFragment);
@@ -110,7 +107,7 @@ public interface CompileTester {
    * The clause in the fluent API that checks that a diagnostic is associated with a particular
    * {@link JavaFileObject}.
    *
-   * @param T the clause type returned by {@link ChainingClause#and()}
+   * @param <T> the clause type returned by {@link ChainingClause#and()}
    */
   public interface FileClause<T> extends ChainingClause<T> {
     @CanIgnoreReturnValue
@@ -118,10 +115,10 @@ public interface CompileTester {
   }
 
   /**
-   * The clause in the fluent API that checks that a diagnostic is on a particular
-   * {@linkplain Diagnostic#getLineNumber() line}.
+   * The clause in the fluent API that checks that a diagnostic is on a particular {@linkplain
+   * Diagnostic#getLineNumber() line}.
    *
-   * @param T the clause type returned by {@link ChainingClause#and()}
+   * @param <T> the clause type returned by {@link ChainingClause#and()}
    */
   public interface LineClause<T> extends ChainingClause<T> {
     @CanIgnoreReturnValue
@@ -129,10 +126,10 @@ public interface CompileTester {
   }
 
   /**
-   * The clause in the fluent API that checks that a diagnostic starts at a particular
-   * {@linkplain Diagnostic#getColumnNumber() column}.
+   * The clause in the fluent API that checks that a diagnostic starts at a particular {@linkplain
+   * Diagnostic#getColumnNumber() column}.
    *
-   * @param T the clause type returned by {@link ChainingClause#and()}
+   * @param <T> the clause type returned by {@link ChainingClause#and()}
    */
   public interface ColumnClause<T> extends ChainingClause<T> {
     @CanIgnoreReturnValue
@@ -142,12 +139,12 @@ public interface CompileTester {
   /**
    * The clause in the fluent API that checks that files were generated.
    *
-   * @param T the non-generic clause type implementing this interface
+   * @param <T> the non-generic clause type implementing this interface
    */
   public interface GeneratedPredicateClause<T> {
     /**
-     * Checks that a source file with an equivalent
-     * <a href="http://en.wikipedia.org/wiki/Abstract_syntax_tree">AST</a> was generated for each of
+     * Checks that a source file with an equivalent <a
+     * href="http://en.wikipedia.org/wiki/Abstract_syntax_tree">AST</a> was generated for each of
      * the given {@linkplain JavaFileObject files}.
      */
     @CanIgnoreReturnValue
@@ -160,9 +157,7 @@ public interface CompileTester {
     @CanIgnoreReturnValue
     T generatesFiles(JavaFileObject first, JavaFileObject... rest);
 
-    /**
-     * Checks that a file with the specified location, package, and filename was generated.
-     */
+    /** Checks that a file with the specified location, package, and filename was generated. */
     @CanIgnoreReturnValue
     SuccessfulFileClause<T> generatesFileNamed(
         JavaFileManager.Location location, String packageName, String relativeName);
@@ -171,12 +166,12 @@ public interface CompileTester {
   /**
    * The clause in the fluent API that checks that a generated file has the specified contents.
    *
-   * @param T the non-generic clause type implementing this interface
+   * @param <T> the non-generic clause type implementing this interface
    */
   public interface SuccessfulFileClause<T> extends ChainingClause<GeneratedPredicateClause<T>> {
     /**
-     * Checks that the contents of the generated file match the contents of the specified
-     * {@link ByteSource}.
+     * Checks that the contents of the generated file match the contents of the specified {@link
+     * ByteSource}.
      */
     @CanIgnoreReturnValue
     SuccessfulFileClause<T> withContents(ByteSource expectedByteSource);
@@ -203,8 +198,8 @@ public interface CompileTester {
   public interface UnsuccessfulCompilationClause
       extends CompilationWithWarningsClause<UnsuccessfulCompilationClause> {
     /**
-     * Checks that an error exists that contains the given fragment in the
-     * {@linkplain Diagnostic#getMessage(java.util.Locale) diagnostic message}.
+     * Checks that an error exists that contains the given fragment in the {@linkplain
+     * Diagnostic#getMessage(java.util.Locale) diagnostic message}.
      */
     @CanIgnoreReturnValue
     FileClause<UnsuccessfulCompilationClause> withErrorContaining(String messageFragment);

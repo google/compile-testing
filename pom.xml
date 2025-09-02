@@ -140,7 +140,10 @@
         <configuration>
           <additionalJOptions>
             <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED</additionalJOption>
+            <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED</additionalJOption>
+            <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED</additionalJOption>
             <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED</additionalJOption>
+            <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</additionalJOption>
             <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED</additionalJOption>
           </additionalJOptions>
         </configuration>
@@ -253,11 +256,11 @@
       <properties>
         <test.jvm.flags>
           --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED
-          --add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED
-          --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
           --add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED
+          --add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED
           --add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED
           --add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED
+          --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
         </test.jvm.flags>
       </properties>
     </profile>

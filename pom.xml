@@ -30,6 +30,16 @@
     </license>
   </licenses>
 
+  <developers>
+    <developer>
+      <id>netdpb</id>
+      <name>David P. Baker</name>
+      <email>dpb@google.com</email>
+      <organization>Google</organization>
+      <organizationUrl>https://www.google.com</organizationUrl>
+    </developer>
+  </developers>
+
   <prerequisites>
     <maven>3.5.0</maven>
   </prerequisites>

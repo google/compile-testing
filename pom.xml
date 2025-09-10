@@ -10,7 +10,7 @@
 
   <properties>
     <autovalue.version>1.11.0</autovalue.version>
-    <truth.version>1.4.4</truth.version>
+    <truth.version>1.4.5</truth.version>
   </properties>
 
   <url>http://github.com/google/compile-testing</url>

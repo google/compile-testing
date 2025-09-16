@@ -51,13 +51,6 @@
     <tag>HEAD</tag>
   </scm>
 
-  <distributionManagement>
-    <snapshotRepository>
-      <id>sonatype-nexus-snapshots</id>
-      <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-    </snapshotRepository>
-  </distributionManagement>
-
   <dependencies>
     <dependency>
       <groupId>junit</groupId>
@@ -147,20 +140,27 @@
       <plugin>
         <artifactId>maven-javadoc-plugin</artifactId>
         <version>3.11.3</version>
-        <configuration>
-          <additionalJOptions>
-            <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED</additionalJOption>
-            <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED</additionalJOption>
-            <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED</additionalJOption>
-            <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED</additionalJOption>
-            <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</additionalJOption>
-            <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED</additionalJOption>
-          </additionalJOptions>
-        </configuration>
+        <executions>
+          <execution>
+            <id>attach-docs</id>
+            <goals><goal>jar</goal></goals>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <artifactId>maven-site-plugin</artifactId>
         <version>3.21.0</version>
+      </plugin>
+      <plugin>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.3.1</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <!-- TODO(cpovirk): Use jar-no-fork, as we do in our other projects? -->
+            <goals><goal>jar</goal></goals>
+          </execution>
+        </executions>
       </plugin>
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
@@ -168,6 +168,12 @@
         <configuration>
           <argLine>${test.jvm.flags}</argLine>
         </configuration>
+      </plugin>
+      <plugin>
+        <groupId>org.sonatype.central</groupId>
+        <artifactId>central-publishing-maven-plugin</artifactId>
+        <version>0.8.0</version>
+        <extensions>true</extensions>
       </plugin>
     </plugins>
   </build>
@@ -229,32 +235,6 @@
               </execution>
             </executions>
           </plugin>
-          <plugin>
-            <artifactId>maven-source-plugin</artifactId>
-            <version>3.3.1</version>
-            <executions>
-              <execution>
-                <id>attach-sources</id>
-                <goals><goal>jar</goal></goals>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <artifactId>maven-javadoc-plugin</artifactId>
-            <version>3.11.3</version>
-            <executions>
-              <execution>
-                <id>attach-docs</id>
-                <goals><goal>jar</goal></goals>
-              </execution>
-            </executions>
-          </plugin>
-          <plugin>
-            <groupId>org.sonatype.central</groupId>
-            <artifactId>central-publishing-maven-plugin</artifactId>
-            <version>0.8.0</version>
-            <extensions>true</extensions>
-          </plugin>
         </plugins>
       </build>
     </profile>
@@ -273,6 +253,23 @@
           --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED
         </test.jvm.flags>
       </properties>
+      <build>
+        <plugins>
+          <plugin>
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <configuration>
+              <additionalJOptions>
+                <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED</additionalJOption>
+                <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.file=ALL-UNNAMED</additionalJOption>
+                <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.parser=ALL-UNNAMED</additionalJOption>
+                <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.main=ALL-UNNAMED</additionalJOption>
+                <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.tree=ALL-UNNAMED</additionalJOption>
+                <additionalJOption>--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED</additionalJOption>
+              </additionalJOptions>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
     </profile>
   </profiles>
 </project>

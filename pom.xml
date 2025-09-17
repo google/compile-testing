@@ -10,7 +10,6 @@
 
   <properties>
     <autovalue.version>1.11.0</autovalue.version>
-    <truth.version>1.4.5</truth.version>
   </properties>
 
   <url>http://github.com/google/compile-testing</url>
@@ -60,13 +59,7 @@
     <dependency>
       <groupId>com.google.truth</groupId>
       <artifactId>truth</artifactId>
-      <version>${truth.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.truth.extensions</groupId>
-      <artifactId>truth-java8-extension</artifactId>
-      <version>${truth.version}</version>
-      <scope>test</scope>
+      <version>1.4.5</version>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>

@@ -119,14 +119,6 @@
         </configuration>
       </plugin>
       <plugin>
-        <artifactId>maven-release-plugin</artifactId>
-        <version>3.2.0</version>
-        <configuration>
-          <releaseProfiles>sonatype-oss-release</releaseProfiles>
-          <goals>deploy</goals>
-        </configuration>
-      </plugin>
-      <plugin>
         <artifactId>maven-jar-plugin</artifactId>
         <version>3.4.2</version>
       </plugin>

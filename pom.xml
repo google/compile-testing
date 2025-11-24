@@ -9,7 +9,7 @@
   <description>Utilities for testing compilation.</description>
 
   <properties>
-    <autovalue.version>1.11.0</autovalue.version>
+    <autovalue.version>1.11.1</autovalue.version>
   </properties>
 
   <url>http://github.com/google/compile-testing</url>
@@ -120,7 +120,7 @@
       </plugin>
       <plugin>
         <artifactId>maven-jar-plugin</artifactId>
-        <version>3.4.2</version>
+        <version>3.5.0</version>
       </plugin>
       <plugin>
         <artifactId>maven-javadoc-plugin</artifactId>

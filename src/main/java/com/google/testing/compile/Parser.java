@@ -63,7 +63,8 @@ final class Parser {
       for (JavaFileObject source : sources) {
         log.useSource(source);
         JavacParser parser =
-            parserFactory.newParser(
+            newParser(
+                parserFactory,
                 source.getCharContent(false),
                 /* keepDocComments= */ true,
                 /* keepEndPos= */ true,
@@ -82,6 +83,31 @@ final class Parser {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
+  }
+
+  private static final boolean IS_END_POS_TABLE_PRESENT = getIsEndPosTablePresent();
+
+  private static boolean getIsEndPosTablePresent() {
+    try {
+      // JDK versions before https://bugs.openjdk.org/browse/JDK-8372948
+      Class.forName("com.sun.tools.javac.tree.EndPosTable");
+      return true;
+    } catch (ClassNotFoundException e) {
+      return false;
+    }
+  }
+
+  private static JavacParser newParser(
+      ParserFactory parserFactory,
+      CharSequence source,
+      boolean keepDocComments,
+      boolean keepEndPos,
+      boolean keepLineMap) {
+    if (IS_END_POS_TABLE_PRESENT) {
+      return parserFactory.newParser(source, keepDocComments, keepEndPos, keepLineMap);
+    }
+    return parserFactory.newParser(
+        source, keepDocComments, keepLineMap, /* parseModuleInfo */ false);
   }
 
   /** Returns {@code true} if errors were found while parsing source files. */

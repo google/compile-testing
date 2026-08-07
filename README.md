@@ -27,6 +27,6 @@ License
 [ci-shield]: https://github.com/google/compile-testing/actions/workflows/ci.yml/badge.svg?branch=main
 [ci-link]: https://github.com/google/compile-testing/actions
 [maven-shield]: https://img.shields.io/maven-central/v/com.google.testing.compile/compile-testing.png
-[maven-link]: https://search.maven.org/artifact/com.google.testing.compile/compile-testing
+[maven-link]: https://central.sonatype.com/artifact/com.google.testing.compile/compile-testing
 [javadoc-shield]: https://javadoc.io/badge/com.google.testing.compile/compile-testing.svg?color=blue
 [javadoc-link]: https://javadoc.io/doc/com.google.testing.compile/compile-testing

@@ -454,6 +454,21 @@ public class CompilationSubjectTest {
     }
 
     @Test
+    public void hadWarningCountReportsLineNumbers() {
+      expectFailure
+          .whenTesting()
+          .about(compilations())
+          .that(compilerWithWarning().compile(sourceFile))
+          .hadWarningCount(0);
+      AssertionError expected = expectFailure.getFailure();
+
+      assertThat(expected.getMessage())
+          .contains(String.format("%s:6 - this is a message", sourceFile.getName()));
+      assertThat(expected.getMessage())
+          .contains(String.format("%s:7 - this is a message", sourceFile.getName()));
+    }
+
+    @Test
     public void hadWarningCount_wrongCount() {
       expectFailure
           .whenTesting()

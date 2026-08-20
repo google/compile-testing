@@ -69,7 +69,7 @@ final class InMemoryJavaFileManager extends ForwardingStandardJavaFileManager {
   }
 
   private static URI uriForFileObject(Location location, String packageName, String relativeName) {
-    StringBuilder uri = new StringBuilder("mem:///").append(location.getName()).append('/');
+    StringBuilder uri = new StringBuilder("mem:///").append(locationName(location)).append('/');
     if (!packageName.isEmpty()) {
       uri.append(packageName.replace('.', '/')).append('/');
     }
@@ -79,7 +79,18 @@ final class InMemoryJavaFileManager extends ForwardingStandardJavaFileManager {
 
   private static URI uriForJavaFileObject(Location location, String className, Kind kind) {
     return URI.create(
-        "mem:///" + location.getName() + '/' + className.replace('.', '/') + kind.extension);
+        "mem:///" + locationName(location) + '/' + className.replace('.', '/') + kind.extension);
+  }
+
+  /**
+   * Returns the name of {@code location}, with any characters that are illegal in a URI path
+   * percent-encoded. Module locations returned by {@code
+   * StandardJavaFileManager#getLocationForModule} have names such as {@code "CLASS_OUTPUT[foo]"},
+   * and the brackets would otherwise make {@link URI#create(String)} throw an {@link
+   * IllegalArgumentException}.
+   */
+  private static String locationName(Location location) {
+    return location.getName().replace("[", "%5B").replace("]", "%5D");
   }
 
   @Override

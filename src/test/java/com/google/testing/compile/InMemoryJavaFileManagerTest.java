@@ -24,6 +24,7 @@ import javax.tools.JavaFileManager.Location;
 import javax.tools.JavaFileObject;
 import javax.tools.JavaFileObject.Kind;
 import javax.tools.StandardJavaFileManager;
+import javax.tools.StandardLocation;
 import javax.tools.ToolProvider;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -34,17 +35,33 @@ import org.junit.runners.JUnit4;
 public final class InMemoryJavaFileManagerTest {
 
   @Test
+  public void getJavaFileForOutput_standardLocation() throws Exception {
+    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+    try (StandardJavaFileManager standardFileManager =
+            compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        InMemoryJavaFileManager fileManager = new InMemoryJavaFileManager(standardFileManager)) {
+      // Standard (non-module) location names contain no characters that need escaping, so the URI
+      // keeps its previous form.
+      JavaFileObject output =
+          fileManager.getJavaFileForOutput(
+              StandardLocation.CLASS_OUTPUT, "com.example.Foo", Kind.CLASS, null);
+      assertThat(output.toUri().getRawPath()).isEqualTo("/CLASS_OUTPUT/com/example/Foo.class");
+    }
+  }
+
+  @Test
   public void getJavaFileForOutput_moduleLocationName() throws Exception {
     JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
     try (StandardJavaFileManager standardFileManager =
             compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
         InMemoryJavaFileManager fileManager = new InMemoryJavaFileManager(standardFileManager)) {
-      // Module locations returned by StandardJavaFileManager.getLocationForModule() have brackets
-      // in their name (e.g. "CLASS_OUTPUT[foo]"), which are illegal characters in a URI path. This
-      // used to throw IllegalArgumentException.
+      // Module locations returned by StandardJavaFileManager.getLocationForModule() have names with
+      // brackets (e.g. "CLASS_OUTPUT[foo]"), which are illegal characters in a URI path. Building
+      // the output file's URI used to throw IllegalArgumentException.
       JavaFileObject output =
           fileManager.getJavaFileForOutput(moduleLocation(), "com.example.Foo", Kind.CLASS, null);
-      assertThat(output).isNotNull();
+      assertThat(output.toUri().getRawPath())
+          .isEqualTo("/CLASS_OUTPUT%5Bfoo%5D/com/example/Foo.class");
     }
   }
 
@@ -54,12 +71,27 @@ public final class InMemoryJavaFileManagerTest {
     try (StandardJavaFileManager standardFileManager =
             compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
         InMemoryJavaFileManager fileManager = new InMemoryJavaFileManager(standardFileManager)) {
-      // Module locations returned by StandardJavaFileManager.getLocationForModule() have brackets
-      // in their name (e.g. "CLASS_OUTPUT[foo]"), which are illegal characters in a URI path. This
-      // used to throw IllegalArgumentException.
+      // Module locations returned by StandardJavaFileManager.getLocationForModule() have names with
+      // brackets (e.g. "CLASS_OUTPUT[foo]"), which are illegal characters in a URI path. Building
+      // the output file's URI used to throw IllegalArgumentException.
       FileObject output =
           fileManager.getFileForOutput(moduleLocation(), "com.example", "Foo.txt", null);
-      assertThat(output).isNotNull();
+      assertThat(output.toUri().getRawPath())
+          .isEqualTo("/CLASS_OUTPUT%5Bfoo%5D/com/example/Foo.txt");
+    }
+  }
+
+  @Test
+  public void getJavaFileForInput_moduleLocationName() throws Exception {
+    JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+    try (StandardJavaFileManager standardFileManager =
+            compiler.getStandardFileManager(null, null, StandardCharsets.UTF_8);
+        InMemoryJavaFileManager fileManager = new InMemoryJavaFileManager(standardFileManager)) {
+      // javac's module validation calls getJavaFileForInput() on the module's CLASS_OUTPUT location
+      // (see https://github.com/google/compile-testing/issues/335); building the input URI used to
+      // throw IllegalArgumentException.
+      assertThat(fileManager.getJavaFileForInput(moduleLocation(), "com.example.Foo", Kind.CLASS))
+          .isNull();
     }
   }
 

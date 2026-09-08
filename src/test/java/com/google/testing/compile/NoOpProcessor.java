@@ -25,7 +25,7 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.TypeElement;
 
-final class NoOpProcessor extends AbstractProcessor {
+class NoOpProcessor extends AbstractProcessor {
   boolean invoked = false;
   Map<String, String> options;
 

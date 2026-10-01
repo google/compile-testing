@@ -33,6 +33,7 @@ import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
@@ -69,17 +70,34 @@ final class InMemoryJavaFileManager extends ForwardingStandardJavaFileManager {
   }
 
   private static URI uriForFileObject(Location location, String packageName, String relativeName) {
-    StringBuilder uri = new StringBuilder("mem:///").append(location.getName()).append('/');
+    String path = "/" + location.getName() + "/";
     if (!packageName.isEmpty()) {
-      uri.append(packageName.replace('.', '/')).append('/');
+      path += packageName.replace('.', '/') + "/";
     }
-    uri.append(relativeName);
-    return URI.create(uri.toString());
+    path += relativeName;
+    return memUri(path);
   }
 
   private static URI uriForJavaFileObject(Location location, String className, Kind kind) {
-    return URI.create(
-        "mem:///" + location.getName() + '/' + className.replace('.', '/') + kind.extension);
+    String path = "/" + location.getName() + "/" + className.replace('.', '/') + kind.extension;
+    return memUri(path);
+  }
+
+  /**
+   * Returns an in-memory {@code mem:///...} URI for the given path. The multi-argument {@link URI}
+   * constructor percent-encodes any characters that are illegal in a URI path, unlike {@link
+   * URI#create(String)}, which throws {@link IllegalArgumentException}. This matters for module
+   * locations returned by {@code StandardJavaFileManager#getLocationForModule}, whose names contain
+   * brackets (e.g. {@code "CLASS_OUTPUT[foo]"}). The empty (rather than null) authority keeps the
+   * URIs in the {@code "mem:///..."} form they had before. Since the constructor quotes illegal
+   * characters rather than rejecting them, it cannot fail for the paths built here.
+   */
+  private static URI memUri(String path) {
+    try {
+      return new URI("mem", "", path, null);
+    } catch (URISyntaxException impossible) {
+      throw new AssertionError(impossible);
+    }
   }
 
   @Override

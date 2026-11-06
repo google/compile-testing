@@ -181,7 +181,7 @@ final class TreeContext {
    */
   long getNodeEndPosition(Tree node) {
     TreePath currentNode = getNodePath(node);
-    while (node != null) {
+    while (currentNode != null) {
       long endPosition = sourcePositions.getEndPosition(compilationUnit, currentNode.getLeaf());
       if (endPosition != NOPOS) {
         return endPosition;
